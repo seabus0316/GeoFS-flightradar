@@ -43,7 +43,12 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 const map = L.map('map', {
   worldCopyJump: true,
   maxZoom: 8,
-  minZoom: 2
+  minZoom: 2,
+  maxBounds: [
+    [-85, -180],
+    [85, 180]
+  ],
+  maxBoundsViscosity: 1.0
 }).setView([20, 0], 2);
 
 L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
@@ -60,11 +65,11 @@ function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
-// 使用 divIcon，左側 PNG，右側 label
+// 使用 divIcon，左側 PNG，右側 label，並加上速度
 function makeDivIcon(data) {
   // 設定圖示大小
   const imgW = 32, imgH = 32;
-  const labelW = 90, labelH = 32;
+  const labelW = 110, labelH = 32;
   const iconW = imgW + labelW, iconH = Math.max(imgH, labelH);
   // anchor 設在飛機圖中心
   return L.divIcon({
@@ -75,7 +80,9 @@ function makeDivIcon(data) {
         <div class="label">
           <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
           <div style="font-size:11px;">
-            ${escapeHtml(data.type||'??')} · ${Math.round(data.alt||0)}ft
+            ${escapeHtml(data.type||'??')}
+            · ${Math.round(data.alt||0)}ft
+            · ${typeof data.speed === 'number' ? Math.round(data.speed) : '---'}kt
           </div>
         </div>
       </div>
@@ -161,4 +168,3 @@ connectWS();
 </script>
 </body>
 </html>
-
