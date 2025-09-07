@@ -42,7 +42,7 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 
 const map = L.map('map', {
   worldCopyJump: true,
-  maxZoom: 8,
+  maxZoom: 19,
   minZoom: 2
 }).setView([20, 0], 2);
 
@@ -161,3 +161,4 @@ connectWS();
 </script>
 </body>
 </html>
+
