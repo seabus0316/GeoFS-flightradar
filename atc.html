@@ -42,7 +42,7 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 
 const map = L.map('map', {
   worldCopyJump: true,
-  maxZoom: 19,
+  maxZoom: 8,
   minZoom: 2
 }).setView([20, 0], 2);
 
@@ -52,20 +52,9 @@ L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
 }).addTo(map);
 
 const aircrafts = new Map(); // id -> { marker, lastSeen, data }
-const bounds = [
-  [-85, -180], // 南西角
-  [85, 180]    // 北東角
-];
 
-const map = L.map('map', {
-  worldCopyJump: true,
-  maxZoom: 8,
-  minZoom: 2,
-  maxBounds: bounds,
-  maxBoundsViscosity: 1.0
-}).setView([20, 0], 2);
 // 設定你的 PNG 路徑
-const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png"; // 請把 plane.png 放在同目錄或改成你的路徑
+const PLANE_IMG = "plane.png"; // 請把 plane.png 放在同目錄或改成你的路徑
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -172,5 +161,3 @@ connectWS();
 </script>
 </body>
 </html>
-
-
