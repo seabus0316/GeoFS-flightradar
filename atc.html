@@ -7,15 +7,6 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
     html,body,#map { height:100%; margin:0; padding:0; }
-    .label {
-      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
-      font-size:12px;
-      padding:2px 6px;
-      border-radius:6px;
-      background: rgba(255,255,255,0.9);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-      white-space: nowrap;
-    }
     .legend {
       position: absolute;
       left: 10px;
@@ -34,10 +25,7 @@
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* === CONFIG (部署後請更新 WS_URL) === */
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-// 如果你把 server 與此頁面分開部署，請改為 `wss://your-render-service.onrender.com/ws`
-/* ===================================== */
 
 const map = L.map('map', {
   worldCopyJump: true,
@@ -50,40 +38,28 @@ L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   attribution: 'Map data © Google'
 }).addTo(map);
 
+const aircrafts = new Map();
 
-const aircrafts = new Map(); // id -> { marker, lastSeen, data }
-
-function makeDivIcon(html) {
-  return L.divIcon({
-    html,
-    className: '',
-    iconSize: [120, 30],
-    iconAnchor: [60, 15]
+function makeImageIcon(data) {
+  return L.icon({
+    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4RpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ1IDc5LjE2MzQ5OSwgMjAxOC8wOC8xMy0xNjo0MDoyMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo2NjFmMDIxMC00NDhjLTY3NDQtYjFkOC1mMTEyZTRmY2I5ZWEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NjAyQzIyOTZDRDc4MTFFOUEwMUFGMzk4Mjg5NDVBQ0YiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NjAyQzIyOTVDRDc4MTFFOUEwMUFGMzk4Mjg5NDVBQ0YiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTkgKFdpbmRvd3MpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NGU1NjlmYzktMTRlYS02YTQ1LTg3OTMtZmU1MDFlNWExN2I5IiBzdFJlZjpkb2N1bWVudElEPSJhZG9iZTpkb2NpZDpwaG90b3Nob3A6ZTc3YzE0ZDEtOTM3NC03ZjQ4LThkMjUtODRjY2JmZWNkZGEyIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+di3hcAAAA49JREFUeNrsWEtoE0EYzuwr7yZN26StUC21B7VUQtGTikWKQg+eevGkXnuQggdPnrxJ8ajgQaTQS5FSvJWCHhQtqK2W0iqVJA19JDXPzSbZ5/jPuoutVPNoaApm4M+yO/P/+8383//NZBHG2HKUGmU5Yq0BqAGoAei/A8SQH4RQNb7EiQXjzDjQFDDZMK1qQKQFR2YqclyYuk53DYyewBYc1BSxF+DRWJWWWVvzWir6dqXn4n2xUjAQ8zegKhoWhe0iQlRzS/fQKEVbHanomyd8/MtidvujWg8OabHVF/FsbHEDsmenrW6XImXpZOR1CvrUA3HITAFcrAYnygGqj4c0NQEJGVgpSlMlJzzzk7gQj/Cp1M6NDb4VgDL6JBDZ7YHUBFh728nhIdbu68OaSpfMF9ZYqzPQqYgZL6TsAs25mGTk1Sr4hjSl+EOR+AyA/PdKQTHBJKKxlSlC4CiYaALyHeu/OeY7PniHsXndh1nmWJPV9Mb8TPj9wzECykyN2+HrvXrYYPRFolja1XrqSlN7sIdQxQSkqFIuWS8xhHfzUj6RIwtmAsqkN949L2TCUeAA3o97wBnL/n0luYZ1371X3UhcuZDkM1sfJovZ9QgZblZZHsp1FgYpno5zI4jmAr8qDf8hzGZEVTPeZiEuTR0D/YzVw4L+RBSRDyOKVkwHIy3crntkRMOapmTzqbXZ+NfpaXhE5AKbpDY1yU74BGYzHf9SqiZSxNpbBnovP3jKOfye6KfHjxKhuWfwPFeG3pEYkjFWIGW/R6nhAZm1YFi5Uo/kQsILpVuAVXPBUpDSDUMsoR5KTSahCxtW5QKYqojZ5EFUulbHD0VTxZymyaIqZtNHAZCsqXIGthBBFtP1BUQ4RMipyrmEqhQzIr8pHHR2TJVAiF8T2UhB4c9D6fshbQ63/+wgH/+sQP829KWBY1LFym2WfbkHNONU0Nlx5sYtV1vfCOcMnGBtHieiGASkFiUhvplPfZ8DCRiHcaFKQFV7QLMCmOHWnmt3ac7t0rVMlTFRcdjxrXbO1W33dt+mWQcKz4/fg/GJw+EQLC3StRPhQnY9xu8shZCFwuRe74RtvIzzUE04JG4tT76EMw9j83RdQoi2CMlv8+TsA+k6zXCuVim/s7S5NDGxj2LXnkO7eOQAc5og3YEgy8cWzFUvEjAQU6n0kG+p4fchVIsgtfyjWJOZocYXtBLtpwADAJHg4JCaUqqzAAAAAElFTkSuQmCC',      // ←這裡換成你的PNG路徑
+    iconSize: [16, 16],        // 依你的圖檔實際尺寸調整
+    iconAnchor: [8, 8]       // 設成中心
   });
 }
 
 function updateAircraft(id, data) {
   const key = id;
   const latlng = [data.lat, data.lon];
-  function makeImageIcon() {
-  return L.icon({
-    iconUrl: 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAACQAAAAkCAYAAADhAJiYAAAAGXRFWHRTb2Z0d2FyZQBBZG9iZSBJbWFnZVJlYWR5ccllPAAAA4RpVFh0WE1MOmNvbS5hZG9iZS54bXAAAAAAADw/eHBhY2tldCBiZWdpbj0i77u/IiBpZD0iVzVNME1wQ2VoaUh6cmVTek5UY3prYzlkIj8+IDx4OnhtcG1ldGEgeG1sbnM6eD0iYWRvYmU6bnM6bWV0YS8iIHg6eG1wdGs9IkFkb2JlIFhNUCBDb3JlIDUuNi1jMTQ1IDc5LjE2MzQ5OSwgMjAxOC8wOC8xMy0xNjo0MDoyMiAgICAgICAgIj4gPHJkZjpSREYgeG1sbnM6cmRmPSJodHRwOi8vd3d3LnczLm9yZy8xOTk5LzAyLzIyLXJkZi1zeW50YXgtbnMjIj4gPHJkZjpEZXNjcmlwdGlvbiByZGY6YWJvdXQ9IiIgeG1sbnM6eG1wTU09Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9tbS8iIHhtbG5zOnN0UmVmPSJodHRwOi8vbnMuYWRvYmUuY29tL3hhcC8xLjAvc1R5cGUvUmVzb3VyY2VSZWYjIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtcE1NOk9yaWdpbmFsRG9jdW1lbnRJRD0ieG1wLmRpZDo2NjFmMDIxMC00NDhjLTY3NDQtYjFkOC1mMTEyZTRmY2I5ZWEiIHhtcE1NOkRvY3VtZW50SUQ9InhtcC5kaWQ6NjAyQzIyOTZDRDc4MTFFOUEwMUFGMzk4Mjg5NDVBQ0YiIHhtcE1NOkluc3RhbmNlSUQ9InhtcC5paWQ6NjAyQzIyOTVDRDc4MTFFOUEwMUFGMzk4Mjg5NDVBQ0YiIHhtcDpDcmVhdG9yVG9vbD0iQWRvYmUgUGhvdG9zaG9wIENDIDIwMTkgKFdpbmRvd3MpIj4gPHhtcE1NOkRlcml2ZWRGcm9tIHN0UmVmOmluc3RhbmNlSUQ9InhtcC5paWQ6NGU1NjlmYzktMTRlYS02YTQ1LTg3OTMtZmU1MDFlNWExN2I5IiBzdFJlZjpkb2N1bWVudElEPSJhZG9iZTpkb2NpZDpwaG90b3Nob3A6ZTc3YzE0ZDEtOTM3NC03ZjQ4LThkMjUtODRjY2JmZWNkZGEyIi8+IDwvcmRmOkRlc2NyaXB0aW9uPiA8L3JkZjpSREY+IDwveDp4bXBtZXRhPiA8P3hwYWNrZXQgZW5kPSJyIj8+di3hcAAAA49JREFUeNrsWEtoE0EYzuwr7yZN26StUC21B7VUQtGTikWKQg+eevGkXnuQggdPnrxJ8ajgQaTQS5FSvJWCHhQtqK2W0iqVJA19JDXPzSbZ5/jPuoutVPNoaApm4M+yO/P/+8383//NZBHG2HKUGmU5Yq0BqAGoAei/A8SQH4RQNb7EiQXjzDjQFDDZMK1qQKQFR2YqclyYuk53DYyewBYc1BSxF+DRWJWWWVvzWir6dqXn4n2xUjAQ8zegKhoWhe0iQlRzS/fQKEVbHanomyd8/MtidvujWg8OabHVF/FsbHEDsmenrW6XImXpZOR1CvrUA3HITAFcrAYnygGqj4c0NQEJGVgpSlMlJzzzk7gQj/Cp1M6NDb4VgDL6JBDZ7YHUBFh728nhIdbu68OaSpfMF9ZYqzPQqYgZL6TsAs25mGTk1Sr4hjSl+EOR+AyA/PdKQTHBJKKxlSlC4CiYaALyHeu/OeY7PniHsXndh1nmWJPV9Mb8TPj9wzECykyN2+HrvXrYYPRFolja1XrqSlN7sIdQxQSkqFIuWS8xhHfzUj6RIwtmAsqkN949L2TCUeAA3o97wBnL/n0luYZ1371X3UhcuZDkM1sfJovZ9QgZblZZHsp1FgYpno5zI4jmAr8qDf8hzGZEVTPeZiEuTR0D/YzVw4L+RBSRDyOKVkwHIy3crntkRMOapmTzqbXZ+NfpaXhE5AKbpDY1yU74BGYzHf9SqiZSxNpbBnovP3jKOfye6KfHjxKhuWfwPFeG3pEYkjFWIGW/R6nhAZm1YFi5Uo/kQsILpVuAVXPBUpDSDUMsoR5KTSahCxtW5QKYqojZ5EFUulbHD0VTxZymyaIqZtNHAZCsqXIGthBBFtP1BUQ4RMipyrmEqhQzIr8pHHR2TJVAiF8T2UhB4c9D6fshbQ63/+wgH/+sQP829KWBY1LFym2WfbkHNONU0Nlx5sYtV1vfCOcMnGBtHieiGASkFiUhvplPfZ8DCRiHcaFKQFV7QLMCmOHWnmt3ac7t0rVMlTFRcdjxrXbO1W33dt+mWQcKz4/fg/GJw+EQLC3StRPhQnY9xu8shZCFwuRe74RtvIzzUE04JG4tT76EMw9j83RdQoi2CMlv8+TsA+k6zXCuVim/s7S5NDGxj2LXnkO7eOQAc5og3YEgy8cWzFUvEjAQU6n0kG+p4fchVIsgtfyjWJOZocYXtBLtpwADAJHg4JCaUqqzAAAAAElFTkSuQmCC', // 路徑改成你的飛機圖檔
-    iconSize: [20, 20],        // 依實際圖檔大小調整
-    iconAnchor: [24, 24]       // 通常設中心點
-  });
-}
-// 用法
-const marker = L.marker(latlng, { icon: makeImageIcon() }).addTo(map);
   if (aircrafts.has(key)) {
     const obj = aircrafts.get(key);
     obj.marker.setLatLng(latlng);
-    obj.marker.setIcon(makeDivIcon(labelHtml));
+    obj.marker.setIcon(makeImageIcon(data));
     obj.lastSeen = Date.now();
     obj.data = data;
   } else {
     const marker = L.marker(latlng, {
-      icon: makeDivIcon(labelHtml),
-      rotationAngle: data.heading || 0
+      icon: makeImageIcon(data)
     }).addTo(map);
     aircrafts.set(key, { marker, lastSeen: Date.now(), data });
   }
@@ -111,25 +87,16 @@ function removeStaleAircrafts(timeoutMs=30000) {
 
 setInterval(() => removeStaleAircrafts(30000), 5000);
 
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
-}
-
 /* WebSocket connection */
 let ws;
 function connectWS() {
-  console.log("Connecting to WS_URL:", WS_URL);
-
   ws = new WebSocket(WS_URL);
   ws.addEventListener('open', ()=> {
-    console.log('WS open to', WS_URL);
     ws.send(JSON.stringify({ type: 'hello', role: 'atc' }));
   });
   ws.addEventListener('message', (ev) => {
     try {
       const msg = JSON.parse(ev.data);
-      console.log('WS msg:', msg);
-
       if (msg.type === 'aircraft_update') {
         if (Array.isArray(msg.payload)) {
           msg.payload.forEach(a => updateAircraft(a.id, a));
@@ -140,18 +107,13 @@ function connectWS() {
         msg.payload.forEach(a => updateAircraft(a.id, a));
       } else if (msg.type === 'aircraft_remove') {
         msg.payload.forEach(id => removeAircraft(id));
-      } else if (msg.type === 'info') {
-        console.log('info', msg.msg);
       }
-
-    } catch(e) { console.warn('Bad ws message', e); }
+    } catch(e) { }
   });
   ws.addEventListener('close', ()=> {
-    console.log('WS closed, reconnecting in 2s...');
     setTimeout(connectWS, 2000);
   });
   ws.addEventListener('error', (e)=> {
-    console.warn('WS error', e);
     ws.close();
   });
 }
@@ -161,7 +123,3 @@ connectWS();
 </script>
 </body>
 </html>
-
-
-
-
