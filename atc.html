@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>GeoFS ATC Screen</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    html,body,#map { height:100%; margin:0; padding:0; }
+    .label {
+      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
+      font-size:12px;
+      padding:2px 6px;
+      border-radius:6px;
+      background: rgba(255,255,255,0.9);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      white-space: nowrap;
+    }
+    .legend {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      background: rgba(255,255,255,0.9);
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+  </style>
+</head>
+<body>
+<div id="map"></div>
+<div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* === CONFIG (部署後請更新 WS_URL) === */
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+// 如果你把 server 與此頁面分開部署，請改為 `wss://your-render-service.onrender.com/ws`
+/* ===================================== */
+
+const map = L.map('map', {
+  worldCopyJump: true,
+  maxZoom: 20,
+  minZoom: 2
+}).setView([20, 0], 2);
+
+L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  attribution: 'Map data © Google'
+}).addTo(map);
+
+
+const aircrafts = new Map(); // id -> { marker, lastSeen, data }
+
+function makeDivIcon(html) {
+  return L.divIcon({
+    html,
+    className: '',
+    iconSize: [120, 30],
+    iconAnchor: [10, 10]
+  });
+}
+
+function updateAircraft(id, data) {
+  const key = id;
+  const latlng = [data.lat, data.lon];
+  const labelHtml = `<div style="display:flex;align-items:center;">
+      <div style="transform:rotate(${data.heading || 0}deg);margin-right:6px;">
+        ▲
+      </div>
+      <div class="label">
+        <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
+        <div style="font-size:11px;">${escapeHtml(data.type||'??')} · ${Math.round(data.alt||0)}ft</div>
+      </div>
+    </div>`;
+  if (aircrafts.has(key)) {
+    const obj = aircrafts.get(key);
+    obj.marker.setLatLng(latlng);
+    obj.marker.setIcon(makeDivIcon(labelHtml));
+    obj.lastSeen = Date.now();
+    obj.data = data;
+  } else {
+    const marker = L.marker(latlng, {
+      icon: makeDivIcon(labelHtml),
+      rotationAngle: data.heading || 0
+    }).addTo(map);
+    aircrafts.set(key, { marker, lastSeen: Date.now(), data });
+  }
+  document.getElementById('connCount').innerText = aircrafts.size;
+}
+
+function removeAircraft(id) {
+  if (aircrafts.has(id)) {
+    map.removeLayer(aircrafts.get(id).marker);
+    aircrafts.delete(id);
+    document.getElementById('connCount').innerText = aircrafts.size;
+  }
+}
+
+function removeStaleAircrafts(timeoutMs=30000) {
+  const now = Date.now();
+  for (const [k,v] of aircrafts.entries()) {
+    if (now - v.lastSeen > timeoutMs) {
+      map.removeLayer(v.marker);
+      aircrafts.delete(k);
+    }
+  }
+  document.getElementById('connCount').innerText = aircrafts.size;
+}
+
+setInterval(() => removeStaleAircrafts(30000), 5000);
+
+function escapeHtml(s){
+  return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+}
+
+/* WebSocket connection */
+let ws;
+function connectWS() {
+  console.log("Connecting to WS_URL:", WS_URL);
+
+  ws = new WebSocket(WS_URL);
+  ws.addEventListener('open', ()=> {
+    console.log('WS open to', WS_URL);
+    ws.send(JSON.stringify({ type: 'hello', role: 'atc' }));
+  });
+  ws.addEventListener('message', (ev) => {
+    try {
+      const msg = JSON.parse(ev.data);
+      console.log('WS msg:', msg);
+
+      if (msg.type === 'aircraft_update') {
+        if (Array.isArray(msg.payload)) {
+          msg.payload.forEach(a => updateAircraft(a.id, a));
+        } else {
+          updateAircraft(msg.payload.id, msg.payload);
+        }
+      } else if (msg.type === 'aircraft_snapshot') {
+        msg.payload.forEach(a => updateAircraft(a.id, a));
+      } else if (msg.type === 'aircraft_remove') {
+        msg.payload.forEach(id => removeAircraft(id));
+      } else if (msg.type === 'info') {
+        console.log('info', msg.msg);
+      }
+
+    } catch(e) { console.warn('Bad ws message', e); }
+  });
+  ws.addEventListener('close', ()=> {
+    console.log('WS closed, reconnecting in 2s...');
+    setTimeout(connectWS, 2000);
+  });
+  ws.addEventListener('error', (e)=> {
+    console.warn('WS error', e);
+    ws.close();
+  });
+}
+
+connectWS();
+
+</script>
+</body>
+</html>
