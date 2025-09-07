@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced, AGL-as-ALT)
+// @name         GeoFS ATC Reporter
 // @namespace    http://tampermonkey.net/
 // @version      1.3
 // @description  This plugin will send your airct=raft info to the server
@@ -168,4 +168,5 @@
   }
   injectBadge();
 })();
+
 
