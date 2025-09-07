@@ -54,7 +54,7 @@ L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
 const aircrafts = new Map(); // id -> { marker, lastSeen, data }
 
 // 設定你的 PNG 路徑
-const PLANE_IMG = "plane.png"; // 請把 plane.png 放在同目錄或改成你的路徑
+const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png"; // 請把 plane.png 放在同目錄或改成你的路徑
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -161,3 +161,4 @@ connectWS();
 </script>
 </body>
 </html>
+
