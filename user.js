@@ -2,7 +2,7 @@
 // @name         GeoFS ATC Reporter (Enhanced, AGL-as-ALT)
 // @namespace    http://tampermonkey.net/
 // @version      1.3
-// @description  將玩家位置、呼號和機型推到 ATC Server；ALT 改為 AGL，並附帶 altMSL 以利除錯
+// @description  This plugin will send your airct=raft info to the server
 // @match        https://geo-fs.com/*
 // @match        https://*.geo-fs.com/*
 // @grant        none
@@ -13,7 +13,7 @@
 
   /*** CONFIG ***/
   // 本地測試改成你的 WebSocket 端點
-  const WS_URL = 'ws://localhost:3000/ws';
+  const WS_URL = 'https://geofs-flightradar.onrender.com/';
   const SEND_INTERVAL_MS = 1000;
   /*************/
 
@@ -168,3 +168,4 @@
   }
   injectBadge();
 })();
+
