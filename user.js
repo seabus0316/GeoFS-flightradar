@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced, AGL-as-ALT + Icon)
+// @name         GeoFS ATC Reporter
 // @namespace    http://tampermonkey.net/
 // @version      1.4
 // @description  傳送位置到 ATC Server，並將畫面上的三角形換成自訂圖示 (PNG/SVG)
@@ -115,7 +115,7 @@
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      const speed = geofs?.animation?.values?.groundSpeed ?? inst?.groundSpeed ?? 0;
+      const speed = geofs.animation.values.kias?? 0;
 
       return {
         lat,
@@ -185,20 +185,4 @@
       }
     });
   }
-
-  function injectBadge() {
-    const d = document.createElement('div');
-    d.style.position = 'fixed';
-    d.style.right = '6px';
-    d.style.bottom = '6px';
-    d.style.padding = '6px 8px';
-    d.style.background = 'rgba(0,0,0,0.6)';
-    d.style.color = 'white';
-    d.style.fontSize = '12px';
-    d.style.borderRadius = '6px';
-    d.style.zIndex = 999999;
-    d.textContent = 'ATC Reporter Running (Icon Mode)';
-    document.body.appendChild(d);
-  }
-  injectBadge();
 })();
