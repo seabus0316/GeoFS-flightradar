@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter
+// @name         GeoFS ATC Reporter (Enhanced, AGL-as-ALT + Icon)
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @description  This plugin will send your airct=raft info to the server
+// @version      1.4
+// @description  傳送位置到 ATC Server，並將畫面上的三角形換成自訂圖示 (PNG/SVG)
 // @match        https://geo-fs.com/*
 // @match        https://*.geo-fs.com/*
 // @grant        none
@@ -12,14 +12,26 @@
   'use strict';
 
   /*** CONFIG ***/
-  // 本地測試改成你的 WebSocket 端點
   const WS_URL = 'https://geofs-flightradar.onrender.com/';
   const SEND_INTERVAL_MS = 1000;
+
+  // 換成你自己的圖示網址（PNG / SVG）
+  const ICON_URL = "https://i.ibb.co/B5x4wVTz/monajinping.png";
+  const ICON_SIZE = 32; // 圖示大小（像素）
   /*************/
 
   function log(...args) {
     console.log('[ATC-Reporter]', ...args);
   }
+
+  // --- 載入 icon ---
+  const planeIcon = new Image();
+  let planeIconLoaded = false;
+  planeIcon.src = ICON_URL;
+  planeIcon.onload = () => {
+    planeIconLoaded = true;
+    log("Plane icon loaded:", ICON_URL);
+  };
 
   // --- WebSocket 管理 ---
   let ws;
@@ -65,11 +77,9 @@
   }
 
   // --- AGL 計算 ---
-  // 參考你的 Information Display 寫法：
-  // AGL ≈ (MSL高度 - 地面高程feet) + 機體碰撞點Z位移(轉英尺)，最後四捨五入。:contentReference[oaicite:1]{index=1}
   function calculateAGL() {
     try {
-      const altitudeMSL = geofs?.animation?.values?.altitude; // feet (GeoFS 已是英尺)
+      const altitudeMSL = geofs?.animation?.values?.altitude; // feet
       const groundElevationFeet = geofs?.animation?.values?.groundElevationFeet; // feet
       const aircraft = geofs?.aircraft?.instance;
 
@@ -102,13 +112,9 @@
 
       if (typeof lat !== 'number' || typeof lon !== 'number') return null;
 
-      // MSL 以英尺為主要傳輸單位
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
-
-      // Heading / Speed 防呆
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      // 地速建議用 animation.values.groundSpeed（單位 knots）
       const speed = geofs?.animation?.values?.groundSpeed ?? inst?.groundSpeed ?? 0;
 
       return {
@@ -125,8 +131,6 @@
     }
   }
 
-  // --- 組裝送出的 payload ---
-  // 依你的需求：server 收到的 alt 就是 AGL；同時附帶 altMSL 方便伺服端比對/顯示
   function buildPayload(snap) {
     return {
       id: getPlayerCallsign(),
@@ -134,14 +138,13 @@
       type: getAircraftName(),
       lat: snap.lat,
       lon: snap.lon,
-      alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0), // ALT = AGL（優先），fallback MSL
+      alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
       altMSL: Math.round(snap.altMSL || 0),
       heading: Math.round(snap.heading || 0),
       speed: Math.round(snap.speed || 0)
     };
   }
 
-  // --- 週期傳送 ---
   setInterval(() => {
     if (!ws || ws.readyState !== 1) return;
     const snap = readSnapshot();
@@ -150,7 +153,39 @@
     safeSend({ type: 'position_update', payload });
   }, SEND_INTERVAL_MS);
 
-  // --- 介面提醒 ---
+  // --- 改圖標繪製 ---
+  function drawPlaneIcon(ctx, x, y, heading) {
+    if (!planeIconLoaded) return;
+    ctx.save();
+    ctx.translate(x, y);
+    ctx.rotate((heading || 0) * Math.PI / 180);
+    ctx.drawImage(planeIcon, -ICON_SIZE/2, -ICON_SIZE/2, ICON_SIZE, ICON_SIZE);
+    ctx.restore();
+  }
+
+  // 假設 addon 原本有一個 onrender 畫三角形，這裡替換成 drawPlaneIcon
+  if (geofs.api) {
+    geofs.api.addRenderListener(() => {
+      try {
+        const snap = readSnapshot();
+        if (!snap) return;
+
+        // 投影到畫布座標 (示意，需依你的 addon 原始程式的 map/screen 座標轉換方式)
+        const canvas = document.querySelector("canvas");
+        if (!canvas) return;
+        const ctx = canvas.getContext("2d");
+
+        // 這裡示意直接畫在螢幕中央
+        const px = canvas.width / 2;
+        const py = canvas.height / 2;
+
+        drawPlaneIcon(ctx, px, py, snap.heading);
+      } catch (e) {
+        console.warn("[ATC-Reporter] draw icon error", e);
+      }
+    });
+  }
+
   function injectBadge() {
     const d = document.createElement('div');
     d.style.position = 'fixed';
@@ -162,11 +197,8 @@
     d.style.fontSize = '12px';
     d.style.borderRadius = '6px';
     d.style.zIndex = 999999;
-    d.textContent = 'ATC Reporter Running (ALT = AGL)';
+    d.textContent = 'ATC Reporter Running (Icon Mode)';
     document.body.appendChild(d);
-    setTimeout(() => { d.style.opacity = '0.7'; }, 2000);
   }
   injectBadge();
 })();
-
-
