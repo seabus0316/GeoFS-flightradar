@@ -75,7 +75,6 @@ L.control.layers({
 // --- Aircrafts ---
 const aircrafts = new Map(); // id -> { marker, polyline, path, lastSeen, data }
 const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png";
-const MAX_TRACK_POINTS = 50; // 軌跡最多點數
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
@@ -224,3 +223,4 @@ connectWS();
 </script>
 </body>
 </html>
+
