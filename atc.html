@@ -37,41 +37,55 @@
 <script>
 /* === CONFIG (部署後請更新 WS_URL) === */
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-// 如果你把 server 與此頁面分開部署，請改為 `wss://your-render-service.onrender.com/ws`
 /* ===================================== */
 
+// --- Tile Layers ---
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 19,
+  attribution: '© OpenStreetMap'
+});
+
+const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  attribution: 'Map data © Google'
+});
+
+const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  maxZoom: 20,
+  attribution: 'Imagery © Google'
+});
+
+// 初始化地圖 (預設 Google 街道)
 const map = L.map('map', {
   worldCopyJump: true,
   maxZoom: 19,
   minZoom: 2,
-  maxBounds: [
-    [-85, -180],
-    [85, 180]
-  ],
-  maxBoundsViscosity: 1.0
+  maxBounds: [[-85,-180],[85,180]],
+  maxBoundsViscosity: 1.0,
+  layers: [googleStreet]
 }).setView([20, 0], 2);
 
-L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-  maxZoom: 20,
-  attribution: 'Map data © Google'
+// 圖層控制
+L.control.layers({
+  "OpenStreetMap": osmLayer,
+  "Google Streets": googleStreet,
+  "Google Satellite": googleSat
 }).addTo(map);
 
-const aircrafts = new Map(); // id -> { marker, lastSeen, data }
-
-// 設定你的 PNG 路徑
-const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png"; // 請把 plane.png 放在同目錄或改成你的路徑
+// --- Aircrafts ---
+const aircrafts = new Map(); // id -> { marker, polyline, path, lastSeen, data }
+const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png";
+const MAX_TRACK_POINTS = 50; // 軌跡最多點數
 
 function escapeHtml(s){
   return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 }
 
-// 使用 divIcon，左側 PNG，右側 label，並加上速度
+// 飛機圖示 + Label
 function makeDivIcon(data) {
-  // 設定圖示大小
   const imgW = 32, imgH = 32;
-  const labelW = 110, labelH = 32;
+  const labelW = 150, labelH = 50;
   const iconW = imgW + labelW, iconH = Math.max(imgH, labelH);
-  // anchor 設在飛機圖中心
   return L.divIcon({
     html: `
       <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
@@ -84,55 +98,75 @@ function makeDivIcon(data) {
             · ${Math.round(data.alt||0)}ft
             · ${typeof data.speed === 'number' ? Math.round(data.speed) : '---'}kt
           </div>
+          <div style="font-size:11px;">
+            ${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}
+          </div>
         </div>
       </div>
     `,
     className: '',
     iconSize: [iconW, iconH],
-    iconAnchor: [imgW/2, iconH/2] // 飛機中心
+    iconAnchor: [imgW/2, iconH/2]
   });
 }
 
+
+// 更新/新增飛機
 function updateAircraft(id, data) {
   const key = id;
   const latlng = [data.lat, data.lon];
+
   if (aircrafts.has(key)) {
     const obj = aircrafts.get(key);
     obj.marker.setLatLng(latlng);
     obj.marker.setIcon(makeDivIcon(data));
     obj.lastSeen = Date.now();
     obj.data = data;
+
+    // 更新路徑
+    obj.path.push(latlng);
+    if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
+    obj.polyline.setLatLngs(obj.path);
+
   } else {
-    const marker = L.marker(latlng, {
-      icon: makeDivIcon(data)
+    const marker = L.marker(latlng, { icon: makeDivIcon(data) }).addTo(map);
+    const polyline = L.polyline([latlng], {
+      color: "orange",
+      weight: 2,
+      opacity: 0.7
     }).addTo(map);
-    aircrafts.set(key, { marker, lastSeen: Date.now(), data });
+
+    aircrafts.set(key, { marker, polyline, path:[latlng], lastSeen: Date.now(), data });
   }
   document.getElementById('connCount').innerText = aircrafts.size;
 }
 
+// 移除飛機
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
-    map.removeLayer(aircrafts.get(id).marker);
+    const obj = aircrafts.get(id);
+    map.removeLayer(obj.marker);
+    map.removeLayer(obj.polyline);
     aircrafts.delete(id);
     document.getElementById('connCount').innerText = aircrafts.size;
   }
 }
 
+// 移除過期飛機
 function removeStaleAircrafts(timeoutMs=30000) {
   const now = Date.now();
   for (const [k,v] of aircrafts.entries()) {
     if (now - v.lastSeen > timeoutMs) {
       map.removeLayer(v.marker);
+      map.removeLayer(v.polyline);
       aircrafts.delete(k);
     }
   }
   document.getElementById('connCount').innerText = aircrafts.size;
 }
-
 setInterval(() => removeStaleAircrafts(30000), 5000);
 
-/* WebSocket connection */
+// --- WebSocket ---
 let ws;
 function connectWS() {
   ws = new WebSocket(WS_URL);
@@ -143,29 +177,19 @@ function connectWS() {
     try {
       const msg = JSON.parse(ev.data);
       if (msg.type === 'aircraft_update') {
-        if (Array.isArray(msg.payload)) {
-          msg.payload.forEach(a => updateAircraft(a.id, a));
-        } else {
-          updateAircraft(msg.payload.id, msg.payload);
-        }
+        (Array.isArray(msg.payload) ? msg.payload : [msg.payload])
+          .forEach(a => updateAircraft(a.id, a));
       } else if (msg.type === 'aircraft_snapshot') {
         msg.payload.forEach(a => updateAircraft(a.id, a));
       } else if (msg.type === 'aircraft_remove') {
         msg.payload.forEach(id => removeAircraft(id));
       }
-    } catch(e) { }
+    } catch(e) {}
   });
-  ws.addEventListener('close', ()=> {
-    setTimeout(connectWS, 2000);
-  });
-  ws.addEventListener('error', (e)=> {
-    ws.close();
-  });
+  ws.addEventListener('close', ()=> setTimeout(connectWS, 2000));
+  ws.addEventListener('error', ()=> ws.close());
 }
-
 connectWS();
-
 </script>
 </body>
 </html>
-
