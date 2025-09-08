@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced, AGL-as-ALT + Flight Info UI)
+// @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time)
 // @namespace    http://tampermonkey.net/
-// @version      1.4
-// @description  傳送玩家位置和航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W隱藏UI
+// @version      1.5
+// @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W收合；自動偵測Takeoff UTC
 // @match        https://geo-fs.com/*
 // @match        https://*.geo-fs.com/*
 // @grant        none
@@ -12,7 +12,7 @@
   'use strict';
 
   /*** CONFIG ***/
-  const WS_URL = 'https://geofs-flightradar.onrender.com/'; // 本地測試
+  const WS_URL = 'https://geofs-flightradar.onrender.com/'; // 本地測試 WebSocket
   const SEND_INTERVAL_MS = 1000;
   /*************/
 
@@ -20,15 +20,13 @@
     console.log('[ATC-Reporter]', ...args);
   }
 
-  // --- 航班資訊變數 ---
-  let flightInfo = {
-    departure: '',
-    arrival: '',
-    flightNo: ''
-  };
-  let flightUI; // UI容器
+  // --- 全域變數 ---
+  let flightInfo = { departure: '', arrival: '', flightNo: '' };
+  let flightUI;
+  let wasOnGround = true;
+  let takeoffTimeUTC = '';
 
-  // --- WebSocket ---
+  // --- WebSocket 管理 ---
   let ws;
   function connect() {
     try {
@@ -54,22 +52,19 @@
 
   function safeSend(obj) {
     try {
-      if (ws && ws.readyState === 1) {
-        ws.send(JSON.stringify(obj));
-      }
+      if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
     } catch (e) {
       console.warn('[ATC-Reporter] send error', e);
     }
   }
 
-  // --- 便利函式 ---
+  // --- 工具函式 ---
   function getAircraftName() {
     return geofs?.aircraft?.instance?.aircraftRecord?.name || 'Unknown';
   }
   function getPlayerCallsign() {
     return geofs?.userRecord?.callsign || 'Unknown';
   }
-
   // --- AGL 計算 ---
   function calculateAGL() {
     try {
@@ -92,7 +87,17 @@
     return null;
   }
 
-  // --- 擷取位置與姿態 ---
+  // --- 起飛偵測 ---
+  function checkTakeoff() {
+    const onGround = geofs?.aircraft?.instance?.groundContact ?? true;
+    if (wasOnGround && !onGround) {
+      takeoffTimeUTC = new Date().toISOString();
+      console.log('[ATC-Reporter] Takeoff at', takeoffTimeUTC);
+    }
+    wasOnGround = onGround;
+  }
+
+  // --- 擷取飛行狀態 ---
   function readSnapshot() {
     try {
       const inst = geofs?.aircraft?.instance;
@@ -119,6 +124,7 @@
 
   // --- 組裝 payload ---
   function buildPayload(snap) {
+    checkTakeoff();
     return {
       id: getPlayerCallsign(),
       callsign: getPlayerCallsign(),
@@ -131,11 +137,12 @@
       speed: Math.round(snap.speed || 0),
       flightNo: flightInfo.flightNo,
       departure: flightInfo.departure,
-      arrival: flightInfo.arrival
+      arrival: flightInfo.arrival,
+      takeoffTime: takeoffTimeUTC
     };
   }
 
-  // --- 週期傳送 ---
+  // --- 定期傳送 ---
   setInterval(() => {
     if (!ws || ws.readyState !== 1) return;
     const snap = readSnapshot();
@@ -199,7 +206,7 @@
   }
   injectFlightUI();
 
-  // --- 按 W 切換 UI ---
+  // --- 快捷鍵 W 收合 UI ---
   document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'w') {
       if (flightUI.style.display === 'none') {
@@ -211,4 +218,9 @@
       }
     }
   });
- })();
+// --- 關閉所有 input 的 autocomplete ---
+document.querySelectorAll("input").forEach(el => {
+  el.setAttribute("autocomplete", "off");
+});
+
+})();
