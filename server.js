@@ -69,19 +69,21 @@ wss.on('connection', (ws, req) => {
         const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId||'p') : null);
         if (!id) return;
         const payload = {
-          id,
-          callsign: p.callsign || 'UNK',
-          type: p.type || '',
-          lat: +p.lat || 0,
-          lon: +p.lon || 0,
-          alt: +p.alt || 0,
-          heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
-          speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
-          flightNo: p.flightNo || '',      // 🔥 新增
-          departure: p.departure || '',    // 🔥 新增
-          arrival: p.arrival || '',        // 🔥 新增
-          ts: Date.now()
-        };
+  id,
+  callsign: p.callsign || 'UNK',
+  type: p.type || '',
+  lat: +p.lat || 0,
+  lon: +p.lon || 0,
+  alt: +p.alt || 0,
+  heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
+  speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
+  flightNo: p.flightNo || '',
+  departure: p.departure || '',
+  arrival: p.arrival || '',
+  takeoffTime: p.takeoffTime || '', // 🔥新增
+  ts: Date.now()
+};
+
         aircrafts.set(id, { payload, lastSeen: Date.now() });
         broadcastToATC({ type: 'aircraft_update', payload });
       }
