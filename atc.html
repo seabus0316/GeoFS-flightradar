@@ -135,7 +135,9 @@ function updateAircraft(id, data) {
       weight: 2,
       opacity: 0.7
     }).addTo(map);
-
+    marker.on('click', () => {
+  showAircraftPanel(data);
+});
     aircrafts.set(key, { marker, polyline, path:[latlng], lastSeen: Date.now(), data });
   }
   document.getElementById('connCount').innerText = aircrafts.size;
@@ -165,6 +167,35 @@ function removeStaleAircrafts(timeoutMs=30000) {
   document.getElementById('connCount').innerText = aircrafts.size;
 }
 setInterval(() => removeStaleAircrafts(30000), 5000);
+function showAircraftPanel(data) {
+  let panel = document.getElementById('aircraftPanel');
+  if (!panel) {
+    panel = document.createElement('div');
+    panel.id = 'aircraftPanel';
+    panel.style.position = 'absolute';
+    panel.style.top = '50px';
+    panel.style.right = '10px';
+    panel.style.width = '250px';
+    panel.style.background = 'rgba(255,255,255,0.95)';
+    panel.style.borderRadius = '8px';
+    panel.style.padding = '10px';
+    panel.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
+    panel.style.fontSize = '13px';
+    panel.style.zIndex = 9999;
+    document.body.appendChild(panel);
+  }
+
+  panel.innerHTML = `
+    <h3 style="margin:0 0 5px;">${escapeHtml(data.callsign || 'UNK')}</h3>
+    <div><strong>Flight:</strong> ${escapeHtml(data.flightNo || '')}</div>
+    <div><strong>Route:</strong> ${escapeHtml(data.departure || '')} → ${escapeHtml(data.arrival || '')}</div>
+    <div><strong>Aircraft:</strong> ${escapeHtml(data.type || '')}</div>
+    <div><strong>Altitude:</strong> ${Math.round(data.alt || 0)} ft</div>
+    <div><strong>Speed:</strong> ${Math.round(data.speed || 0)} kt</div>
+    <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
+    <button onclick="document.getElementById('aircraftPanel').remove()">Close</button>
+  `;
+}
 
 // --- WebSocket ---
 let ws;
