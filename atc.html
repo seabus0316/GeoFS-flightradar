@@ -8,217 +8,215 @@
   <style>
     html,body,#map { height:100%; margin:0; padding:0; }
     .label {
-      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
-      font-size:12px;
-      padding:2px 6px;
-      border-radius:6px;
-      background: rgba(255,255,255,0.9);
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-      white-space: nowrap;
-      margin-left: 6px;
-    }
+  font-family: Inter, "Noto Sans TC", Arial, sans-serif;
+  font-size: 12px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  background: rgba(0,0,0,0.8);   /* 黑底 */
+  color: #fff;                   /* 白字 */
+  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+  white-space: nowrap;
+  margin-left: 6px;
+}
+
     .legend {
       position: absolute;
       left: 10px;
       top: 10px;
-      background: rgba(255,255,255,0.9);
+      background: rgba(146, 146, 146, 0.9);
       padding:8px 10px;
       border-radius:6px;
       font-size:12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
+    .altitude-legend {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      background: rgba(146, 146, 146, 0.9);
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:11px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      min-width: 140px;
+    }
+    .altitude-legend-item {
+      display: flex;
+      align-items: center;
+      margin: 2px 0;
+    }
+    .altitude-color-box {
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      border-radius: 2px;
+    }
   </style>
 </head>
 <body>
 <div id="map"></div>
-<div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
+<div class="legend">GeoFS ATC – connected: <span id="connCount">0</span></div>
+<div class="altitude-legend">
+  <div style="font-weight:bold;margin-bottom:4px;">高度圖例</div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffffff;"></div><span><100m</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffff00;"></div><span>100m+</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00ff00;"></div><span>~1000m</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00bfff;"></div><span>2500m+</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#0000ff;"></div><span>高空</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
+</div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
-/* === CONFIG (部署後請更新 WS_URL) === */
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-/* ===================================== */
 
-// --- Tile Layers ---
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-  maxZoom: 19,
-  attribution: '© OpenStreetMap'
-});
-
-const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
-  maxZoom: 20,
-  attribution: 'Map data © Google'
-});
-
-const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
-  maxZoom: 20,
-  attribution: 'Imagery © Google'
-});
-
-// 初始化地圖 (預設 Google 街道)
-const map = L.map('map', {
-  worldCopyJump: true,
-  maxZoom: 19,
-  minZoom: 2,
-  maxBounds: [[-85,-180],[85,180]],
-  maxBoundsViscosity: 1.0,
-  layers: [googleStreet]
-}).setView([20, 0], 2);
-
-// 圖層控制
-L.control.layers({
-  "OpenStreetMap": osmLayer,
-  "Google Streets": googleStreet,
-  "Google Satellite": googleSat
-}).addTo(map);
-
-// --- Aircrafts ---
-const aircrafts = new Map(); // id -> { marker, polyline, path, lastSeen, data }
-const PLANE_IMG = "https://i.ibb.co/SXn3xXPP/image.png";
-const MAX_TRACK_POINTS = 5000; // 軌跡最多點數
-
-function escapeHtml(s){
-  return String(s||'').replace(/[&<>"']/g, c=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
+// FR24 顏色邏輯
+function getAltitudeColor(altFt) {
+  const alt = altFt || 0;
+  if (alt < 330) return "#ffffff";
+  if (alt < 3300) return "#ffff00";
+  if (alt < 8200) return "#00ff00";
+  if (alt < 20000) return "#00bfff";
+  if (alt < 30000) return "#0000ff";
+  if (alt < 40000) return "#800080";
+  return "#ff0000";
 }
 
-// 飛機圖示 + Label
-function makeDivIcon(data) {
-  const imgW = 32, imgH = 32;
-  const labelW = 150, labelH = 50;
-  const iconW = imgW + labelW, iconH = Math.max(imgH, labelH);
+// 修正速度單位
+function formatSpeed(speedRaw) {
+  if (typeof speedRaw !== 'number') return '---';
+  let speed = speedRaw;
+  // 假設速度小於 50 → m/s → 轉 kt
+  if (speedRaw < 50) speed = speedRaw * 1.94384;
+  return Math.round(speed);
+}
+
+// Tile Layers
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
+const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
+const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
+
+const map = L.map('map', {
+  worldCopyJump: true, maxZoom: 19, minZoom: 2,
+  maxBounds: [[-85,-180],[85,180]], layers: [googleSat]
+}).setView([20,0],2);
+
+L.control.layers({"OpenStreetMap": osmLayer,"Google Streets":googleStreet,"Google Satellite":googleSat}).addTo(map);
+
+const aircrafts = new Map();
+const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
+const MAX_TRACK_POINTS = 5000;
+
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+
+// ICON
+function makeDivIcon(data){
+  const imgW=32,imgH=32,labelW=150,labelH=50,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
+  const color=getAltitudeColor(data.alt);
   return L.divIcon({
-    html: `
+    html:`
       <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}"
-             style="display:block;transform:rotate(${data.heading||0}deg);" />
-        <div class="label">
-          <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
+        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
+        <div class="label" style="border-left:3px solid ${color};">
+          <strong>${escapeHtml(data.callsign||'UNK')}</strong>
           <div style="font-size:11px;">
-            ${escapeHtml(data.type||'??')}
-            · ${Math.round(data.alt||0)}ft
-            · ${typeof data.speed === 'number' ? Math.round(data.speed) : '---'}kt
+            ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
           </div>
-          <div style="font-size:11px;">
-            ${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}
-          </div>
+          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
         </div>
-      </div>
-    `,
-    className: '',
-    iconSize: [iconW, iconH],
-    iconAnchor: [imgW/2, iconH/2]
+      </div>`,
+    className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
   });
 }
 
-
-// 更新/新增飛機
-function updateAircraft(id, data) {
-  const key = id;
-  const latlng = [data.lat, data.lon];
-
-  if (aircrafts.has(key)) {
-    const obj = aircrafts.get(key);
-    obj.marker.setLatLng(latlng);
-    obj.marker.setIcon(makeDivIcon(data));
-    obj.lastSeen = Date.now();
-    obj.data = data;
-
-    // 更新路徑
-    obj.path.push(latlng);
-    if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
-    obj.polyline.setLatLngs(obj.path);
-
-  } else {
-    const marker = L.marker(latlng, { icon: makeDivIcon(data) }).addTo(map);
-    const polyline = L.polyline([latlng], {
-      color: "orange",
-      weight: 2,
-      opacity: 0.7
-    }).addTo(map);
-    marker.on('click', () => {
-  showAircraftPanel(data);
-});
-    aircrafts.set(key, { marker, polyline, path:[latlng], lastSeen: Date.now(), data });
+// 更新飛機
+function updateAircraft(id,data){
+  const latlng=[data.lat,data.lon];
+  const color=getAltitudeColor(data.alt);
+  if(aircrafts.has(id)){
+    const obj=aircrafts.get(id);
+    obj.marker.setLatLng(latlng);obj.marker.setIcon(makeDivIcon(data));
+    obj.lastSeen=Date.now();obj.data=data;
+    const prev=obj.path[obj.path.length-1];
+    if(prev){
+      const seg=L.polyline([prev,latlng],{color,weight:2,opacity:0.8}).addTo(map);
+      seg.bindTooltip(`${Math.round(data.alt||0)} ft`,{permanent:false});
+      obj.segments.push(seg);
+      if(obj.segments.length>MAX_TRACK_POINTS){map.removeLayer(obj.segments.shift());}
+    }
+    obj.path.push(latlng);if(obj.path.length>MAX_TRACK_POINTS)obj.path.shift();
+  }else{
+    const marker=L.marker(latlng,{icon:makeDivIcon(data)}).addTo(map);
+    marker.on('click',()=>showAircraftPanel(data));
+    aircrafts.set(id,{marker,segments:[],path:[latlng],lastSeen:Date.now(),data});
   }
-  document.getElementById('connCount').innerText = aircrafts.size;
+  document.getElementById('connCount').textContent=aircrafts.size;
 }
 
-// 移除飛機
-function removeAircraft(id) {
-  if (aircrafts.has(id)) {
-    const obj = aircrafts.get(id);
-    map.removeLayer(obj.marker);
-    map.removeLayer(obj.polyline);
+function removeAircraft(id){
+  if(aircrafts.has(id)){
+    const o=aircrafts.get(id);
+    map.removeLayer(o.marker);o.segments.forEach(s=>map.removeLayer(s));
     aircrafts.delete(id);
-    document.getElementById('connCount').innerText = aircrafts.size;
+    document.getElementById('connCount').textContent=aircrafts.size;
   }
 }
 
-// 移除過期飛機
-function removeStaleAircrafts(timeoutMs=30000) {
-  const now = Date.now();
-  for (const [k,v] of aircrafts.entries()) {
-    if (now - v.lastSeen > timeoutMs) {
-      map.removeLayer(v.marker);
-      map.removeLayer(v.polyline);
-      aircrafts.delete(k);
+function removeStaleAircrafts(ms=30000){
+  const now=Date.now();
+  for(const[k,v]of aircrafts.entries()){
+    if(now-v.lastSeen>ms){
+      map.removeLayer(v.marker);v.segments.forEach(s=>map.removeLayer(s));aircrafts.delete(k);
     }
   }
-  document.getElementById('connCount').innerText = aircrafts.size;
+  document.getElementById('connCount').textContent=aircrafts.size;
 }
-setInterval(() => removeStaleAircrafts(30000), 5000);
-function showAircraftPanel(data) {
-  let panel = document.getElementById('aircraftPanel');
-  if (!panel) {
-    panel = document.createElement('div');
-    panel.id = 'aircraftPanel';
-    panel.style.position = 'absolute';
-    panel.style.top = '50px';
-    panel.style.right = '10px';
-    panel.style.width = '250px';
-    panel.style.background = 'rgba(255,255,255,0.95)';
-    panel.style.borderRadius = '8px';
-    panel.style.padding = '10px';
-    panel.style.boxShadow = '0 2px 6px rgba(0,0,0,0.3)';
-    panel.style.fontSize = '13px';
-    panel.style.zIndex = 9999;
-    document.body.appendChild(panel);
+setInterval(()=>removeStaleAircrafts(),5000);
+
+// Panel
+function showAircraftPanel(data){
+  let p=document.getElementById('aircraftPanel');
+  if(!p){
+    p=document.createElement('div');p.id='aircraftPanel';
+    Object.assign(p.style,{
+      position:'absolute',top:'50px',right:'10px',width:'250px',
+      background:'rgba(0,0,0,0.85)', /* 黑底 */
+      color:'#fff',                 /* 白字 */
+      borderRadius:'8px',padding:'10px',
+      boxShadow:'0 2px 6px rgba(0,0,0,0.7)',
+      fontSize:'13px',zIndex:9999
+    });
+    document.body.appendChild(p);
   }
-
-  panel.innerHTML = `
-    <h3 style="margin:0 0 5px;">${escapeHtml(data.callsign || 'UNK')}</h3>
-    <div><strong>Flight:</strong> ${escapeHtml(data.flightNo || '')}</div>
-    <div><strong>Route:</strong> ${escapeHtml(data.departure || '')} → ${escapeHtml(data.arrival || '')}</div>
-    <div><strong>Aircraft:</strong> ${escapeHtml(data.type || '')}</div>
-    <div><strong>Altitude:</strong> ${Math.round(data.alt || 0)} ft</div>
-    <div><strong>Speed:</strong> ${Math.round(data.speed || 0)} kt</div>
-    <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    <button onclick="document.getElementById('aircraftPanel').remove()">Close</button>
-  `;
+  const c=getAltitudeColor(data.alt);
+  p.innerHTML=`
+    <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign||'UNK')}</h3>
+    <div><strong>Flight:</strong> ${escapeHtml(data.flightNo||'')}</div>
+    <div><strong>Route:</strong> ${escapeHtml(data.departure||'')} → ${escapeHtml(data.arrival||'')}</div>
+    <div><strong>Aircraft:</strong> ${escapeHtml(data.type||'')}</div>
+    <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt||0)} ft</span></div>
+    <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
+    <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime||'–')}</div>
+    <button onclick="document.getElementById('aircraftPanel').remove()" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
 
-// --- WebSocket ---
+
+// WebSocket
 let ws;
-function connectWS() {
-  ws = new WebSocket(WS_URL);
-  ws.addEventListener('open', ()=> {
-    ws.send(JSON.stringify({ type: 'hello', role: 'atc' }));
+function connectWS(){
+  ws=new WebSocket(WS_URL);
+  ws.addEventListener('open',()=>ws.send(JSON.stringify({type:'hello',role:'atc'})));
+  ws.addEventListener('message',ev=>{
+    try{
+      const m=JSON.parse(ev.data);
+      if(m.type==='aircraft_update'){(Array.isArray(m.payload)?m.payload:[m.payload]).forEach(a=>updateAircraft(a.id,a));}
+      else if(m.type==='aircraft_snapshot'){m.payload.forEach(a=>updateAircraft(a.id,a));}
+      else if(m.type==='aircraft_remove'){m.payload.forEach(id=>removeAircraft(id));}
+    }catch(e){}
   });
-  ws.addEventListener('message', (ev) => {
-    try {
-      const msg = JSON.parse(ev.data);
-      if (msg.type === 'aircraft_update') {
-        (Array.isArray(msg.payload) ? msg.payload : [msg.payload])
-          .forEach(a => updateAircraft(a.id, a));
-      } else if (msg.type === 'aircraft_snapshot') {
-        msg.payload.forEach(a => updateAircraft(a.id, a));
-      } else if (msg.type === 'aircraft_remove') {
-        msg.payload.forEach(id => removeAircraft(id));
-      }
-    } catch(e) {}
-  });
-  ws.addEventListener('close', ()=> setTimeout(connectWS, 2000));
-  ws.addEventListener('error', ()=> ws.close());
+  ws.addEventListener('close',()=>setTimeout(connectWS,2000));
+  ws.addEventListener('error',()=>ws.close());
 }
 connectWS();
 </script>
