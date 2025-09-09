@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time)
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W收合；自動偵測Takeoff UTC
 // @match        https://geo-fs.com/*
 // @match        https://*.geo-fs.com/*
@@ -113,7 +113,7 @@
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      const speed = geofs?.animation?.values?.groundSpeed ?? inst?.groundSpeed ?? 0;
+      const speed =  geofs.animation.values.kias ? geofs.animation.values.kias.toFixed(1) : 'N/A';
 
       return { lat, lon, altMSL, altAGL, heading, speed };
     } catch (e) {
@@ -222,5 +222,12 @@
 document.querySelectorAll("input").forEach(el => {
   el.setAttribute("autocomplete", "off");
 });
+// --- 防止 input 觸發 GeoFS hotkey ---
+document.addEventListener("keydown", (e) => {
+  const target = e.target;
+  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+    e.stopPropagation(); // 阻止事件冒泡到 GeoFS
+  }
+}, true);
 
 })();
