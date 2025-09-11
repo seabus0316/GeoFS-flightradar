@@ -98,7 +98,7 @@ const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
 
 const map = L.map('map', {
-  worldCopyJump: true, maxZoom: 19, minZoom: 2,
+  worldCopyJump: true, maxZoom: 18, minZoom: 2,
   maxBounds: [[-85,-180],[85,180]], layers: [googleSat]
 }).setView([20,0],2);
 
@@ -222,3 +222,4 @@ connectWS();
 </script>
 </body>
 </html>
+
