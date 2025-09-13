@@ -1,10 +1,10 @@
 // ==UserScript==
 // @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time)
 // @namespace    http://tampermonkey.net/
-// @version      1.6
+// @version      1.5
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W收合；自動偵測Takeoff UTC
-// @match        https://geo-fs.com/*
-// @match        https://*.geo-fs.com/*
+// @match http://*/geofs.php*
+// @match https://*/geofs.php*
 // @grant        none
 // ==/UserScript==
 
@@ -13,7 +13,7 @@
 
   /*** CONFIG ***/
   const WS_URL = 'https://geofs-flightradar.onrender.com/'; // 本地測試 WebSocket
-  const SEND_INTERVAL_MS = 1000;
+  const SEND_INTERVAL_MS = 500;
   /*************/
 
   function log(...args) {
