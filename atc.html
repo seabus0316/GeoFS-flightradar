@@ -8,16 +8,16 @@
   <style>
     html,body,#map { height:100%; margin:0; padding:0; }
     .label {
-  font-family: Inter, "Noto Sans TC", Arial, sans-serif;
-  font-size: 12px;
-  padding: 2px 6px;
-  border-radius: 6px;
-  background: rgba(0,0,0,0.8);   /* 黑底 */
-  color: #fff;                   /* 白字 */
-  box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-  white-space: nowrap;
-  margin-left: 6px;
-}
+      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.8);   /* 黑底 */
+      color: #fff;                   /* 白字 */
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      white-space: nowrap;
+      margin-left: 6px;
+    }
 
     .legend {
       position: absolute;
@@ -130,96 +130,209 @@ function makeDivIcon(data){
   });
 }
 
+// 🔥 新增：從歷史軌跡創建軌跡線段
+function createHistoricalTrack(aircraftId, tracks) {
+  if (!aircrafts.has(aircraftId)) {
+    // 如果飛機不存在，先創建基本結構
+    const lastTrack = tracks[tracks.length - 1];
+    if (lastTrack) {
+      const dummyData = {
+        callsign: aircraftId,
+        type: '??',
+        lat: lastTrack.lat,
+        lon: lastTrack.lon,
+        alt: lastTrack.alt,
+        heading: 0,
+        speed: 0
+      };
+      const marker = L.marker([lastTrack.lat, lastTrack.lon], {icon: makeDivIcon(dummyData)}).addTo(map);
+      marker.on('click', () => showAircraftPanel(dummyData));
+      aircrafts.set(aircraftId, {
+        marker,
+        segments: [],
+        path: [],
+        lastSeen: Date.now(),
+        data: dummyData
+      });
+    }
+  }
+  
+  const obj = aircrafts.get(aircraftId);
+  if (!obj) return;
+  
+  // 清除現有軌跡
+  obj.segments.forEach(s => map.removeLayer(s));
+  obj.segments = [];
+  obj.path = [];
+  
+  // 重建歷史軌跡
+  for (let i = 1; i < tracks.length; i++) {
+    const prev = tracks[i-1];
+    const curr = tracks[i];
+    const prevLatLng = [prev.lat, prev.lon];
+    const currLatLng = [curr.lat, curr.lon];
+    
+    const color = getAltitudeColor(curr.alt);
+    const seg = L.polyline([prevLatLng, currLatLng], {
+      color: color,
+      weight: 2,
+      opacity: 0.8
+    }).addTo(map);
+    
+    seg.bindTooltip(`${Math.round(curr.alt || 0)} ft`, {permanent: false});
+    obj.segments.push(seg);
+    
+    // 限制軌跡段數量
+    if (obj.segments.length > MAX_TRACK_POINTS) {
+      map.removeLayer(obj.segments.shift());
+    }
+  }
+  
+  // 更新路徑數組
+  obj.path = tracks.map(t => [t.lat, t.lon]);
+  
+  console.log(`Restored ${tracks.length} track points for ${aircraftId}`);
+}
+
+// 🔥 新增：清除飛機軌跡
+function clearAircraftTrack(aircraftId) {
+  if (aircrafts.has(aircraftId)) {
+    const obj = aircrafts.get(aircraftId);
+    obj.segments.forEach(s => map.removeLayer(s));
+    obj.segments = [];
+    obj.path = [];
+    console.log(`Cleared track for ${aircraftId}`);
+  }
+}
+
 // 更新飛機
-function updateAircraft(id,data){
-  const latlng=[data.lat,data.lon];
-  const color=getAltitudeColor(data.alt);
-  if(aircrafts.has(id)){
-    const obj=aircrafts.get(id);
-    obj.marker.setLatLng(latlng);obj.marker.setIcon(makeDivIcon(data));
-    obj.lastSeen=Date.now();obj.data=data;
-    const prev=obj.path[obj.path.length-1];
-    if(prev){
-      const seg=L.polyline([prev,latlng],{color,weight:2,opacity:0.8}).addTo(map);
-      seg.bindTooltip(`${Math.round(data.alt||0)} ft`,{permanent:false});
-      obj.segments.push(seg);
-      if(obj.segments.length>MAX_TRACK_POINTS){map.removeLayer(obj.segments.shift());}
+function updateAircraft(id, data, trackPoint = null) {
+  const latlng = [data.lat, data.lon];
+  const color = getAltitudeColor(data.alt);
+  
+  if (aircrafts.has(id)) {
+    const obj = aircrafts.get(id);
+    obj.marker.setLatLng(latlng);
+    obj.marker.setIcon(makeDivIcon(data));
+    obj.lastSeen = Date.now();
+    obj.data = data;
+    
+    // 🔥 只有當有新軌跡點時才添加線段
+    if (trackPoint) {
+      const prev = obj.path[obj.path.length - 1];
+      if (prev) {
+        const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
+        seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
+        obj.segments.push(seg);
+        if (obj.segments.length > MAX_TRACK_POINTS) {
+          map.removeLayer(obj.segments.shift());
+        }
+      }
+      obj.path.push(latlng);
+      if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
     }
-    obj.path.push(latlng);if(obj.path.length>MAX_TRACK_POINTS)obj.path.shift();
-  }else{
-    const marker=L.marker(latlng,{icon:makeDivIcon(data)}).addTo(map);
-    marker.on('click',()=>showAircraftPanel(data));
-    aircrafts.set(id,{marker,segments:[],path:[latlng],lastSeen:Date.now(),data});
+  } else {
+    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
+    marker.on('click', () => showAircraftPanel(data));
+    aircrafts.set(id, {
+      marker,
+      segments: [],
+      path: trackPoint ? [latlng] : [],
+      lastSeen: Date.now(),
+      data
+    });
   }
-  document.getElementById('connCount').textContent=aircrafts.size;
+  document.getElementById('connCount').textContent = aircrafts.size;
 }
 
-function removeAircraft(id){
-  if(aircrafts.has(id)){
-    const o=aircrafts.get(id);
-    map.removeLayer(o.marker);o.segments.forEach(s=>map.removeLayer(s));
+function removeAircraft(id) {
+  if (aircrafts.has(id)) {
+    const o = aircrafts.get(id);
+    map.removeLayer(o.marker);
+    o.segments.forEach(s => map.removeLayer(s));
     aircrafts.delete(id);
-    document.getElementById('connCount').textContent=aircrafts.size;
+    document.getElementById('connCount').textContent = aircrafts.size;
   }
 }
 
-function removeStaleAircrafts(ms=30000){
-  const now=Date.now();
-  for(const[k,v]of aircrafts.entries()){
-    if(now-v.lastSeen>ms){
-      map.removeLayer(v.marker);v.segments.forEach(s=>map.removeLayer(s));aircrafts.delete(k);
+function removeStaleAircrafts(ms = 30000) {
+  const now = Date.now();
+  for (const [k, v] of aircrafts.entries()) {
+    if (now - v.lastSeen > ms) {
+      map.removeLayer(v.marker);
+      v.segments.forEach(s => map.removeLayer(s));
+      aircrafts.delete(k);
     }
   }
-  document.getElementById('connCount').textContent=aircrafts.size;
+  document.getElementById('connCount').textContent = aircrafts.size;
 }
-setInterval(()=>removeStaleAircrafts(),5000);
+setInterval(() => removeStaleAircrafts(), 5000);
 
 // Panel
-function showAircraftPanel(data){
-  let p=document.getElementById('aircraftPanel');
-  if(!p){
-    p=document.createElement('div');p.id='aircraftPanel';
-    Object.assign(p.style,{
-      position:'absolute',top:'50px',right:'10px',width:'250px',
-      background:'rgba(0,0,0,0.85)', /* 黑底 */
-      color:'#fff',                 /* 白字 */
-      borderRadius:'8px',padding:'10px',
-      boxShadow:'0 2px 6px rgba(0,0,0,0.7)',
-      fontSize:'13px',zIndex:9999
+function showAircraftPanel(data) {
+  let p = document.getElementById('aircraftPanel');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'aircraftPanel';
+    Object.assign(p.style, {
+      position: 'absolute', top: '50px', right: '10px', width: '250px',
+      background: 'rgba(0,0,0,0.85)', /* 黑底 */
+      color: '#fff',                 /* 白字 */
+      borderRadius: '8px', padding: '10px',
+      boxShadow: '0 2px 6px rgba(0,0,0,0.7)',
+      fontSize: '13px', zIndex: 9999
     });
     document.body.appendChild(p);
   }
-  const c=getAltitudeColor(data.alt);
-  p.innerHTML=`
-    <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign||'UNK')}</h3>
-    <div><strong>Flight:</strong> ${escapeHtml(data.flightNo||'')}</div>
-    <div><strong>Route:</strong> ${escapeHtml(data.departure||'')} → ${escapeHtml(data.arrival||'')}</div>
-    <div><strong>Aircraft:</strong> ${escapeHtml(data.type||'')}</div>
-    <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt||0)} ft</span></div>
+  const c = getAltitudeColor(data.alt);
+  p.innerHTML = `
+    <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign || 'UNK')}</h3>
+    <div><strong>Flight:</strong> ${escapeHtml(data.flightNo || '')}</div>
+    <div><strong>Route:</strong> ${escapeHtml(data.departure || '')} → ${escapeHtml(data.arrival || '')}</div>
+    <div><strong>Aircraft:</strong> ${escapeHtml(data.type || '')}</div>
+    <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
-    <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime||'–')}</div>
+    <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '–')}</div>
     <button onclick="document.getElementById('aircraftPanel').remove()" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
 
-
 // WebSocket
 let ws;
-function connectWS(){
-  ws=new WebSocket(WS_URL);
-  ws.addEventListener('open',()=>ws.send(JSON.stringify({type:'hello',role:'atc'})));
-  ws.addEventListener('message',ev=>{
-    try{
-      const m=JSON.parse(ev.data);
-      if(m.type==='aircraft_update'){(Array.isArray(m.payload)?m.payload:[m.payload]).forEach(a=>updateAircraft(a.id,a));}
-      else if(m.type==='aircraft_snapshot'){m.payload.forEach(a=>updateAircraft(a.id,a));}
-      else if(m.type==='aircraft_remove'){m.payload.forEach(id=>removeAircraft(id));}
-    }catch(e){}
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.addEventListener('open', () => ws.send(JSON.stringify({type: 'hello', role: 'atc'})));
+  ws.addEventListener('message', ev => {
+    try {
+      const m = JSON.parse(ev.data);
+      if (m.type === 'aircraft_update') {
+        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
+          updateAircraft(a.id, a, m.trackPoint)
+        );
+      }
+      else if (m.type === 'aircraft_snapshot') {
+        m.payload.forEach(a => updateAircraft(a.id, a));
+      }
+      // 🔥 新增：處理歷史軌跡
+      else if (m.type === 'aircraft_track_history') {
+        const { aircraftId, tracks } = m.payload;
+        createHistoricalTrack(aircraftId, tracks);
+      }
+      // 🔥 新增：清除軌跡
+      else if (m.type === 'aircraft_track_clear') {
+        const { aircraftId } = m.payload;
+        clearAircraftTrack(aircraftId);
+      }
+      else if (m.type === 'aircraft_remove') {
+        m.payload.forEach(id => removeAircraft(id));
+      }
+    } catch (e) {
+      console.warn('Message parse error:', e);
+    }
   });
-  ws.addEventListener('close',()=>setTimeout(connectWS,2000));
-  ws.addEventListener('error',()=>ws.close());
+  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
+  ws.addEventListener('error', () => ws.close());
 }
 connectWS();
 </script>
 </body>
 </html>
-
