@@ -98,7 +98,7 @@ const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
 
 const map = L.map('map', {
-  worldCopyJump: true, maxZoom: 18, minZoom: 2,
+  worldCopyJump: false, maxZoom: 18, minZoom: 2,
   maxBounds: [[-85,-180],[85,180]], layers: [googleSat]
 }).setView([20,0],2);
 
@@ -219,18 +219,25 @@ function updateAircraft(id, data, trackPoint = null) {
     
     // 🔥 只有當有新軌跡點時才添加線段
     if (trackPoint) {
-      const prev = obj.path[obj.path.length - 1];
-      if (prev) {
-        const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
-        seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
-        obj.segments.push(seg);
-        if (obj.segments.length > MAX_TRACK_POINTS) {
-          map.removeLayer(obj.segments.shift());
-        }
+  const prev = obj.path[obj.path.length - 1];
+  if (prev) {
+    const dist = map.distance(prev, latlng); // Leaflet 提供的距離 (公尺)
+    if (dist < 5000) { // 例如 5 公里以內才連線
+      const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
+      seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
+      obj.segments.push(seg);
+      if (obj.segments.length > MAX_TRACK_POINTS) {
+        map.removeLayer(obj.segments.shift());
       }
-      obj.path.push(latlng);
-      if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
+    } else {
+      // 超過距離 → 視為瞬移，清除軌跡避免直線
+      clearAircraftTrack(id);
     }
+  }
+  obj.path.push(latlng);
+  if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
+}
+
   } else {
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
     marker.on('click', () => showAircraftPanel(data));
