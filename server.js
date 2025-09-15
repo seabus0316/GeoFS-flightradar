@@ -33,9 +33,9 @@ const playerClients = new Set();
 // track aircraft state keyed by aircraft id
 const aircrafts = new Map();
 
-// 🔥 新增：儲存歷史軌跡
+// 🔥 儲存歷史軌跡
 const aircraftTracks = new Map(); // 每架飛機的歷史軌跡點
-const MAX_TRACK_POINTS = 5000; // 每架飛機最多保留的軌跡點數
+const MAX_TRACK_AGE_MS = 12 * 60 * 60 * 1000; // 保留 12 小時
 
 // Helper: broadcast to atc clients
 function broadcastToATC(obj) {
@@ -47,27 +47,23 @@ function broadcastToATC(obj) {
   }
 }
 
-// 🔥 新增：儲存軌跡點
+// 儲存軌跡點，並清掉 12 小時前的
 function addTrackPoint(aircraftId, lat, lon, alt, timestamp) {
   if (!aircraftTracks.has(aircraftId)) {
     aircraftTracks.set(aircraftId, []);
   }
-  
+
   const tracks = aircraftTracks.get(aircraftId);
-  tracks.push({
-    lat: lat,
-    lon: lon, 
-    alt: alt,
-    timestamp: timestamp
-  });
-  
-  // 限制軌跡點數量
-  if (tracks.length > MAX_TRACK_POINTS) {
-    tracks.shift(); // 移除最舊的點
+  tracks.push({ lat, lon, alt, timestamp });
+
+  // 移除超過 12 小時的舊點
+  const cutoff = Date.now() - MAX_TRACK_AGE_MS;
+  while (tracks.length > 0 && tracks[0].timestamp < cutoff) {
+    tracks.shift();
   }
 }
 
-// 🔥 新增：清除飛機的歷史軌跡
+// 清除飛機的歷史
 function clearAircraftTrack(aircraftId) {
   aircraftTracks.delete(aircraftId);
   console.log(`Cleared track history for aircraft: ${aircraftId}`);
@@ -86,27 +82,23 @@ wss.on('connection', (ws, req) => {
         ws.role = msg.role || 'unknown';
         if (ws.role === 'atc') {
           atcClients.add(ws);
-          
+
           // 發送當前飛機狀態
           const payload = Array.from(aircrafts.values()).map(x => x.payload);
           ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
-          
-          // 🔥 新增：發送所有飛機的歷史軌跡
+
+          // 發送所有飛機的歷史軌跡
           for (const [aircraftId, tracks] of aircraftTracks.entries()) {
             if (tracks.length > 0) {
-              ws.send(JSON.stringify({ 
-                type: 'aircraft_track_history', 
-                payload: { 
-                  aircraftId: aircraftId,
-                  tracks: tracks 
-                }
+              ws.send(JSON.stringify({
+                type: 'aircraft_track_history',
+                payload: { aircraftId, tracks }
               }));
             }
           }
-          
+
         } else if (ws.role === 'player') {
           playerClients.add(ws);
-          // 🔥 記錄玩家連接，用於後續清理軌跡
           ws.aircraftId = null; // 將在收到第一個位置更新時設置
         }
         return;
@@ -114,14 +106,13 @@ wss.on('connection', (ws, req) => {
 
       if (msg.type === 'position_update' && msg.payload) {
         const p = msg.payload;
-        const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId||'p') : null);
+        const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
         if (!id) return;
-        
-        // 🔥 記錄這個 WebSocket 對應的飛機 ID
+
         if (ws.role === 'player') {
           ws.aircraftId = id;
         }
-        
+
         const payload = {
           id,
           callsign: p.callsign || 'UNK',
@@ -140,17 +131,17 @@ wss.on('connection', (ws, req) => {
 
         // 更新飛機狀態
         aircrafts.set(id, { payload, lastSeen: Date.now() });
-        
-        // 🔥 新增：儲存軌跡點
+
+        // 儲存軌跡點（保留 12 小時內）
         addTrackPoint(id, payload.lat, payload.lon, payload.alt, payload.ts);
-        
-        // 廣播更新（包含軌跡點）
-        broadcastToATC({ 
-          type: 'aircraft_update', 
-          payload: payload,
+
+        // 廣播更新
+        broadcastToATC({
+          type: 'aircraft_update',
+          payload,
           trackPoint: {
             lat: payload.lat,
-            lon: payload.lon, 
+            lon: payload.lon,
             alt: payload.alt,
             timestamp: payload.ts
           }
@@ -165,17 +156,16 @@ wss.on('connection', (ws, req) => {
     clients.delete(ws);
     atcClients.delete(ws);
     playerClients.delete(ws);
-    
-    // 🔥 新增：玩家斷線時清除其軌跡
+
+    // 🔥 玩家斷線 → 清除其軌跡
     if (ws.role === 'player' && ws.aircraftId) {
       clearAircraftTrack(ws.aircraftId);
-      // 通知 ATC 客戶端清除軌跡
       broadcastToATC({
         type: 'aircraft_track_clear',
         payload: { aircraftId: ws.aircraftId }
       });
     }
-    
+
     console.log('WS closed. total clients:', clients.size);
   });
 
@@ -192,14 +182,12 @@ setInterval(() => {
   for (const [id, v] of aircrafts.entries()) {
     if (now - v.lastSeen > timeout) {
       aircrafts.delete(id);
-      // 🔥 同時清除軌跡
-      clearAircraftTrack(id);
+      clearAircraftTrack(id); // 一併清掉歷史
       removed.push(id);
     }
   }
   if (removed.length) {
     broadcastToATC({ type: 'aircraft_remove', payload: removed });
-    // 🔥 通知清除軌跡
     removed.forEach(aircraftId => {
       broadcastToATC({
         type: 'aircraft_track_clear',
