@@ -1,184 +1,82 @@
-<!doctype html>
-<html lang="zh-Hant">
-<head>
-  <meta charset="utf-8" />
-  <title>GeoFS ATC Screen</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <style>
-    html,body,#map { height:100%; margin:0; padding:0; }
-    .label {
-      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
-      font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: rgba(0,0,0,0.8);
-      color: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
-      white-space: nowrap;
-      margin-left: 6px;
-    }
-
-    .legend {
-      position: absolute;
-      left: 10px;
-      top: 10px;
-      background: rgba(146, 146, 146, 0.9);
-      padding:8px 10px;
-      border-radius:6px;
-      font-size:12px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-    }
-    .altitude-legend {
-      position: absolute;
-      left: 10px;
-      bottom: 10px;
-      background: rgba(146, 146, 146, 0.9);
-      padding:8px 10px;
-      border-radius:6px;
-      font-size:11px;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
-      min-width: 140px;
-    }
-    .altitude-legend-item {
-      display: flex;
-      align-items: center;
-      margin: 2px 0;
-    }
-    .altitude-color-box {
-      width: 12px;
-      height: 12px;
-      margin-right: 6px;
-      border-radius: 2px;
-    }
-  </style>
-</head>
-<body>
-<div id="map"></div>
-<div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
-<div class="altitude-legend">
-  <div style="font-weight:bold;margin-bottom:4px;">高度圖例</div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffffff;"></div><span><100m</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffff00;"></div><span>100m+</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00ff00;"></div><span>~1000m</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00bfff;"></div><span>2500m+</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#0000ff;"></div><span>高空</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
-</div>
-
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
-
-// FR24 顏色邏輯
-function getAltitudeColor(altFt) {
-  const alt = altFt || 0;
-  if (alt < 330) return "#ffffff";
-  if (alt < 3300) return "#ffff00";
-  if (alt < 8200) return "#00ff00";
-  if (alt < 20000) return "#00bfff";
-  if (alt < 30000) return "#0000ff";
-  if (alt < 40000) return "#800080";
-  return "#ff0000";
-}
-
-// 修正速度單位
-function formatSpeed(speedRaw) {
-  if (typeof speedRaw !== 'number') return '---';
-  let speed = speedRaw;
-  // 假設速度小於 50 → m/s → 轉 kt
-  if (speedRaw < 50) speed = speedRaw * 1.94384;
-  return Math.round(speed);
-}
-
-// 計算兩點間的距離（公里）
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // 地球半徑（公里）
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-// 驗證軌跡點是否合理
-function isValidTrackPoint(prevPoint, newPoint, maxDistanceKm = 500, maxTimeGapMs = 300000) {
-  if (!prevPoint || !newPoint) return true;
+// 在 WebSocket 連接部分添加請求歷史數據的功能
+function connectWS() {
+  ws = new WebSocket(WS_URL);
   
-  // 檢查距離
-  const distance = calculateDistance(prevPoint.lat, prevPoint.lon, newPoint.lat, newPoint.lon);
-  if (distance > maxDistanceKm) {
-    console.warn(`Track point rejected: distance ${distance.toFixed(1)}km exceeds limit`);
-    return false;
-  }
-  
-  // 檢查時間間隔（如果有時間戳）
-  if (prevPoint.timestamp && newPoint.timestamp) {
-    const timeDiff = Math.abs(newPoint.timestamp - prevPoint.timestamp);
-    if (timeDiff > maxTimeGapMs) {
-      console.warn(`Track point rejected: time gap ${timeDiff}ms exceeds limit`);
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-// Tile Layers
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
-const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
-
-const map = L.map('map', {
-  worldCopyJump: false, maxZoom: 18, minZoom: 2,
-  maxBounds: [[-85,-180],[85,180]], layers: [googleSat]
-}).setView([20,0],2);
-
-L.control.layers({"OpenStreetMap": osmLayer,"Google Streets":googleStreet,"Google Satellite":googleSat}).addTo(map);
-
-const aircrafts = new Map();
-const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
-const MAX_TRACK_POINTS = 1000;
-
-function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
-// ICON
-function makeDivIcon(data){
-  const imgW=32,imgH=32,labelW=150,labelH=50,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
-  const color=getAltitudeColor(data.alt);
-  return L.divIcon({
-    html:`
-      <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
-        <div class="label" style="border-left:3px solid ${color};">
-          <strong>${escapeHtml(data.callsign||'UNK')}</strong>
-          <div style="font-size:11px;">
-            ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
-          </div>
-          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
-        </div>
-      </div>`,
-    className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
+  ws.addEventListener('open', () => {
+    ws.send(JSON.stringify({type: 'hello', role: 'atc'}));
+    
+    // 🔥 新增：主動請求所有在線飛機的歷史軌跡
+    setTimeout(() => {
+      ws.send(JSON.stringify({
+        type: 'request_all_history',
+        payload: {
+          maxPoints: 10000, // 請求更多歷史點
+          timeRange: 3600000 // 請求過去1小時的數據
+        }
+      }));
+    }, 1000);
   });
+  
+  ws.addEventListener('message', ev => {
+    try {
+      const m = JSON.parse(ev.data);
+      
+      if (m.type === 'aircraft_update') {
+        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
+          updateAircraft(a.id, a, m.trackPoint)
+        );
+      }
+      else if (m.type === 'aircraft_snapshot') {
+        m.payload.forEach(a => {
+          updateAircraft(a.id, a);
+          // 🔥 對每架飛機請求歷史軌跡
+          ws.send(JSON.stringify({
+            type: 'request_aircraft_history',
+            payload: {
+              aircraftId: a.id,
+              maxPoints: 5000,
+              timeRange: 7200000 // 2小時
+            }
+          }));
+        });
+      }
+      // 處理歷史軌跡（放寬驗證條件）
+      else if (m.type === 'aircraft_track_history') {
+        const { aircraftId, tracks } = m.payload;
+        createHistoricalTrackImproved(aircraftId, tracks);
+      }
+      else if (m.type === 'aircraft_track_clear') {
+        const { aircraftId } = m.payload;
+        clearAircraftTrack(aircraftId);
+      }
+      else if (m.type === 'aircraft_remove') {
+        m.payload.forEach(id => removeAircraft(id));
+      }
+    } catch (e) {
+      console.warn('Message parse error:', e);
+    }
+  });
+  
+  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
+  ws.addEventListener('error', () => ws.close());
 }
 
-// 🔥 修正：從歷史軌跡創建軌跡線段，加入驗證邏輯
-function createHistoricalTrack(aircraftId, tracks) {
+// 🔥 改進的歷史軌跡創建函數 - 放寬驗證條件
+function createHistoricalTrackImproved(aircraftId, tracks) {
   if (!aircrafts.has(aircraftId)) {
-    // 如果飛機不存在，先創建基本結構
     const lastTrack = tracks[tracks.length - 1];
     if (lastTrack) {
       const dummyData = {
         callsign: aircraftId,
-        type: '??',
+        type: lastTrack.type || '??',
         lat: lastTrack.lat,
         lon: lastTrack.lon,
         alt: lastTrack.alt,
-        heading: 0,
-        speed: 0
+        heading: lastTrack.heading || 0,
+        speed: lastTrack.speed || 0,
+        flightNo: lastTrack.flightNo || '',
+        departure: lastTrack.departure || '',
+        arrival: lastTrack.arrival || ''
       };
       const marker = L.marker([lastTrack.lat, lastTrack.lon], {icon: makeDivIcon(dummyData)}).addTo(map);
       marker.on('click', () => showAircraftPanel(dummyData));
@@ -200,155 +98,128 @@ function createHistoricalTrack(aircraftId, tracks) {
   obj.segments = [];
   obj.path = [];
   
-  // 🔥 修正：重建歷史軌跡，加入驗證
   if (tracks.length > 1) {
-    let validTracks = [tracks[0]]; // 第一個點總是有效的
+    console.log(`Processing ${tracks.length} historical track points for ${aircraftId}`);
     
-    // 過濾掉異常的軌跡點
+    // 🔥 改進：更智能的軌跡分段處理
+    let currentSegment = [tracks[0]];
+    let allSegments = [];
+    
     for (let i = 1; i < tracks.length; i++) {
-      const prev = validTracks[validTracks.length - 1];
+      const prev = tracks[i-1];
       const curr = tracks[i];
-      
-      if (isValidTrackPoint(prev, curr)) {
-        validTracks.push(curr);
-      } else {
-        console.log(`Skipped invalid track point for ${aircraftId}:`, curr);
-      }
-    }
-    
-    // 創建線段，但只在連續的有效點之間連線
-    for (let i = 1; i < validTracks.length; i++) {
-      const prev = validTracks[i-1];
-      const curr = validTracks[i];
-      const prevLatLng = [prev.lat, prev.lon];
-      const currLatLng = [curr.lat, curr.lon];
-      
-      // 再次檢查距離，避免過長的連線
       const distance = calculateDistance(prev.lat, prev.lon, curr.lat, curr.lon);
-      if (distance > 100) { // 100公里以上視為不連續
-        console.log(`Breaking track segment due to large distance: ${distance.toFixed(1)}km`);
-        continue;
-      }
+      const timeDiff = curr.timestamp && prev.timestamp ? 
+        Math.abs(curr.timestamp - prev.timestamp) : 0;
       
-      const color = getAltitudeColor(curr.alt);
-      const seg = L.polyline([prevLatLng, currLatLng], {
-        color: color,
-        weight: 2,
-        opacity: 0.8
-      }).addTo(map);
+      // 🔥 放寬條件：允許更大的距離和時間間隔
+      const isNewSegment = distance > 200 || timeDiff > 600000; // 200km 或 10分鐘
       
-      seg.bindTooltip(`${Math.round(curr.alt || 0)} ft`, {permanent: false});
-      obj.segments.push(seg);
-      
-      // 限制軌跡段數量
-      if (obj.segments.length > MAX_TRACK_POINTS) {
-        map.removeLayer(obj.segments.shift());
+      if (isNewSegment && currentSegment.length > 1) {
+        // 結束當前段，開始新段
+        allSegments.push([...currentSegment]);
+        currentSegment = [curr];
+      } else {
+        currentSegment.push(curr);
       }
     }
     
-    // 更新路徑數組
-    obj.path = validTracks.map(t => [t.lat, t.lon]);
+    // 添加最後一段
+    if (currentSegment.length > 1) {
+      allSegments.push(currentSegment);
+    }
     
-    console.log(`Restored ${validTracks.length}/${tracks.length} valid track points for ${aircraftId}`);
-  }
-}
-
-// 🔥 新增：清除飛機軌跡
-function clearAircraftTrack(aircraftId) {
-  if (aircrafts.has(aircraftId)) {
-    const obj = aircrafts.get(aircraftId);
-    obj.segments.forEach(s => map.removeLayer(s));
-    obj.segments = [];
-    obj.path = [];
-    console.log(`Cleared track for ${aircraftId}`);
-  }
-}
-
-// 🔥 修正：更新飛機，加強軌跡連線的驗證
-function updateAircraft(id, data, trackPoint = null) {
-  const latlng = [data.lat, data.lon];
-  const color = getAltitudeColor(data.alt);
-  
-  if (aircrafts.has(id)) {
-    const obj = aircrafts.get(id);
-    obj.marker.setLatLng(latlng);
-    obj.marker.setIcon(makeDivIcon(data));
-    obj.lastSeen = Date.now();
-    obj.data = data;
-    
-    // 🔥 只有當有新軌跡點且驗證通過時才添加線段
-    if (trackPoint && obj.path.length > 0) {
-      const prev = obj.path[obj.path.length - 1];
-      const distance = calculateDistance(prev[0], prev[1], latlng[0], latlng[1]);
+    // 繪製所有軌跡段
+    let totalPoints = 0;
+    allSegments.forEach((segment, segIndex) => {
+      // 🔥 特殊處理：起飛階段使用特殊顏色
+      const isInitialSegment = segIndex === 0;
       
-      // 設定更嚴格的距離限制
-      const maxDistance = 50; // 50公里
-      
-      if (distance < maxDistance) {
-        const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
-        seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
+      for (let i = 1; i < segment.length; i++) {
+        const prev = segment[i-1];
+        const curr = segment[i];
+        const prevLatLng = [prev.lat, prev.lon];
+        const currLatLng = [curr.lat, curr.lon];
+        
+        let color = getAltitudeColor(curr.alt);
+        
+        // 🔥 起飛段特殊標記
+        if (isInitialSegment && (curr.alt || 0) < 1000) {
+          color = '#ff6b35'; // 橙紅色標示起飛階段
+        }
+        
+        const seg = L.polyline([prevLatLng, currLatLng], {
+          color: color,
+          weight: isInitialSegment ? 3 : 2, // 起飛段加粗
+          opacity: 0.9,
+          dashArray: isInitialSegment ? '5,5' : null // 起飛段虛線
+        }).addTo(map);
+        
+        const tooltipText = isInitialSegment ? 
+          `起飛階段: ${Math.round(curr.alt || 0)} ft` : 
+          `${Math.round(curr.alt || 0)} ft`;
+        
+        seg.bindTooltip(tooltipText, {permanent: false});
         obj.segments.push(seg);
+        totalPoints++;
+        
         if (obj.segments.length > MAX_TRACK_POINTS) {
           map.removeLayer(obj.segments.shift());
         }
-      } else {
-        // 超過距離 → 視為瞬移，清除軌跡避免直線
-        console.log(`Distance too large (${distance.toFixed(1)}km), clearing track for ${id}`);
-        clearAircraftTrack(id);
+      }
+    });
+    
+    // 更新路徑數組
+    obj.path = tracks.map(t => [t.lat, t.lon]);
+    
+    console.log(`✅ Restored ${totalPoints} track segments in ${allSegments.length} parts for ${aircraftId}`);
+    
+    // 🔥 如果有起飛數據，在地圖上標記起飛點
+    if (tracks.length > 0 && (tracks[0].alt || 0) < 500) {
+      const takeoffPoint = tracks[0];
+      const takeoffMarker = L.circleMarker([takeoffPoint.lat, takeoffPoint.lon], {
+        radius: 8,
+        fillColor: '#ff6b35',
+        color: '#ffffff',
+        weight: 2,
+        opacity: 1,
+        fillOpacity: 0.8
+      }).addTo(map);
+      
+      takeoffMarker.bindTooltip(`🛫 起飛點: ${aircraftId}`, {permanent: false});
+      
+      // 將起飛標記也加入管理（可選）
+      if (!obj.takeoffMarker) {
+        obj.takeoffMarker = takeoffMarker;
       }
     }
-    
-    // 添加到路徑（無論是否畫線）
-    if (trackPoint) {
-      obj.path.push(latlng);
-      if (obj.path.length > MAX_TRACK_POINTS) obj.path.shift();
-    }
-
-  } else {
-    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
-    marker.on('click', () => showAircraftPanel(data));
-    aircrafts.set(id, {
-      marker,
-      segments: [],
-      path: trackPoint ? [latlng] : [],
-      lastSeen: Date.now(),
-      data
-    });
-  }
-  document.getElementById('connCount').textContent = aircrafts.size;
-}
-
-function removeAircraft(id) {
-  if (aircrafts.has(id)) {
-    const o = aircrafts.get(id);
-    map.removeLayer(o.marker);
-    o.segments.forEach(s => map.removeLayer(s));
-    aircrafts.delete(id);
-    document.getElementById('connCount').textContent = aircrafts.size;
   }
 }
 
-function removeStaleAircrafts(ms = 30000) {
-  const now = Date.now();
-  for (const [k, v] of aircrafts.entries()) {
-    if (now - v.lastSeen > ms) {
-      map.removeLayer(v.marker);
-      v.segments.forEach(s => map.removeLayer(s));
-      aircrafts.delete(k);
-    }
+// 🔥 新增：手動請求特定飛機的歷史數據
+function requestAircraftHistory(aircraftId) {
+  if (ws && ws.readyState === WebSocket.OPEN) {
+    ws.send(JSON.stringify({
+      type: 'request_aircraft_history',
+      payload: {
+        aircraftId: aircraftId,
+        maxPoints: 10000,
+        timeRange: 7200000, // 2小時
+        includeGroundTrack: true // 請求包含地面滑行數據
+      }
+    }));
+    console.log(`Requested full history for ${aircraftId}`);
   }
-  document.getElementById('connCount').textContent = aircrafts.size;
 }
-setInterval(() => removeStaleAircrafts(), 2000);
 
-// Panel
+// 🔥 在飛機面板中添加請求歷史按鈕
 function showAircraftPanel(data) {
   let p = document.getElementById('aircraftPanel');
   if (!p) {
     p = document.createElement('div');
     p.id = 'aircraftPanel';
     Object.assign(p.style, {
-      position: 'absolute', top: '50px', right: '10px', width: '250px',
+      position: 'absolute', top: '50px', right: '10px', width: '280px',
       background: 'rgba(0,0,0,0.85)',
       color: '#fff',
       borderRadius: '8px', padding: '10px',
@@ -357,6 +228,7 @@ function showAircraftPanel(data) {
     });
     document.body.appendChild(p);
   }
+  
   const c = getAltitudeColor(data.alt);
   p.innerHTML = `
     <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign || 'UNK')}</h3>
@@ -366,47 +238,14 @@ function showAircraftPanel(data) {
     <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    <button onclick="document.getElementById('aircraftPanel').remove()" style="margin-top:8px;padding:4px 8px;">Close</button>`;
+    <div style="margin-top:8px;">
+      <button onclick="requestAircraftHistory('${data.callsign || data.id}')" 
+              style="padding:4px 8px;margin-right:5px;background:#007acc;color:white;border:none;border-radius:4px;cursor:pointer;">
+        請求完整軌跡
+      </button>
+      <button onclick="document.getElementById('aircraftPanel').remove()" 
+              style="padding:4px 8px;background:#666;color:white;border:none;border-radius:4px;cursor:pointer;">
+        關閉
+      </button>
+    </div>`;
 }
-
-// WebSocket
-let ws;
-function connectWS() {
-  ws = new WebSocket(WS_URL);
-  ws.addEventListener('open', () => ws.send(JSON.stringify({type: 'hello', role: 'atc'})));
-  ws.addEventListener('message', ev => {
-    try {
-      const m = JSON.parse(ev.data);
-      if (m.type === 'aircraft_update') {
-        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
-          updateAircraft(a.id, a, m.trackPoint)
-        );
-      }
-      else if (m.type === 'aircraft_snapshot') {
-        m.payload.forEach(a => updateAircraft(a.id, a));
-      }
-      // 🔥 新增：處理歷史軌跡
-      else if (m.type === 'aircraft_track_history') {
-        const { aircraftId, tracks } = m.payload;
-        createHistoricalTrack(aircraftId, tracks);
-      }
-      // 🔥 新增：清除軌跡
-      else if (m.type === 'aircraft_track_clear') {
-        const { aircraftId } = m.payload;
-        clearAircraftTrack(aircraftId);
-      }
-      else if (m.type === 'aircraft_remove') {
-        m.payload.forEach(id => removeAircraft(id));
-      }
-    } catch (e) {
-      console.warn('Message parse error:', e);
-    }
-  });
-  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
-  ws.addEventListener('error', () => ws.close());
-}
-connectWS();
-</script>
-</body>
-</html>
-
