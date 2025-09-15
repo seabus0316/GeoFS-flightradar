@@ -141,7 +141,7 @@ L.control.layers({"OpenStreetMap": osmLayer,"Google Streets":googleStreet,"Googl
 
 const aircrafts = new Map();
 const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
-const MAX_TRACK_POINTS = 5000;
+const MAX_TRACK_POINTS = 1000;
 
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
@@ -339,7 +339,7 @@ function removeStaleAircrafts(ms = 30000) {
   }
   document.getElementById('connCount').textContent = aircrafts.size;
 }
-setInterval(() => removeStaleAircrafts(), 5000);
+setInterval(() => removeStaleAircrafts(), 2000);
 
 // Panel
 function showAircraftPanel(data) {
@@ -409,3 +409,4 @@ connectWS();
 </script>
 </body>
 </html>
+
