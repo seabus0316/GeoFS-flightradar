@@ -226,21 +226,67 @@ function rdp(points, epsilon) {
 // 從歷史軌跡創建軌跡線段，加入驗證邏輯
 function createHistoricalTrack(aircraftId, tracks) {
   if (!tracks || tracks.length === 0) return;
+
   if (!aircrafts.has(aircraftId)) {
-    const lastTrack = tracks[tracks.length-1];
-    const dummyData = { callsign: aircraftId, type:'??', lat:lastTrack.lat, lon:lastTrack.lon, alt:lastTrack.alt, heading:0, speed:0};
-    const marker = L.marker([lastTrack.lat, lastTrack.lon], {icon: makeDivIcon(dummyData)}).addTo(map);
+    const lastTrack = tracks[tracks.length - 1];
+    const dummyData = {
+      callsign: aircraftId,
+      type: '??',
+      lat: lastTrack.lat,
+      lon: lastTrack.lon,
+      alt: lastTrack.alt,
+      heading: 0,
+      speed: 0
+    };
+    const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
     marker.on('click', () => showAircraftPanel(dummyData));
-    aircrafts.set(aircraftId, { marker, path: [], rawTrack: [], rawPathForDisplay: [], displayPath: [], canvasLine: null, lastSeen: Date.now(), data: dummyData });
+    aircrafts.set(aircraftId, {
+      marker,
+      path: [],
+      rawTrack: [],
+      rawPathForDisplay: [],
+      displayPath: [],
+      segments: [],
+      lastSeen: Date.now(),
+      data: dummyData
+    });
   }
+
   const obj = aircrafts.get(aircraftId);
-  obj.rawTrack = (obj.rawTrack || []).concat(tracks.map(t=>({lat:t.lat, lon:t.lon, ts:t.timestamp||Date.now(), alt:t.alt})));
-  const pts = tracks.map(t => [t.lat, t.lon]);
-  const simplified = rdp(pts, 0.0006);
-  obj.displayPath = simplified.slice(-MAX_TRACK_POINTS);
-  if (obj.canvasLine) map.removeLayer(obj.canvasLine);
-  obj.canvasLine = L.polyline(obj.displayPath, { renderer: canvasRenderer, weight:2, opacity:0.8 }).addTo(map);
+  obj.rawTrack = (obj.rawTrack || []).concat(
+    tracks.map(t => ({ lat: t.lat, lon: t.lon, ts: t.timestamp || Date.now(), alt: t.alt }))
+  );
+
+  // 保存 (lat, lon, alt) 供顯示
+  obj.displayPath = tracks.map(t => [t.lat, t.lon, t.alt]);
+
+  // 移除舊的 segments
+  if (obj.segments) {
+    obj.segments.forEach(s => map.removeLayer(s));
+  }
+  obj.segments = [];
+
+  // 分段畫彩色線 + tooltip
+  for (let i = 1; i < obj.displayPath.length; i++) {
+    const prev = obj.displayPath[i - 1];
+    const curr = obj.displayPath[i];
+    const alt = curr[2] || 0;
+
+    const seg = L.polyline(
+      [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+      { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
+    ).addTo(map);
+
+    seg.bindTooltip(`${Math.round(alt)} ft`, {
+      sticky: true,
+      direction: 'right',
+      offset: [10, 0]
+    });
+
+    obj.segments.push(seg);
+  }
 }
+
 
 
 // 清除飛機軌跡
