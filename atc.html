@@ -253,20 +253,23 @@ function createHistoricalTrack(aircraftId, tracks) {
   }
 
   const obj = aircrafts.get(aircraftId);
-  obj.rawTrack = (obj.rawTrack || []).concat(
-    tracks.map(t => ({ lat: t.lat, lon: t.lon, ts: t.timestamp || Date.now(), alt: t.alt }))
+
+  // 合併歷史點到 rawPathForDisplay，不要覆蓋舊資料
+  if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+  obj.rawPathForDisplay = obj.rawPathForDisplay.concat(
+    tracks.map(t => [t.lat, t.lon, t.alt, t.speed || 0])
   );
 
-  // 保存 (lat, lon, alt) 供顯示
-  obj.displayPath = tracks.map(t => [t.lat, t.lon, t.alt]);
+  // 畫線段
+  obj.displayPath = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
 
-  // 移除舊的 segments
+  // 移除舊 segments
   if (obj.segments) {
     obj.segments.forEach(s => map.removeLayer(s));
   }
   obj.segments = [];
 
-  // 分段畫彩色線 + tooltip
+  // 分段畫彩色線
   for (let i = 1; i < obj.displayPath.length; i++) {
     const prev = obj.displayPath[i - 1];
     const curr = obj.displayPath[i];
@@ -286,7 +289,6 @@ function createHistoricalTrack(aircraftId, tracks) {
     obj.segments.push(seg);
   }
 }
-
 
 
 // 清除飛機軌跡
