@@ -1,10 +1,11 @@
 // ==UserScript==
 // @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time)
 // @namespace    http://tampermonkey.net/
-// @version      1.5
+// @version      1.6
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W收合；自動偵測Takeoff UTC
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
+// @updateURL   https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/user.js
 // @grant        none
 // ==/UserScript==
 
@@ -197,6 +198,13 @@
 
     document.body.appendChild(flightUI);
 
+        // 讓三格自動轉大寫
+  ['depInput','arrInput','fltInput'].forEach(id => {
+    const el = document.getElementById(id);
+    el.addEventListener('input', () => {
+      el.value = el.value.toUpperCase();
+    });
+  });
     document.getElementById('saveBtn').onclick = () => {
       flightInfo.departure = document.getElementById('depInput').value.trim();
       flightInfo.arrival = document.getElementById('arrInput').value.trim();
