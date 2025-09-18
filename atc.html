@@ -262,7 +262,6 @@ function ensureMeta(id) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
   }
 }
-
 function updateAircraft(id, data, trackPoint = null) {
   const latlng = [data.lat, data.lon];
   const color = getAltitudeColor(data.alt);
@@ -274,7 +273,7 @@ function updateAircraft(id, data, trackPoint = null) {
     obj.lastSeen = now;
     obj.data = data;
 
-    // 儲存完整紀錄（不抽稀）
+    // 儲存完整紀錄
     if (trackPoint) {
       if (!obj.rawTrack) obj.rawTrack = [];
       obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: Date.now(), alt: data.alt});
@@ -286,8 +285,8 @@ function updateAircraft(id, data, trackPoint = null) {
     let shouldRender = false;
 
     if (elapsed >= MIN_UPDATE_MS) shouldRender = true;
-    else if (obj.path && obj.path.length > 0) {
-      const prev = obj.path[obj.path.length-1];
+    else if (obj.displayPath && obj.displayPath.length > 0) {
+      const prev = obj.displayPath[obj.displayPath.length-1];
       const d = calculateDistance(prev[0], prev[1], latlng[0], latlng[1]);
       if (d > 1) shouldRender = true;
     } else shouldRender = true;
@@ -298,6 +297,7 @@ function updateAircraft(id, data, trackPoint = null) {
           const m = obj.marker;
           m.setLatLng(latlng);
 
+          // 更新 marker DOM
           const el = m.getElement && m.getElement();
           if (el) {
             const img = el.querySelector('img');
@@ -313,19 +313,41 @@ function updateAircraft(id, data, trackPoint = null) {
             m.setIcon(makeDivIcon(data)); // fallback
           }
 
+          // 畫軌跡 (保留高度顏色)
           if (trackPoint) {
             if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
-            obj.rawPathForDisplay.push([data.lat, data.lon]);
+            obj.rawPathForDisplay.push([data.lat, data.lon, data.alt]);
 
-            if (obj.rawPathForDisplay.length > MAX_TRACK_POINTS*2) {
-              obj.displayPath = rdp(obj.rawPathForDisplay, 0.0006);
-              obj.rawPathForDisplay = obj.displayPath.slice(-MAX_TRACK_POINTS);
-            } else {
-              obj.displayPath = obj.rawPathForDisplay.slice();
+            // 抽稀
+            const simplified = rdp(
+              obj.rawPathForDisplay.map(p => [p[0], p[1]]),
+              0.0006
+            );
+
+            // 對應 alt
+            obj.displayPath = simplified.map(pt => {
+              let nearest = obj.rawPathForDisplay.reduce((best, cur) => {
+                const d = (pt[0]-cur[0])**2 + (pt[1]-cur[1])**2;
+                return d < best.d ? { d, val: cur } : best;
+              }, { d: Infinity, val: [pt[0], pt[1], data.alt] }).val;
+              return [pt[0], pt[1], nearest[2]];
+            });
+
+            // 移除舊線段
+            obj.segments.forEach(seg => map.removeLayer(seg));
+            obj.segments = [];
+
+            // 分段畫彩色線
+            for (let i = 1; i < obj.displayPath.length; i++) {
+              const prev = obj.displayPath[i-1];
+              const curr = obj.displayPath[i];
+              const alt = curr[2] || 0;
+              const seg = L.polyline(
+                [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+                { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
+              ).addTo(map);
+              obj.segments.push(seg);
             }
-
-            if (obj.canvasLine) map.removeLayer(obj.canvasLine);
-            obj.canvasLine = L.polyline(obj.displayPath, { renderer: canvasRenderer, weight: 2, opacity: 0.8 }).addTo(map);
           }
 
           meta.lastRender = Date.now();
@@ -337,21 +359,23 @@ function updateAircraft(id, data, trackPoint = null) {
     }
 
   } else {
+    // 新增飛機
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
     marker.on('click', () => showAircraftPanel(data));
     aircrafts.set(id, {
       marker,
-      path: trackPoint ? [[data.lat, data.lon]] : [],
-      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:Date.now()}] : [],
-      rawPathForDisplay: trackPoint ? [[data.lat, data.lon]] : [],
-      displayPath: trackPoint ? [[data.lat, data.lon]] : [],
-      canvasLine: null,
+      displayPath: trackPoint ? [[data.lat, data.lon, data.alt]] : [],
+      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:Date.now(), alt:data.alt}] : [],
+      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt]] : [],
+      segments: [],
       lastSeen: Date.now(),
       data
     });
     aircraftMeta.get(id).lastRender = now;
   }
 }
+
+
 
 
 function removeAircraft(id) {
