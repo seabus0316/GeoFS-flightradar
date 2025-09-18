@@ -285,17 +285,18 @@ function updateAircraft(id, data, trackPoint = null) {
       const maxDistance = 50; // 50公里
       
       if (distance < maxDistance) {
-        const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
-        seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
-        obj.segments.push(seg);
-        if (obj.segments.length > MAX_TRACK_POINTS) {
-          map.removeLayer(obj.segments.shift());
-        }
-      } else {
-        // 超過距離 → 視為瞬移，清除軌跡避免直線
-        console.log(`Distance too large (${distance.toFixed(1)}km), clearing track for ${id}`);
-        clearAircraftTrack(id);
-      }
+  const seg = L.polyline([prev, latlng], {color, weight: 2, opacity: 0.8}).addTo(map);
+  seg.bindTooltip(`${Math.round(data.alt || 0)} ft`, {permanent: false});
+  obj.segments.push(seg);
+  if (obj.segments.length > MAX_TRACK_POINTS) {
+    map.removeLayer(obj.segments.shift());
+  }
+} else {
+  // 🚫 不要清空歷史，只是中斷線段
+  console.log(`Distance too large (${distance.toFixed(1)}km), breaking track for ${id}`);
+  // 保留舊的 segments，但從這個新點重新開始 path
+  obj.path = [latlng];
+}
     }
     
     // 添加到路徑（無論是否畫線）
