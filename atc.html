@@ -358,7 +358,12 @@ function updateAircraft(id, data, trackPoint = null) {
                 { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
               ).addTo(map);
 
-              seg.bindTooltip(`${Math.round(alt)} ft / ${formatSpeed(spd)} kt`, {sticky:false});
+              seg.bindTooltip(`${Math.round(alt)} ft`, {
+  sticky: true,
+  direction: 'right',
+  offset: [10, 0]
+});
+
               obj.segments.push(seg);
             }
           }
