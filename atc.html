@@ -222,7 +222,12 @@ function rdp(points, epsilon) {
     return [points[0], points[points.length-1]];
   }
 }
-
+function crossesIDL(lon1, lon2) {
+  return Math.abs(lon1 - lon2) > 180;
+}
+function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
+  return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
+}
 // 從歷史軌跡創建軌跡線段，加入驗證邏輯
 function createHistoricalTrack(aircraftId, tracks) {
   if (!tracks || tracks.length === 0) return;
@@ -271,23 +276,27 @@ function createHistoricalTrack(aircraftId, tracks) {
 
   // 分段畫彩色線
   for (let i = 1; i < obj.displayPath.length; i++) {
-    const prev = obj.displayPath[i - 1];
-    const curr = obj.displayPath[i];
-    const alt = curr[2] || 0;
+  const prev = obj.displayPath[i-1];
+  const curr = obj.displayPath[i];
+  const alt = curr[2] || 0;
+  const spd = curr[3] || 0;
+  if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
+  // 跳過跨IDL段
+  //if (crossesIDL(prev[1], curr[1])) continue;
 
-    const seg = L.polyline(
-      [ [prev[0], prev[1]], [curr[0], curr[1]] ],
-      { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
-    ).addTo(map);
+  const seg = L.polyline(
+    [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+    { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
+  ).addTo(map);
 
-    seg.bindTooltip(`${Math.round(alt)} ft`, {
-      sticky: true,
-      direction: 'right',
-      offset: [10, 0]
-    });
+  seg.bindTooltip(`${Math.round(alt)} ft`, {
+    sticky: true,
+    direction: 'right',
+    offset: [10, 0]
+  });
 
-    obj.segments.push(seg);
-  }
+  obj.segments.push(seg);
+}
 }
 
 
@@ -373,7 +382,9 @@ function updateAircraft(id, data, trackPoint = null) {
             } else {
               epsilon = 0.001; // 高空巡航：抽稀更強
             }
-
+function crossesIDL(lon1, lon2) {
+  return Math.abs(lon1 - lon2) > 180;
+}
             let simplified;
             if (epsilon > 0) {
               simplified = rdp(obj.rawPathForDisplay.map(p => [p[0], p[1]]), epsilon);
@@ -400,7 +411,7 @@ function updateAircraft(id, data, trackPoint = null) {
               const curr = obj.displayPath[i];
               const alt = curr[2] || 0;
               const spd = curr[3] || 0;
-
+              if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
               const seg = L.polyline(
                 [ [prev[0], prev[1]], [curr[0], curr[1]] ],
                 { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
@@ -536,4 +547,3 @@ connectWS();
 </script>
 </body>
 </html>
-
