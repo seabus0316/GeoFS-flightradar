@@ -18,7 +18,6 @@
       white-space: nowrap;
       margin-left: 6px;
     }
-
     .legend {
       position: absolute;
       left: 10px;
@@ -29,7 +28,6 @@
       font-size:12px;
       box-shadow: 0 1px 3px rgba(0,0,0,0.25);
     }
-    
     .altitude-legend {
       position: absolute;
       left: 10px;
@@ -41,27 +39,22 @@
       box-shadow: 0 1px 3px rgba(0,0,0,0.25);
       min-width: 140px;
     }
-    
     .altitude-legend-item {
       display: flex;
       align-items: center;
       margin: 2px 0;
     }
-    
     .altitude-color-box {
       width: 12px;
       height: 12px;
       margin-right: 6px;
       border-radius: 2px;
     }
-
-
   </style>
 </head>
 <body>
 <div id="map"></div>
 <div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
-
 <div class="altitude-legend">
   <div style="font-weight:bold;margin-bottom:4px;">高度圖例</div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffffff;"></div><span>&lt;100m</span></div>
@@ -72,12 +65,11 @@
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
 </div>
-
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
 
-// FR24 顏色邏輯
+// 顏色邏輯
 function getAltitudeColor(altFt) {
   const alt = altFt || 0;
   if (alt < 330) return "#ffffff";
@@ -88,19 +80,14 @@ function getAltitudeColor(altFt) {
   if (alt < 40000) return "#800080";
   return "#ff0000";
 }
-
-// 修正速度單位
 function formatSpeed(speedRaw) {
   if (typeof speedRaw !== 'number') return '---';
   let speed = speedRaw;
-  // 假設速度小於 50 → m/s → 轉 kt
   if (speedRaw < 50) speed = speedRaw * 1.94384;
   return Math.round(speed);
 }
-
-// 計算兩點間的距離（公里）
 function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371; // 地球半徑（公里）
+  const R = 6371;
   const dLat = (lat2 - lat1) * Math.PI / 180;
   const dLon = (lon2 - lon1) * Math.PI / 180;
   const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
@@ -109,31 +96,9 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
+function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
 
-// 驗證軌跡點是否合理
-function isValidTrackPoint(prevPoint, newPoint, maxDistanceKm = 500, maxTimeGapMs = 300000) {
-  if (!prevPoint || !newPoint) return true;
-  
-  // 檢查距離
-  const distance = calculateDistance(prevPoint.lat, prevPoint.lon, newPoint.lat, newPoint.lon);
-  if (distance > maxDistanceKm) {
-    console.warn(`Track point rejected: distance ${distance.toFixed(1)}km exceeds limit`);
-    return false;
-  }
-  
-  // 檢查時間間隔（如果有時間戳）
-  if (prevPoint.timestamp && newPoint.timestamp) {
-    const timeDiff = Math.abs(newPoint.timestamp - prevPoint.timestamp);
-    if (timeDiff > maxTimeGapMs) {
-      console.warn(`Track point rejected: time gap ${timeDiff}ms exceeds limit`);
-      return false;
-    }
-  }
-  
-  return true;
-}
-
-// 地圖圖層設定
+// 地圖設定
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 });
@@ -143,8 +108,6 @@ const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
-
-// OpenAIP 航圖疊層
 const openAIP = L.tileLayer(
   'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=409a25682b90c26541b6c25493950e17',
   {
@@ -155,13 +118,8 @@ const openAIP = L.tileLayer(
     opacity: 0.8
   }
 );
-
-// 創建組合圖層：OSM + OpenAIP
 const osmWithOpenAIP = L.layerGroup([osmLayer, openAIP]);
-// 建立 canvas renderer，減少 SVG/DOM 消耗
 const canvasRenderer = L.canvas({ padding: 0.5 });
-
-// 初始化地圖
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
@@ -170,8 +128,6 @@ const map = L.map('map', {
   layers: [googleSat],
   renderer: canvasRenderer
 }).setView([20,0],2);
-
-// 底圖控制
 L.control.layers({
   "OpenStreetMap + OpenAIP": osmWithOpenAIP,
   "Google Streets": googleStreet,
@@ -180,14 +136,7 @@ L.control.layers({
 
 const aircrafts = new Map();
 const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
-// --- 效能優化常數 ---
-const MAX_TRACK_POINTS = 1000;          // 每架機器人顯示的最大軌跡點數
-const MIN_UPDATE_MS = 1000;             // 每架機器最少幾毫秒更新一次顯示
-const DISPLAY_POINT_SAMPLE_METERS = 500; // 顯示軌跡時的取樣距離（不影響紀錄）
 
-function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-
-// ICON
 function makeDivIcon(data){
   const imgW=32,imgH=32,labelW=150,labelH=50,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
   const color=getAltitudeColor(data.alt);
@@ -206,7 +155,8 @@ function makeDivIcon(data){
     className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
   });
 }
-// RDP 軌跡抽稀演算法
+
+// RDP（Douglas-Peucker軌跡抽稀）
 function rdp(points, epsilon) {
   if (points.length < 3) return points;
   let dmax = 0, index = 0;
@@ -234,92 +184,54 @@ function crossesIDL(lon1, lon2) {
 function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
 }
-// 從歷史軌跡創建軌跡線段，加入驗證邏輯
-function createHistoricalTrack(aircraftId, tracks) {
-  if (!tracks || tracks.length === 0) return;
 
-  if (!aircrafts.has(aircraftId)) {
-    const lastTrack = tracks[tracks.length - 1];
-    const dummyData = {
-      callsign: aircraftId,
-      type: '??',
-      lat: lastTrack.lat,
-      lon: lastTrack.lon,
-      alt: lastTrack.alt,
-      heading: 0,
-      speed: 0
-    };
-    const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
-    marker.on('click', () => showAircraftPanel(dummyData));
-    aircrafts.set(aircraftId, {
-      marker,
-      path: [],
-      rawTrack: [],
-      rawPathForDisplay: [],
-      displayPath: [],
-      segments: [],
-      lastSeen: Date.now(),
-      data: dummyData
-    });
+// 只畫指定飛機的軌跡
+function showAircraftTrack(id) {
+  const obj = aircrafts.get(id);
+  if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) return;
+  clearAllAircraftTracks();
+  let epsilon = obj.data.alt < 3000 ? 0.0 : 0.001;
+  let simplified;
+  if (epsilon > 0) {
+    simplified = rdp(obj.rawPathForDisplay.map(p => [p[0], p[1]]), epsilon);
+  } else {
+    simplified = obj.rawPathForDisplay.map(p => [p[0], p[1]]);
   }
-
-  const obj = aircrafts.get(aircraftId);
-
-  // 合併歷史點到 rawPathForDisplay，不要覆蓋舊資料
-  if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
-  obj.rawPathForDisplay = obj.rawPathForDisplay.concat(
-    tracks.map(t => [t.lat, t.lon, t.alt, t.speed || 0])
-  );
-
-  // 畫線段
-  obj.displayPath = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
-
-  // 移除舊 segments
-  if (obj.segments) {
-    obj.segments.forEach(s => map.removeLayer(s));
-  }
-  obj.segments = [];
-
-  // 分段畫彩色線
-  for (let i = 1; i < obj.displayPath.length; i++) {
-  const prev = obj.displayPath[i-1];
-  const curr = obj.displayPath[i];
-  const alt = curr[2] || 0;
-  const spd = curr[3] || 0;
-  if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
-  // 跳過跨IDL段
-  //if (crossesIDL(prev[1], curr[1])) continue;
-
-  const seg = L.polyline(
-    [ [prev[0], prev[1]], [curr[0], curr[1]] ],
-    { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
-  ).addTo(map);
-
-  seg.bindTooltip(`${Math.round(alt)} ft`, {
-    sticky: true,
-    direction: 'right',
-    offset: [10, 0]
+  obj.displayPath = simplified.map(pt => {
+    let nearest = obj.rawPathForDisplay.reduce((best, cur) => {
+      const d = (pt[0]-cur[0])**2 + (pt[1]-cur[1])**2;
+      return d < best.d ? { d, val: cur } : best;
+    }, { d: Infinity, val: [pt[0], pt[1], obj.data.alt, obj.data.speed] }).val;
+    return [pt[0], pt[1], nearest[2], nearest[3]];
   });
-
-  obj.segments.push(seg);
+  for (let i = 1; i < obj.displayPath.length; i++) {
+    const prev = obj.displayPath[i-1];
+    const curr = obj.displayPath[i];
+    const alt = curr[2] || 0;
+    if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
+    const seg = L.polyline(
+      [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+      { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
+    ).addTo(map);
+    seg.bindTooltip(`${Math.round(alt)} ft`, {
+      sticky: true,
+      direction: 'right',
+      offset: [10, 0]
+    });
+    obj.segments.push(seg);
+  }
 }
-}
-
-
-// 清除飛機軌跡
-function clearAircraftTrack(aircraftId) {
-  if (aircrafts.has(aircraftId)) {
-    const obj = aircrafts.get(aircraftId);
-    obj.segments.forEach(s => map.removeLayer(s));
-    obj.segments = [];
-    obj.path = [];
-    console.log(`Cleared track for ${aircraftId}`);
+function clearAllAircraftTracks() {
+  for (const [id, obj] of aircrafts.entries()) {
+    if (obj.segments && obj.segments.length > 0) {
+      obj.segments.forEach(s => map.removeLayer(s));
+      obj.segments = [];
+    }
   }
 }
 
-// 儲存每架飛機的更新狀態
+// 更新/新增飛機
 const aircraftMeta = new Map();
-
 function ensureMeta(id) {
   if (!aircraftMeta.has(id)) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
@@ -330,121 +242,59 @@ function updateAircraft(id, data, trackPoint = null) {
   const color = getAltitudeColor(data.alt);
   const now = Date.now();
   ensureMeta(id);
-
   if (aircrafts.has(id)) {
     const obj = aircrafts.get(id);
     obj.lastSeen = now;
     obj.data = data;
-
-    // 儲存完整紀錄
     if (trackPoint) {
       if (!obj.rawTrack) obj.rawTrack = [];
       obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: Date.now(), alt: data.alt});
       if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
     }
-
+    if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+    obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
     const meta = aircraftMeta.get(id);
     const elapsed = now - meta.lastRender;
     let shouldRender = false;
-
-    if (elapsed >= MIN_UPDATE_MS) shouldRender = true;
+    if (elapsed >= 1000) shouldRender = true;
     else if (obj.displayPath && obj.displayPath.length > 0) {
       const prev = obj.displayPath[obj.displayPath.length-1];
       const d = calculateDistance(prev[0], prev[1], latlng[0], latlng[1]);
       if (d > 1) shouldRender = true;
     } else shouldRender = true;
-
-    if (shouldRender) {
-      if (!meta.pending) {
-        meta.pending = () => {
-          const m = obj.marker;
-          m.setLatLng(latlng);
-
-          // 更新 marker DOM
-          const el = m.getElement && m.getElement();
-          if (el) {
-            const img = el.querySelector('img');
-            if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
-            const label = el.querySelector('.label');
-            if (label) {
-              label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
-                <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
-                <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>`;
-              label.style.borderLeft = `3px solid ${color}`;
-            }
-          } else {
-            m.setIcon(makeDivIcon(data)); // fallback
+    if (shouldRender && !meta.pending) {
+      meta.pending = () => {
+        const m = obj.marker;
+        m.setLatLng(latlng);
+        const el = m.getElement && m.getElement();
+        if (el) {
+          const img = el.querySelector('img');
+          if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
+          const label = el.querySelector('.label');
+          if (label) {
+            label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
+              <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
+              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>`;
+            label.style.borderLeft = `3px solid ${color}`;
           }
-
-          // --- 畫軌跡 (狀態判斷抽稀 + 高度顏色 + tooltip) ---
-          if (trackPoint) {
-            if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
-            obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
-
-            // 判斷是否巡航
-            let epsilon = 0.0003; // 中度抽稀
-            if (data.alt < 3000) {
-              epsilon = 0.0; // 降落/起飛：不抽稀
-            } else {
-              epsilon = 0.001; // 高空巡航：抽稀更強
-            }
-function crossesIDL(lon1, lon2) {
-  return Math.abs(lon1 - lon2) > 180;
-}
-            let simplified;
-            if (epsilon > 0) {
-              simplified = rdp(obj.rawPathForDisplay.map(p => [p[0], p[1]]), epsilon);
-            } else {
-              simplified = obj.rawPathForDisplay.map(p => [p[0], p[1]]);
-            }
-
-            // 對應 alt 與 speed
-            obj.displayPath = simplified.map(pt => {
-              let nearest = obj.rawPathForDisplay.reduce((best, cur) => {
-                const d = (pt[0]-cur[0])**2 + (pt[1]-cur[1])**2;
-                return d < best.d ? { d, val: cur } : best;
-              }, { d: Infinity, val: [pt[0], pt[1], data.alt, data.speed] }).val;
-              return [pt[0], pt[1], nearest[2], nearest[3]];
-            });
-
-            // 移除舊線段
-            obj.segments.forEach(seg => map.removeLayer(seg));
-            obj.segments = [];
-
-            // 分段畫彩色線，每段有 tooltip
-            for (let i = 1; i < obj.displayPath.length; i++) {
-              const prev = obj.displayPath[i-1];
-              const curr = obj.displayPath[i];
-              const alt = curr[2] || 0;
-              const spd = curr[3] || 0;
-              if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
-              const seg = L.polyline(
-                [ [prev[0], prev[1]], [curr[0], curr[1]] ],
-                { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
-              ).addTo(map);
-
-              seg.bindTooltip(`${Math.round(alt)} ft`, {
-  sticky: true,
-  direction: 'right',
-  offset: [10, 0]
-});
-
-              obj.segments.push(seg);
-            }
-          }
-
-          meta.lastRender = Date.now();
-          meta.pending = null;
-          document.getElementById('connCount').textContent = aircrafts.size;
-        };
-        requestAnimationFrame(meta.pending);
-      }
+        } else {
+          m.setIcon(makeDivIcon(data)); // fallback
+        }
+        // 不畫軌跡
+        meta.lastRender = Date.now();
+        meta.pending = null;
+        document.getElementById('connCount').textContent = aircrafts.size;
+      };
+      requestAnimationFrame(meta.pending);
     }
-
   } else {
     // 新增飛機
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
-    marker.on('click', () => showAircraftPanel(data));
+    marker.on('click', () => {
+      clearAllAircraftTracks();
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+    });
     aircrafts.set(id, {
       marker,
       displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
@@ -457,11 +307,6 @@ function crossesIDL(lon1, lon2) {
     aircraftMeta.get(id).lastRender = now;
   }
 }
-
-
-
-
-
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
     const o = aircrafts.get(id);
@@ -471,7 +316,6 @@ function removeAircraft(id) {
     document.getElementById('connCount').textContent = aircrafts.size;
   }
 }
-
 function removeStaleAircrafts(ms = 30000) {
   const now = Date.now();
   for (const [k, v] of aircrafts.entries()) {
@@ -486,7 +330,7 @@ function removeStaleAircrafts(ms = 30000) {
 setInterval(() => removeStaleAircrafts(), 5000);
 
 // Panel
-function showAircraftPanel(data) {
+function showAircraftPanel(data, id) {
   let p = document.getElementById('aircraftPanel');
   if (!p) {
     p = document.createElement('div');
@@ -510,7 +354,7 @@ function showAircraftPanel(data) {
     <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    <button onclick="document.getElementById('aircraftPanel').remove()" style="margin-top:8px;padding:4px 8px;">Close</button>`;
+    <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
 
 // WebSocket
@@ -529,15 +373,49 @@ function connectWS() {
       else if (m.type === 'aircraft_snapshot') {
         m.payload.forEach(a => updateAircraft(a.id, a));
       }
-      // 處理歷史軌跡
+      // 歷史軌跡資料（只記錄，不自動畫）
       else if (m.type === 'aircraft_track_history') {
         const { aircraftId, tracks } = m.payload;
-        createHistoricalTrack(aircraftId, tracks);
+        if (!aircrafts.has(aircraftId)) {
+          const lastTrack = tracks[tracks.length - 1];
+          const dummyData = {
+            callsign: aircraftId,
+            type: '??',
+            lat: lastTrack.lat,
+            lon: lastTrack.lon,
+            alt: lastTrack.alt,
+            heading: 0,
+            speed: 0
+          };
+          const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
+          marker.on('click', () => {
+            clearAllAircraftTracks();
+            showAircraftTrack(aircraftId);
+            showAircraftPanel(dummyData, aircraftId);
+          });
+          aircrafts.set(aircraftId, {
+            marker,
+            path: [],
+            rawTrack: [],
+            rawPathForDisplay: [],
+            displayPath: [],
+            segments: [],
+            lastSeen: Date.now(),
+            data: dummyData
+          });
+        }
+        const obj = aircrafts.get(aircraftId);
+        if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+        obj.rawPathForDisplay = obj.rawPathForDisplay.concat(
+          tracks.map(t => [t.lat, t.lon, t.alt, t.speed || 0])
+        );
       }
-      // 清除軌跡
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
-        clearAircraftTrack(aircraftId);
+        if (aircrafts.has(aircraftId)) {
+          aircrafts.get(aircraftId).segments.forEach(s => map.removeLayer(s));
+          aircrafts.get(aircraftId).segments = [];
+        }
       }
       else if (m.type === 'aircraft_remove') {
         m.payload.forEach(id => removeAircraft(id));
