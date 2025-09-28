@@ -134,9 +134,15 @@ function isValidTrackPoint(prevPoint, newPoint, maxDistanceKm = 500, maxTimeGapM
 }
 
 // 地圖圖層設定
-const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png');
-const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}');
-const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}');
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+});
+const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
 
 // OpenAIP 航圖疊層
 const openAIP = L.tileLayer(
