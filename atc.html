@@ -156,28 +156,6 @@ function makeDivIcon(data){
   });
 }
 
-// RDP（Douglas-Peucker軌跡抽稀）
-function rdp(points, epsilon) {
-  if (points.length < 3) return points;
-  let dmax = 0, index = 0;
-  const lineDist = (p, a, b) => {
-    const [x0,y0] = p, [x1,y1]=a, [x2,y2]=b;
-    const num = Math.abs((y2-y1)*x0 - (x2-x1)*y0 + x2*y1 - y2*x1);
-    const den = Math.sqrt((y2-y1)**2 + (x2-x1)**2) + 1e-12;
-    return num/den;
-  };
-  for (let i=1;i<points.length-1;i++){
-    const d = lineDist(points[i], points[0], points[points.length-1]);
-    if (d > dmax) { index = i; dmax = d; }
-  }
-  if (dmax > epsilon) {
-    const rec1 = rdp(points.slice(0, index+1), epsilon);
-    const rec2 = rdp(points.slice(index), epsilon);
-    return rec1.slice(0,-1).concat(rec2);
-  } else {
-    return [points[0], points[points.length-1]];
-  }
-}
 function crossesIDL(lon1, lon2) {
   return Math.abs(lon1 - lon2) > 180;
 }
@@ -185,25 +163,13 @@ function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
 }
 
-// 只畫指定飛機的軌跡
+// 只畫指定飛機的軌跡（無抽稀）
 function showAircraftTrack(id) {
   const obj = aircrafts.get(id);
   if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) return;
   clearAllAircraftTracks();
-  let epsilon = obj.data.alt < 3000 ? 0.0 : 0.001;
-  let simplified;
-  if (epsilon > 0) {
-    simplified = rdp(obj.rawPathForDisplay.map(p => [p[0], p[1]]), epsilon);
-  } else {
-    simplified = obj.rawPathForDisplay.map(p => [p[0], p[1]]);
-  }
-  obj.displayPath = simplified.map(pt => {
-    let nearest = obj.rawPathForDisplay.reduce((best, cur) => {
-      const d = (pt[0]-cur[0])**2 + (pt[1]-cur[1])**2;
-      return d < best.d ? { d, val: cur } : best;
-    }, { d: Infinity, val: [pt[0], pt[1], obj.data.alt, obj.data.speed] }).val;
-    return [pt[0], pt[1], nearest[2], nearest[3]];
-  });
+  const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
+  obj.displayPath = simplified;
   for (let i = 1; i < obj.displayPath.length; i++) {
     const prev = obj.displayPath[i-1];
     const curr = obj.displayPath[i];
@@ -316,6 +282,10 @@ function removeAircraft(id) {
     document.getElementById('connCount').textContent = aircrafts.size;
   }
 }
+
+// 可選：如你不想自動移除下線飛機，註解掉這行
+// setInterval(() => removeStaleAircrafts(), 5000);
+
 function removeStaleAircrafts(ms = 30000) {
   const now = Date.now();
   for (const [k, v] of aircrafts.entries()) {
@@ -327,7 +297,6 @@ function removeStaleAircrafts(ms = 30000) {
   }
   document.getElementById('connCount').textContent = aircrafts.size;
 }
-setInterval(() => removeStaleAircrafts(), 5000);
 
 // Panel
 function showAircraftPanel(data, id) {
