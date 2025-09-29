@@ -137,6 +137,9 @@ L.control.layers({
 const aircrafts = new Map();
 const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
 
+// 這個變數記錄目前聚焦的飛機 id
+let focusedAircraftId = null;
+
 function makeDivIcon(data){
   const imgW=32,imgH=32,labelW=150,labelH=50,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
   const color=getAltitudeColor(data.alt);
@@ -246,10 +249,13 @@ function updateAircraft(id, data, trackPoint = null) {
         } else {
           m.setIcon(makeDivIcon(data)); // fallback
         }
-        // 不畫軌跡
         meta.lastRender = Date.now();
         meta.pending = null;
         document.getElementById('connCount').textContent = aircrafts.size;
+        // 自動延伸軌跡（如果聚焦）
+        if (id === focusedAircraftId) {
+          showAircraftTrack(id);
+        }
       };
       requestAnimationFrame(meta.pending);
     }
@@ -258,6 +264,7 @@ function updateAircraft(id, data, trackPoint = null) {
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
     marker.on('click', () => {
       clearAllAircraftTracks();
+      focusedAircraftId = id;
       showAircraftTrack(id);
       showAircraftPanel(data, id);
     });
@@ -323,7 +330,7 @@ function showAircraftPanel(data, id) {
     <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();" style="margin-top:8px;padding:4px 8px;">Close</button>`;
+    <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
 
 // WebSocket
@@ -359,6 +366,7 @@ function connectWS() {
           const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
           marker.on('click', () => {
             clearAllAircraftTracks();
+            focusedAircraftId = aircraftId;
             showAircraftTrack(aircraftId);
             showAircraftPanel(dummyData, aircraftId);
           });
