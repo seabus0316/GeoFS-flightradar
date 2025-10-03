@@ -126,6 +126,7 @@ wss.on('connection', (ws, req) => {
           departure: p.departure || '',
           arrival: p.arrival || '',
           takeoffTime: p.takeoffTime || '',
+          squawk: p.squawk || '',
           ts: Date.now()
         };
 
@@ -200,5 +201,3 @@ setInterval(() => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
-
