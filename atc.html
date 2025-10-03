@@ -18,6 +18,14 @@
       white-space: nowrap;
       margin-left: 6px;
     }
+    .label.emergency {
+      background: rgba(139, 0, 0, 0.95);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 15px rgba(255,0,0,0.8); }
+    }
     .legend {
       position: absolute;
       left: 10px;
@@ -141,18 +149,23 @@ const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
 let focusedAircraftId = null;
 
 function makeDivIcon(data){
-  const imgW=32,imgH=32,labelW=150,labelH=50,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
+  const imgW=32,imgH=32,labelW=150,labelH=60,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
   const color=getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const labelClass = isEmergency ? 'label emergency' : 'label';
+  const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+  
   return L.divIcon({
     html:`
       <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
         <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
-        <div class="label" style="border-left:3px solid ${color};">
+        <div class="${labelClass}" style="border-left:3px solid ${color};">
           <strong>${escapeHtml(data.callsign||'UNK')}</strong>
           <div style="font-size:11px;">
             ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
           </div>
           <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
+          ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
         </div>
       </div>`,
     className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
@@ -209,6 +222,9 @@ function ensureMeta(id) {
 function updateAircraft(id, data, trackPoint = null) {
   const latlng = [data.lat, data.lon];
   const color = getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const labelClass = isEmergency ? 'label emergency' : 'label';
+  const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
   const now = Date.now();
   ensureMeta(id);
   if (aircrafts.has(id)) {
@@ -241,9 +257,11 @@ function updateAircraft(id, data, trackPoint = null) {
           if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
           const label = el.querySelector('.label');
           if (label) {
+            label.className = labelClass;
             label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
               <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
-              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>`;
+              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
+              ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
             label.style.borderLeft = `3px solid ${color}`;
           }
         } else {
@@ -322,13 +340,18 @@ function showAircraftPanel(data, id) {
     document.body.appendChild(p);
   }
   const c = getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const emergencyBadge = isEmergency ? '<div style="background:#8B0000;padding:4px;border-radius:4px;margin-top:5px;font-weight:bold;text-align:center;">⚠️ EMERGENCY - 7700 ⚠️</div>' : '';
+  
   p.innerHTML = `
     <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign || 'UNK')}</h3>
+    ${emergencyBadge}
     <div><strong>Flight:</strong> ${escapeHtml(data.flightNo || '')}</div>
     <div><strong>Route:</strong> ${escapeHtml(data.departure || '')} → ${escapeHtml(data.arrival || '')}</div>
     <div><strong>Aircraft:</strong> ${escapeHtml(data.type || '')}</div>
     <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
+    <div><strong>Squawk:</strong> ${escapeHtml(data.squawk || '—')}</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
     <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
@@ -361,7 +384,8 @@ function connectWS() {
             lon: lastTrack.lon,
             alt: lastTrack.alt,
             heading: 0,
-            speed: 0
+            speed: 0,
+            squawk: ''
           };
           const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
           marker.on('click', () => {
