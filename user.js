@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time)
+// @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time + Squawk)
 // @namespace    http://tampermonkey.net/
-// @version      1.6
-// @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo；按W收合；自動偵測Takeoff UTC
+// @version      1.7
+// @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
 // @updateURL   https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/user.js
@@ -13,7 +13,7 @@
   'use strict';
 
   /*** CONFIG ***/
-  const WS_URL = 'https://geofs-flightradar.onrender.com/'; // 本地測試 WebSocket
+  const WS_URL = 'https://geofs-flightradar.onrender.com/';
   const SEND_INTERVAL_MS = 500;
   /*************/
 
@@ -22,7 +22,7 @@
   }
 
   // --- 全域變數 ---
-  let flightInfo = { departure: '', arrival: '', flightNo: '' };
+  let flightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
@@ -139,7 +139,8 @@
       flightNo: flightInfo.flightNo,
       departure: flightInfo.departure,
       arrival: flightInfo.arrival,
-      takeoffTime: takeoffTimeUTC
+      takeoffTime: takeoffTimeUTC,
+      squawk: flightInfo.squawk
     };
   }
 
@@ -193,22 +194,25 @@
       <div>Dep: <input id="depInput" style="width:60px"></div>
       <div>Arr: <input id="arrInput" style="width:60px"></div>
       <div>Flt#: <input id="fltInput" style="width:60px"></div>
+      <div>SQK: <input id="sqkInput" style="width:60px" maxlength="4"></div>
       <button id="saveBtn">Save</button>
     `;
 
     document.body.appendChild(flightUI);
 
-        // 讓三格自動轉大寫
-  ['depInput','arrInput','fltInput'].forEach(id => {
-    const el = document.getElementById(id);
-    el.addEventListener('input', () => {
-      el.value = el.value.toUpperCase();
+    // 讓輸入框自動轉大寫
+    ['depInput','arrInput','fltInput','sqkInput'].forEach(id => {
+      const el = document.getElementById(id);
+      el.addEventListener('input', () => {
+        el.value = el.value.toUpperCase();
+      });
     });
-  });
+
     document.getElementById('saveBtn').onclick = () => {
       flightInfo.departure = document.getElementById('depInput').value.trim();
       flightInfo.arrival = document.getElementById('arrInput').value.trim();
       flightInfo.flightNo = document.getElementById('fltInput').value.trim();
+      flightInfo.squawk = document.getElementById('sqkInput').value.trim();
       showToast('Flight info saved!');
     };
   }
@@ -226,16 +230,18 @@
       }
     }
   });
-// --- 關閉所有 input 的 autocomplete ---
-document.querySelectorAll("input").forEach(el => {
-  el.setAttribute("autocomplete", "off");
-});
-// --- 防止 input 觸發 GeoFS hotkey ---
-document.addEventListener("keydown", (e) => {
-  const target = e.target;
-  if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
-    e.stopPropagation(); // 阻止事件冒泡到 GeoFS
-  }
-}, true);
+
+  // --- 關閉所有 input 的 autocomplete ---
+  document.querySelectorAll("input").forEach(el => {
+    el.setAttribute("autocomplete", "off");
+  });
+
+  // --- 防止 input 觸發 GeoFS hotkey ---
+  document.addEventListener("keydown", (e) => {
+    const target = e.target;
+    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+      e.stopPropagation();
+    }
+  }, true);
 
 })();
