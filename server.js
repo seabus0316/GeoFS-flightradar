@@ -127,7 +127,8 @@ wss.on('connection', (ws, req) => {
           arrival: p.arrival || '',
           takeoffTime: p.takeoffTime || '',
           squawk: p.squawk || '',
-          ts: Date.now()
+          ts: Date.now(),
+          flightPlan: p.flightPlan || []
         };
 
         // 更新飛機狀態
