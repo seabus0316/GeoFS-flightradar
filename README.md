@@ -21,7 +21,7 @@ ATC Screen url: https://geofs-flightradar.onrender.com
 [![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=google&logoColor=white)](https://geofs-flightradar.onrender.com/)
 
 
-## Star History
+# Star History
 
 <a href="https://www.star-history.com/#seabus0316/GeoFS-flightradar&Date">
  <picture>
