@@ -392,7 +392,12 @@ function showAircraftPanel(data, id) {
         zIndexOffset: 1000
       })
       .addTo(map)
-      .bindTooltip(label, { permanent: true, direction: 'top' });
+      .bindTooltip(label, { 
+        permanent: false,  // 改成 false,只在滑鼠移過去時顯示
+        direction: 'top',
+        className: 'waypoint-tooltip',
+        offset: [0, -5]
+      });
 
       console.log("✅ 標記已加到地圖:", marker);
       flightPlanMarkers.push(marker);
