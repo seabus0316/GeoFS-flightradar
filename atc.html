@@ -248,6 +248,7 @@ function updateAircraft(id, data, trackPoint = null) {
       if (d > 1) shouldRender = true;
     } else shouldRender = true;
     if (shouldRender && !meta.pending) {
+      
       meta.pending = () => {
         const m = obj.marker;
         m.setLatLng(latlng);
@@ -275,6 +276,7 @@ function updateAircraft(id, data, trackPoint = null) {
           showAircraftTrack(id);
         }
       };
+      
       requestAnimationFrame(meta.pending);
     }
   } else {
@@ -297,6 +299,9 @@ function updateAircraft(id, data, trackPoint = null) {
     });
     aircraftMeta.get(id).lastRender = now;
   }
+  if (id === focusedAircraftId) {
+  showAircraftPanel(data, id);
+}
 }
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
