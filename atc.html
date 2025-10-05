@@ -441,7 +441,6 @@ function showAircraftPanel(data, id) {
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
     <div><strong>Squawk:</strong> ${escapeHtml(data.squawk || '—')}</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    ${waypointsHtml}
     <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
 
