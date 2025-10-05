@@ -105,6 +105,7 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   return R * c;
 }
 function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+// --- flight plan pane (航點專用圖層) ---
 
 // 地圖設定
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -127,15 +128,20 @@ const openAIP = L.tileLayer(
   }
 );
 const osmWithOpenAIP = L.layerGroup([osmLayer, openAIP]);
-const canvasRenderer = L.canvas({ padding: 0.5 });
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [googleSat],
-  renderer: canvasRenderer
+  layers: [googleSat]
 }).setView([20,0],2);
+
+
+// ✅ 在這裡建立 pane
+map.createPane('flightPlanPane');
+map.getPane('flightPlanPane').style.zIndex = 650; // 比 tile 高
+map.getPane('flightPlanPane').style.pointerEvents = 'none'; // 不擋滑鼠
+
 L.control.layers({
   "OpenStreetMap + OpenAIP": osmWithOpenAIP,
   "Google Streets": googleStreet,
@@ -147,6 +153,13 @@ const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
 
 // 這個變數記錄目前聚焦的飛機 id
 let focusedAircraftId = null;
+
+// Flight plan markers
+let flightPlanMarkers = [];
+function clearFlightPlanMarkers() {
+  flightPlanMarkers.forEach(m => map.removeLayer(m));
+  flightPlanMarkers = [];
+}
 
 function makeDivIcon(data){
   const imgW=32,imgH=32,labelW=150,labelH=60,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
@@ -248,7 +261,7 @@ function updateAircraft(id, data, trackPoint = null) {
       if (d > 1) shouldRender = true;
     } else shouldRender = true;
     if (shouldRender && !meta.pending) {
-      
+
       meta.pending = () => {
         const m = obj.marker;
         m.setLatLng(latlng);
@@ -276,7 +289,7 @@ function updateAircraft(id, data, trackPoint = null) {
           showAircraftTrack(id);
         }
       };
-      
+
       requestAnimationFrame(meta.pending);
     }
   } else {
@@ -300,8 +313,8 @@ function updateAircraft(id, data, trackPoint = null) {
     aircraftMeta.get(id).lastRender = now;
   }
   if (id === focusedAircraftId) {
-  showAircraftPanel(data, id);
-}
+    showAircraftPanel(data, id);
+  }
 }
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
@@ -330,6 +343,92 @@ function removeStaleAircrafts(ms = 30000) {
 
 // Panel
 function showAircraftPanel(data, id) {
+  console.log("🔥 showAircraftPanel triggered:", id);
+  console.log("flightPlan data:", data.flightPlan);
+  console.log("flightPlan type:", typeof data.flightPlan);
+  console.log("flightPlan isArray?", Array.isArray(data.flightPlan));
+  
+  // 先清除舊的航點標記
+  clearFlightPlanMarkers();
+  
+  // 如果 flightPlan 是字串,先解析成陣列
+  let flightPlan = data.flightPlan;
+  if (typeof flightPlan === 'string') {
+    try {
+      flightPlan = JSON.parse(flightPlan);
+      console.log("✅ flightPlan 已從字串解析為陣列");
+    } catch (e) {
+      console.error("❌ 無法解析 flightPlan 字串:", e);
+      flightPlan = null;
+    }
+  }
+  
+  // 檢查 flightPlan 並繪製航點與航線
+  if (flightPlan && Array.isArray(flightPlan) && flightPlan.length) {
+    console.log("📍 開始處理 flightPlan,共", flightPlan.length, "個航點");
+    const latlngs = [];
+    
+    flightPlan.forEach((wp, i) => {
+      console.log(`處理航點 ${i}:`, wp);
+      
+      const latNum = Number(wp.lat);
+      const lonNum = Number(wp.lon);
+
+      if (isNaN(latNum) || isNaN(lonNum)) {
+        console.warn("❌ 無效航點:", wp);
+        return;
+      }
+
+      const label = wp.ident || wp.name || ('WP' + (i + 1));
+      console.log(`🟢 新增航點 ${label} @ ${latNum}, ${lonNum}`);
+
+      // 顯眼紅黃圈圈標記 - 不使用 pane,直接加到地圖
+      const marker = L.circleMarker([latNum, lonNum], {
+        radius: 8,           // 圓點半徑(像素) - 改這裡!
+        color: '#ff0000',    // 外框顏色
+        weight: 3,           // 外框粗細
+        fillColor: '#ffff00', // 填充顏色
+        fillOpacity: 1,
+        zIndexOffset: 1000
+      })
+      .addTo(map)
+      .bindTooltip(label, { permanent: true, direction: 'top' });
+
+      console.log("✅ 標記已加到地圖:", marker);
+      flightPlanMarkers.push(marker);
+      latlngs.push([latNum, lonNum]);
+    });
+
+    // 如果有兩個以上航點,就畫線連起來
+    if (latlngs.length > 1) {
+      const routeLine = L.polyline(latlngs, {
+        color: '#ff6600',
+        weight: 4,
+        opacity: 1,
+        dashArray: '8 8'
+      }).addTo(map);
+      flightPlanMarkers.push(routeLine);
+      console.log(`🟠 航線已繪製,共 ${latlngs.length} 點`);
+    }
+
+    console.log("✅ 總共建立了", flightPlanMarkers.length, "個標記/線段");
+  } else {
+    console.log("⚠️ 沒有 flightPlan 資料或格式不正確");
+  }
+
+  // 以下是面板部分（原封保留）
+  let waypointsHtml = '';
+  if (data.flightPlan && Array.isArray(data.flightPlan) && data.flightPlan.length) {
+    waypointsHtml = `<div style="margin-top:6px;"><strong>未來航點:</strong>
+      <ol style="margin:4px 0 0 16px;padding:0;font-size:12px;">${
+        data.flightPlan.map((wp, i) =>
+          `<li>${escapeHtml(wp.ident || wp.name || ('WP'+(i+1)))} (${Number(wp.lat).toFixed(3)}, ${Number(wp.lon).toFixed(3)})${
+            wp.alt ? ' @'+Math.round(Number(wp.alt))+'ft' : ''
+          }</li>`
+        ).join('')
+      }</ol></div>`;
+  }
+
   let p = document.getElementById('aircraftPanel');
   if (!p) {
     p = document.createElement('div');
@@ -347,7 +446,7 @@ function showAircraftPanel(data, id) {
   const c = getAltitudeColor(data.alt);
   const isEmergency = data.squawk === '7700';
   const emergencyBadge = isEmergency ? '<div style="background:#8B0000;padding:4px;border-radius:4px;margin-top:5px;font-weight:bold;text-align:center;">⚠️ EMERGENCY - 7700 ⚠️</div>' : '';
-  
+
   p.innerHTML = `
     <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign || 'UNK')}</h3>
     ${emergencyBadge}
@@ -358,8 +457,10 @@ function showAircraftPanel(data, id) {
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
     <div><strong>Squawk:</strong> ${escapeHtml(data.squawk || '—')}</div>
     <div><strong>Takeoff (UTC):</strong> ${escapeHtml(data.takeoffTime || '—')}</div>
-    <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;" style="margin-top:8px;padding:4px 8px;">Close</button>`;
+    ${waypointsHtml}
+    <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();" style="margin-top:8px;padding:4px 8px;">Close</button>`;
 }
+
 
 // WebSocket
 let ws;
