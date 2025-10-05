@@ -125,24 +125,31 @@
 
   // --- 組裝 payload ---
   function buildPayload(snap) {
-    checkTakeoff();
-    return {
-      id: getPlayerCallsign(),
-      callsign: getPlayerCallsign(),
-      type: getAircraftName(),
-      lat: snap.lat,
-      lon: snap.lon,
-      alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
-      altMSL: Math.round(snap.altMSL || 0),
-      heading: Math.round(snap.heading || 0),
-      speed: Math.round(snap.speed || 0),
-      flightNo: flightInfo.flightNo,
-      departure: flightInfo.departure,
-      arrival: flightInfo.arrival,
-      takeoffTime: takeoffTimeUTC,
-      squawk: flightInfo.squawk
-    };
-  }
+  checkTakeoff();
+  let flightPlan = [];
+  try {
+    if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
+      flightPlan = geofs.flightPlan.export();
+    }console.log('[ATC-Reporter] FlightPlan:', flightPlan);
+  } catch (e) {}
+  return {
+    id: getPlayerCallsign(),
+    callsign: getPlayerCallsign(),
+    type: getAircraftName(),
+    lat: snap.lat,
+    lon: snap.lon,
+    alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
+    altMSL: Math.round(snap.altMSL || 0),
+    heading: Math.round(snap.heading || 0),
+    speed: Math.round(snap.speed || 0),
+    flightNo: flightInfo.flightNo,
+    departure: flightInfo.departure,
+    arrival: flightInfo.arrival,
+    takeoffTime: takeoffTimeUTC,
+    squawk: flightInfo.squawk,
+    flightPlan: flightPlan  // <--- 新增這一行
+  };
+}
 
   // --- 定期傳送 ---
   setInterval(() => {
