@@ -373,7 +373,7 @@ function showAircraftPanel(data, id) {
         fillColor: '#ff0',
         fillOpacity: 1
       }).addTo(map).bindTooltip(label, {
-        permanent: false,
+        permanent: true,
         direction: 'top',
         className: 'waypoint-tooltip',
         offset: [0, -5]
@@ -453,6 +453,16 @@ function connectWS() {
   ws.addEventListener('message', ev => {
     try {
       const m = JSON.parse(ev.data);
+      
+      // 🔍 DEBUG: 輸出原始訊息
+      if (m.type === 'aircraft_update' || m.type === 'aircraft_snapshot') {
+        console.log("📥 Raw WebSocket message:", m);
+        const payload = Array.isArray(m.payload) ? m.payload : [m.payload];
+        payload.forEach(a => {
+          console.log(`Aircraft ${a.id} has flightPlan?`, 'flightPlan' in a, a.flightPlan);
+        });
+      }
+      
       if (m.type === 'aircraft_update') {
         (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
           updateAircraft(a.id, a, m.trackPoint)
