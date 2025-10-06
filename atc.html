@@ -58,7 +58,7 @@
       margin-right: 6px;
       border-radius: 2px;
     }
-    .waypoint-tooltip {
+        .waypoint-tooltip {
       font-size: 11px !important;
       padding: 3px 6px !important;
       background: rgba(0, 0, 0, 0.85) !important;
@@ -70,6 +70,37 @@
     }
     .waypoint-tooltip::before {
       border-top-color: rgba(0, 0, 0, 0.85) !important;
+    }
+    .waypoint-marker {
+      background: rgba(255, 102, 0, 0.9);
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 10px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+    .waypoint-passed {
+      background: rgba(100, 100, 100, 0.7) !important;
+      border-color: #666 !important;
+    }
+    .waypoint-active {
+      background: rgba(0, 255, 0, 0.9) !important;
+      border-color: #0f0 !important;
+      animation: pulse-active 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-active {
+      0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,255,0,0.4); }
+      50% { transform: scale(1.2); box-shadow: 0 2px 15px rgba(0,255,0,0.8); }
+    }
+    .route-arrow {
+      font-size: 16px;
+      color: #ff6600;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
     }
   </style>
 </head>
@@ -366,18 +397,20 @@ function showAircraftPanel(data, id) {
       }
       const label = wp.ident || wp.name || ('WP' + (i + 1));
       console.log(`➕ Adding marker: ${label} at [${lat}, ${lon}]`);
-      const m = L.circleMarker([lat, lon], {
-        radius: 8,
-        color: '#f00',
-        weight: 3,
-        fillColor: '#ff0',
-        fillOpacity: 1
-      }).addTo(map).bindTooltip(label, {
-        permanent: false,
-        direction: 'top',
-        className: 'waypoint-tooltip',
-        offset: [0, -5]
-      });
+      const waypointIcon = L.icon({
+      iconUrl: 'https://i.ibb.co/VWH3qBpX/2.png',
+      iconSize: [24, 24],
+      iconAnchor: [12, 12],
+      tooltipAnchor: [0, -12]
+    });
+    const m = L.marker([lat, lon], {
+      icon: waypointIcon
+    }).addTo(map).bindTooltip(label, {
+      permanent: false,
+      direction: 'top',
+      className: 'waypoint-tooltip',
+      offset: [0, -12]
+    });
       console.log("✅ Marker added to map");
       flightPlanMarkers.push(m);
       latlngs.push([lat, lon]);
@@ -385,7 +418,7 @@ function showAircraftPanel(data, id) {
     if (latlngs.length > 1) {
       console.log("➕ Drawing route line");
       const route = L.polyline(latlngs, {
-        color: '#f60',
+        color: '#CEA5D5',
         weight: 4,
         opacity: 1,
         dashArray: '8 8'
