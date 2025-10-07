@@ -58,7 +58,7 @@
       margin-right: 6px;
       border-radius: 2px;
     }
-        .waypoint-tooltip {
+    .waypoint-tooltip {
       font-size: 11px !important;
       padding: 3px 6px !important;
       background: rgba(0, 0, 0, 0.85) !important;
@@ -148,7 +148,17 @@ function calculateDistance(lat1, lon1, lat2, lon2) {
   const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
   return R * c;
 }
-function escapeHtml(s){return String(s||'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function(c) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c];
+  });
+}
 
 // 地圖設定
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -178,6 +188,10 @@ const map = L.map('map', {
   maxBounds: [[-85, -360], [85, 360]],
   layers: [googleSat]
 }).setView([20,0],2);
+
+// 新增 waypointPane (z-index 比 tilePane高，比overlayPane低)
+map.createPane('waypointPane');
+map.getPane('waypointPane').style.zIndex = 250;
 
 L.control.layers({
   "OpenStreetMap + OpenAIP": osmWithOpenAIP,
@@ -398,30 +412,34 @@ function showAircraftPanel(data, id) {
       const label = wp.ident || wp.name || ('WP' + (i + 1));
       console.log(`➕ Adding marker: ${label} at [${lat}, ${lon}]`);
       const waypointIcon = L.icon({
-      iconUrl: 'https://i.ibb.co/VWH3qBpX/2.png',
-      iconSize: [24, 24],
-      iconAnchor: [12, 12],
-      tooltipAnchor: [0, -12]
-    });
-    const m = L.marker([lat, lon], {
-      icon: waypointIcon
-    }).addTo(map).bindTooltip(label, {
-      permanent: false,
-      direction: 'top',
-      className: 'waypoint-tooltip',
-      offset: [0, -12]
-    });
+        iconUrl: 'https://i.ibb.co/VWH3qBpX/2.png',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        tooltipAnchor: [0, -12]
+      });
+      // 加入 pane 屬性
+      const m = L.marker([lat, lon], {
+        icon: waypointIcon,
+        pane: 'waypointPane'
+      }).addTo(map).bindTooltip(label, {
+        permanent: false,
+        direction: 'top',
+        className: 'waypoint-tooltip',
+        offset: [0, -12]
+      });
       console.log("✅ Marker added to map");
       flightPlanMarkers.push(m);
       latlngs.push([lat, lon]);
     });
     if (latlngs.length > 1) {
       console.log("➕ Drawing route line");
+      // 加入 pane 屬性
       const route = L.polyline(latlngs, {
         color: '#CEA5D5',
         weight: 4,
         opacity: 1,
-        dashArray: '8 8'
+        dashArray: '8 8',
+        pane: 'waypointPane'
       }).addTo(map);
       flightPlanMarkers.push(route);
       console.log("✅ Route line added");
