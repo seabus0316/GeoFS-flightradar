@@ -189,7 +189,7 @@ const map = L.map('map', {
   layers: [googleSat]
 }).setView([20,0],2);
 
-// 新增 waypointPane (z-index 比 tilePane高，比overlayPane低)
+// 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
 map.createPane('waypointPane');
 map.getPane('waypointPane').style.zIndex = 250;
 
@@ -218,6 +218,8 @@ function makeDivIcon(data){
   const isEmergency = data.squawk === '7700';
   const labelClass = isEmergency ? 'label emergency' : 'label';
   const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+  const depShort = (data.departure||'').substring(0, 4);
+  const arrShort = (data.arrival||'').substring(0, 4);
   
   return L.divIcon({
     html:`
@@ -228,7 +230,7 @@ function makeDivIcon(data){
           <div style="font-size:11px;">
             ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
           </div>
-          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
+          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
           ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
         </div>
       </div>`,
@@ -322,10 +324,12 @@ function updateAircraft(id, data, trackPoint = null) {
           if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
           const label = el.querySelector('.label');
           if (label) {
+            const depShort = (data.departure||'').substring(0, 4);
+            const arrShort = (data.arrival||'').substring(0, 4);
             label.className = labelClass;
             label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
               <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
-              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(data.departure||'')}→${escapeHtml(data.arrival||'')}</div>
+              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
               ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
             label.style.borderLeft = `3px solid ${color}`;
           }
@@ -481,12 +485,14 @@ function showAircraftPanel(data, id) {
   const c = getAltitudeColor(data.alt);
   const isEmergency = data.squawk === '7700';
   const emergencyBadge = isEmergency ? '<div style="background:#8B0000;padding:4px;border-radius:4px;margin-top:5px;font-weight:bold;text-align:center;">⚠️ EMERGENCY - 7700 ⚠️</div>' : '';
+  const depShort = (data.departure||'').substring(0, 4);
+  const arrShort = (data.arrival||'').substring(0, 4);
 
   p.innerHTML = `
     <h3 style="margin:0 0 5px;border-left:3px solid ${c};padding-left:8px;">${escapeHtml(data.callsign || 'UNK')}</h3>
     ${emergencyBadge}
     <div><strong>Flight:</strong> ${escapeHtml(data.flightNo || '')}</div>
-    <div><strong>Route:</strong> ${escapeHtml(data.departure || '')} → ${escapeHtml(data.arrival || '')}</div>
+    <div><strong>Route:</strong> ${escapeHtml(depShort)} → ${escapeHtml(arrShort)}</div>
     <div><strong>Aircraft:</strong> ${escapeHtml(data.type || '')}</div>
     <div><strong>Altitude:</strong> <span style="color:${c};font-weight:bold;">${Math.round(data.alt || 0)} ft</span></div>
     <div><strong>Speed:</strong> ${formatSpeed(data.speed)} kt</div>
