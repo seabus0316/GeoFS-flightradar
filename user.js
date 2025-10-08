@@ -1,7 +1,7 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time + Squawk)
+// @name         GeoFS Flightradar (ATC Reporter with Enhanced + Flight Info + Takeoff Time + Squawk)
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.8
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
@@ -21,13 +21,11 @@
     console.log('[ATC-Reporter]', ...args);
   }
 
-  // --- 全域變數 ---
   let flightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
 
-  // --- WebSocket 管理 ---
   let ws;
   function connect() {
     try {
@@ -59,14 +57,12 @@
     }
   }
 
-  // --- 工具函式 ---
   function getAircraftName() {
     return geofs?.aircraft?.instance?.aircraftRecord?.name || 'Unknown';
   }
   function getPlayerCallsign() {
     return geofs?.userRecord?.callsign || 'Unknown';
   }
-  // --- AGL 計算 ---
   function calculateAGL() {
     try {
       const altitudeMSL = geofs?.animation?.values?.altitude;
@@ -88,7 +84,6 @@
     return null;
   }
 
-  // --- 起飛偵測 ---
   function checkTakeoff() {
     const onGround = geofs?.aircraft?.instance?.groundContact ?? true;
     if (wasOnGround && !onGround) {
@@ -98,7 +93,6 @@
     wasOnGround = onGround;
   }
 
-  // --- 擷取飛行狀態 ---
   function readSnapshot() {
     try {
       const inst = geofs?.aircraft?.instance;
@@ -123,7 +117,6 @@
     }
   }
 
-  // --- 組裝 payload ---
   function buildPayload(snap) {
   checkTakeoff();
   let flightPlan = [];
@@ -147,11 +140,10 @@
     arrival: flightInfo.arrival,
     takeoffTime: takeoffTimeUTC,
     squawk: flightInfo.squawk,
-    flightPlan: flightPlan  // <--- 新增這一行
+    flightPlan: flightPlan
   };
 }
 
-  // --- 定期傳送 ---
   setInterval(() => {
     if (!ws || ws.readyState !== 1) return;
     const snap = readSnapshot();
@@ -160,7 +152,6 @@
     safeSend({ type: 'position_update', payload });
   }, SEND_INTERVAL_MS);
 
-  // --- Toast 提示 ---
   function showToast(msg) {
     const toast = document.createElement('div');
     toast.textContent = msg;
@@ -191,23 +182,26 @@
     flightUI.style.bottom = '280px';
     flightUI.style.right = '6px';
     flightUI.style.background = 'rgba(0,0,0,0.6)';
-    flightUI.style.padding = '8px';
+    flightUI.style.padding = '6px';
     flightUI.style.borderRadius = '6px';
     flightUI.style.color = 'white';
-    flightUI.style.fontSize = '12px';
+    flightUI.style.fontSize = '11px';
     flightUI.style.zIndex = 999999;
+    flightUI.style.minWidth = '120px';
 
     flightUI.innerHTML = `
-      <div>Dep: <input id="depInput" style="width:60px"></div>
-      <div>Arr: <input id="arrInput" style="width:60px"></div>
-      <div>Flt#: <input id="fltInput" style="width:60px"></div>
-      <div>SQK: <input id="sqkInput" style="width:60px" maxlength="4"></div>
-      <button id="saveBtn">Save</button>
+      <div style="margin-bottom:4px">Dep: <input id="depInput" style="width:50px;font-size:10px;padding:1px;"></div>
+      <div style="margin-bottom:4px">Arr: <input id="arrInput" style="width:50px;font-size:10px;padding:1px;"></div>
+      <div style="margin-bottom:4px">Flt#: <input id="fltInput" style="width:50px;font-size:10px;padding:1px;"></div>
+      <div style="margin-bottom:4px">SQK: <input id="sqkInput" style="width:50px;font-size:10px;padding:1px;" maxlength="4"></div>
+      <div style="display:flex;justify-content:space-between;gap:2px;">
+        <button id="saveBtn" style="font-size:10px;padding:2px 4px;">Save</button>
+        <button id="openBtn" style="font-size:10px;padding:2px 4px;">Open Site</button>
+      </div>
     `;
 
     document.body.appendChild(flightUI);
 
-    // 讓輸入框自動轉大寫
     ['depInput','arrInput','fltInput','sqkInput'].forEach(id => {
       const el = document.getElementById(id);
       el.addEventListener('input', () => {
@@ -222,10 +216,13 @@
       flightInfo.squawk = document.getElementById('sqkInput').value.trim();
       showToast('Flight info saved!');
     };
+
+    document.getElementById('openBtn').onclick = () => {
+      window.open('https://geofs-flightradar.onrender.com', '_blank');
+    };
   }
   injectFlightUI();
 
-  // --- 快捷鍵 W 收合 UI ---
   document.addEventListener('keydown', (e) => {
     if (e.key.toLowerCase() === 'w') {
       if (flightUI.style.display === 'none') {
@@ -238,12 +235,10 @@
     }
   });
 
-  // --- 關閉所有 input 的 autocomplete ---
   document.querySelectorAll("input").forEach(el => {
     el.setAttribute("autocomplete", "off");
   });
 
-  // --- 防止 input 觸發 GeoFS hotkey ---
   document.addEventListener("keydown", (e) => {
     const target = e.target;
     if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
