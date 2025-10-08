@@ -6,6 +6,7 @@ Just like the FlightRadar24 in real world
 
 # How to use?
 Install the user.js and It will send your position info to the atc screen
+press"W" to hide the ui
 
 ATC Screen url: https://geofs-flightradar.onrender.com
 
