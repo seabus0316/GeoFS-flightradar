@@ -191,7 +191,7 @@ const map = L.map('map', {
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
 map.createPane('waypointPane');
-map.getPane('waypointPane').style.zIndex = 250;
+map.getPane('waypointPane').style.zIndex = 550;
 
 L.control.layers({
   "OpenStreetMap + OpenAIP": osmWithOpenAIP,
