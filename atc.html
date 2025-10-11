@@ -300,7 +300,7 @@ function updateAircraft(id, data, trackPoint = null) {
     if (trackPoint) {
       if (!obj.rawTrack) obj.rawTrack = [];
       obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: Date.now(), alt: data.alt});
-      if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
+      if (obj.rawTrack.length > 20000000000000000000) obj.rawTrack.shift();
     }
     if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
     obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
@@ -576,3 +576,4 @@ connectWS();
 </script>
 </body>
 </html>
+
