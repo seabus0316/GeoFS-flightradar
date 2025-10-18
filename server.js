@@ -1,43 +1,83 @@
-// server.js
+// server.js (MongoDB-integrated)
+// replace your existing server.js with this file
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
+const mongoose = require('mongoose');
 
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
 const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 
-// 直接把首頁 serve 成 atc.html
+// ------------ MongoDB ------------
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('✅ MongoDB connected'))
+  .catch(err => {
+    console.error('❌ MongoDB connect error', err);
+    process.exit(1);
+  });
+
+const flightPointSchema = new mongoose.Schema({
+  aircraftId: { type: String, index: true }, // e.g. callsign or id
+  callsign: String,
+  type: String,
+  lat: Number,
+  lon: Number,
+  alt: Number,
+  speed: Number,
+  heading: Number,
+  ts: { type: Number, index: true } // timestamp in ms
+}, { versionKey: false });
+
+const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
+
+// ------------ app routes ------------
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'atc.html'));
 });
 
-// simple healthcheck
 app.get('/health', (req, res) => res.send('ok'));
 
-// --- WebSocket upgrade handling ---
+// API: manual clear (optional for admin / ATC)
+app.delete('/clear/:aircraftId', async (req, res) => {
+  try {
+    const { aircraftId } = req.params;
+    await FlightPoint.deleteMany({ aircraftId });
+    // broadcast clear to ATC
+    broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } });
+    res.sendStatus(200);
+  } catch (err) {
+    console.error('clear error', err);
+    res.status(500).json({ error: 'server' });
+  }
+});
+
+// -------------- WebSocket upgrade --------------
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
   });
 });
 
-// connection bookkeeping
+// clients bookkeeping (same as original)
 const clients = new Set(); // all ws clients
 const atcClients = new Set();
 const playerClients = new Set();
 
-// track aircraft state keyed by aircraft id
+// track aircraft state keyed by aircraft id (in-memory snapshot for quick broadcast)
 const aircrafts = new Map();
 
-// 🔥 儲存歷史軌跡
-const aircraftTracks = new Map(); // 每架飛機的歷史軌跡點
-const MAX_TRACK_AGE_MS = 12 * 60 * 60 * 1000; // 保留 12 小時
+// retention policy (ms)
+const RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours (same as original logic)
 
-// Helper: broadcast to atc clients
+// Helper: broadcast to ATC clients
 function broadcastToATC(obj) {
   const msg = JSON.stringify(obj);
   for (const ws of atcClients) {
@@ -47,26 +87,29 @@ function broadcastToATC(obj) {
   }
 }
 
-// 儲存軌跡點，並清掉 12 小時前的
-function addTrackPoint(aircraftId, lat, lon, alt, timestamp) {
-  if (!aircraftTracks.has(aircraftId)) {
-    aircraftTracks.set(aircraftId, []);
-  }
-
-  const tracks = aircraftTracks.get(aircraftId);
-  tracks.push({ lat, lon, alt, timestamp });
-
-  // 移除超過 12 小時的舊點
-  const cutoff = Date.now() - MAX_TRACK_AGE_MS;
-  while (tracks.length > 0 && tracks[0].timestamp < cutoff) {
-    tracks.shift();
+// Save flight point to MongoDB and prune old points for that aircraft
+async function saveFlightPoint(pt) {
+  try {
+    await FlightPoint.create(pt);
+    const cutoff = Date.now() - RETENTION_MS;
+    // optional prune: remove points older than retention for this aircraft
+    await FlightPoint.deleteMany({ aircraftId: pt.aircraftId, ts: { $lt: cutoff } });
+  } catch (err) {
+    console.error('saveFlightPoint error', err);
   }
 }
 
-// 清除飛機的歷史
-function clearAircraftTrack(aircraftId) {
-  aircraftTracks.delete(aircraftId);
-  console.log(`Cleared track history for aircraft: ${aircraftId}`);
+// Query history for a given aircraftId (sorted)
+async function loadHistoryForAircraft(aircraftId, limit = 2000) {
+  try {
+    const docs = await FlightPoint.find({ aircraftId }).sort({ ts: 1 }).limit(limit).lean();
+    return docs.map(d => ({
+      lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts
+    }));
+  } catch (err) {
+    console.error('loadHistoryForAircraft error', err);
+    return [];
+  }
 }
 
 // On incoming websocket connection
@@ -75,21 +118,26 @@ wss.on('connection', (ws, req) => {
   ws.role = 'unknown';
   console.log('WS connected. total clients:', clients.size);
 
-  ws.on('message', (data) => {
+  ws.on('message', async (data) => {
     try {
       const msg = JSON.parse(data);
+
+      // hello message - register role
       if (msg.type === 'hello') {
         ws.role = msg.role || 'unknown';
+
         if (ws.role === 'atc') {
           atcClients.add(ws);
 
-          // 發送當前飛機狀態
+          // 發送當前飛機 snapshot (in-memory)
           const payload = Array.from(aircrafts.values()).map(x => x.payload);
           ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
 
-          // 發送所有飛機的歷史軌跡
-          for (const [aircraftId, tracks] of aircraftTracks.entries()) {
-            if (tracks.length > 0) {
+          // 對每個在 snapshot 的 aircraft，從 DB 拉出歷史並發給這個 ATC client
+          // 若 aircrafts map 很大，這段可改成只拉特定 aircraftId 或做 rate-limit
+          for (const [aircraftId] of aircrafts) {
+            const tracks = await loadHistoryForAircraft(aircraftId, 5000);
+            if (tracks && tracks.length > 0) {
               ws.send(JSON.stringify({
                 type: 'aircraft_track_history',
                 payload: { aircraftId, tracks }
@@ -97,13 +145,16 @@ wss.on('connection', (ws, req) => {
             }
           }
 
+          // 此外，也可以列出最近在 DB 但不在 snapshot 的 aircrafts（選擇性）
+          // (跳過以免一次發太多)
         } else if (ws.role === 'player') {
           playerClients.add(ws);
-          ws.aircraftId = null; // 將在收到第一個位置更新時設置
+          ws.aircraftId = null; // set on first position update
         }
         return;
       }
 
+      // position update from client player
       if (msg.type === 'position_update' && msg.payload) {
         const p = msg.payload;
         const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
@@ -131,13 +182,23 @@ wss.on('connection', (ws, req) => {
           flightPlan: p.flightPlan || []
         };
 
-        // 更新飛機狀態
+        // update in-memory snapshot for quick broadcast & snapshot API
         aircrafts.set(id, { payload, lastSeen: Date.now() });
 
-        // 儲存軌跡點（保留 12 小時內）
-        addTrackPoint(id, payload.lat, payload.lon, payload.alt, payload.ts);
+        // store to MongoDB (non-blocking)
+        saveFlightPoint({
+          aircraftId: id,
+          callsign: payload.callsign,
+          type: payload.type,
+          lat: payload.lat,
+          lon: payload.lon,
+          alt: payload.alt,
+          speed: payload.speed,
+          heading: payload.heading,
+          ts: payload.ts
+        });
 
-        // 廣播更新
+        // broadcast update to ATC clients (same shape as original)
         broadcastToATC({
           type: 'aircraft_update',
           payload,
@@ -148,20 +209,41 @@ wss.on('connection', (ws, req) => {
             timestamp: payload.ts
           }
         });
+
+        return;
       }
+
+      // client asked to clear its track (optional custom message type)
+      if (msg.type === 'clear_track' && msg.aircraftId) {
+        await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
+        broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
+        return;
+      }
+
+      // client disconnect asked explicitly
+      if (msg.type === 'disconnect' && msg.aircraftId) {
+        await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
+        broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
+        return;
+      }
+
     } catch (e) {
       console.warn('Bad message', e);
     }
   });
 
-  ws.on('close', () => {
+  ws.on('close', async () => {
     clients.delete(ws);
     atcClients.delete(ws);
     playerClients.delete(ws);
 
-    // 🔥 玩家斷線 → 清除其軌跡
+    // player disconnected -> clear its track from DB and notify ATC (same behaviour as original)
     if (ws.role === 'player' && ws.aircraftId) {
-      clearAircraftTrack(ws.aircraftId);
+      try {
+        await FlightPoint.deleteMany({ aircraftId: ws.aircraftId });
+      } catch (err) {
+        console.error('Error deleting on close', err);
+      }
       broadcastToATC({
         type: 'aircraft_track_clear',
         payload: { aircraftId: ws.aircraftId }
@@ -176,16 +258,21 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// cleanup stale aircrafts periodically
-setInterval(() => {
+// cleanup stale aircrafts periodically (same as original)
+setInterval(async () => {
   const now = Date.now();
   const timeout = 30000; // 30s
   let removed = [];
   for (const [id, v] of aircrafts.entries()) {
     if (now - v.lastSeen > timeout) {
       aircrafts.delete(id);
-      clearAircraftTrack(id); // 一併清掉歷史
       removed.push(id);
+      // also clear DB history for that aircraft (same as original behaviour)
+      try {
+        await FlightPoint.deleteMany({ aircraftId: id });
+      } catch (err) {
+        console.error('cleanup delete error', err);
+      }
     }
   }
   if (removed.length) {
@@ -198,6 +285,17 @@ setInterval(() => {
     });
   }
 }, 5000);
+
+// periodic prune: delete anything older than retention (safety)
+setInterval(async () => {
+  try {
+    const cutoff = Date.now() - RETENTION_MS;
+    await FlightPoint.deleteMany({ ts: { $lt: cutoff } });
+    // console.log('Pruned old flight points before', new Date(cutoff).toISOString());
+  } catch (err) {
+    console.error('Prune error', err);
+  }
+}, 6 * 60 * 60 * 1000); // every 6h
 
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
