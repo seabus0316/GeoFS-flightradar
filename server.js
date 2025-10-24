@@ -1,6 +1,6 @@
 // server.js (MongoDB-integrated)
 // replace your existing server.js with this file
-require('dotenv').config();
+
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
@@ -15,7 +15,14 @@ const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 
 // ------------ MongoDB ------------
-mongoose.connect(MONGODB_URI)
+mongoose.connect(MONGODB_URI, {
+  useNewUrlParser: true,
+  useUnifiedTopology: true
+}).then(() => console.log('✅ MongoDB connected'))
+  .catch(err => {
+    console.error('❌ MongoDB connect error', err);
+    process.exit(1);
+  });
 
 const flightPointSchema = new mongoose.Schema({
   aircraftId: { type: String, index: true }, // e.g. callsign or id
