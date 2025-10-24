@@ -314,7 +314,13 @@ function escapeHtml(s) {
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 });
+const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
+  attribution: '&copy; OpenStreetMap contributors'
+});
 const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -330,7 +336,7 @@ const openAIP = L.tileLayer(
     opacity: 0.8
   }
 );
-const osmWithOpenAIP = L.layerGroup([osmLayer, openAIP]);
+
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
@@ -343,11 +349,18 @@ const map = L.map('map', {
 map.createPane('waypointPane');
 map.getPane('waypointPane').style.zIndex = 550;
 
-L.control.layers({
-  "OpenStreetMap + OpenAIP": osmWithOpenAIP,
-  "Google Streets": googleStreet,
-  "Google Satellite": googleSat
-}).addTo(map);
+L.control.layers(
+  {
+    "OpenStreetMap": osmLayer,
+    "Thunderforest Transport": Thunderforest_Transport,
+    "Google Streets": googleStreet,
+    "Google Hybrid": googleHybrid,
+    "Google Satellite": googleSat
+  },
+  {
+    "OpenAIP": openAIP
+  }
+).addTo(map);
 
 // Canvas renderer
 const canvasRenderer = L.canvas();
