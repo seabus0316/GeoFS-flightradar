@@ -311,10 +311,17 @@ function escapeHtml(s) {
 }
 
 // 地圖設定
+// tile init
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 });
+const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
+  attribution: '&copy; OpenStreetMap contributors'
+});
 const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
@@ -330,13 +337,12 @@ const openAIP = L.tileLayer(
     opacity: 0.8
   }
 );
-const osmWithOpenAIP = L.layerGroup([osmLayer, openAIP]);
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [googleSat]
+  layers: [googleSat,openAIP]
 }).setView([20,0],2);
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
