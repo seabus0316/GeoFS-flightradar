@@ -2,14 +2,6 @@
 <html lang="zh-Hant">
 <head>
   <script src="https://cdn.jsdelivr.net/npm/chart.js">
-function updateUTCTime() {
-  const now = new Date();
-  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
-  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
-}
-setInterval(updateUTCTime, 1000);
-updateUTCTime();
-
 </script>
   <meta charset="utf-8" />
   <title>GeoFS ATC Screen</title>
@@ -147,14 +139,6 @@ updateUTCTime();
   </div>
 </div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
-function updateUTCTime() {
-  const now = new Date();
-  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
-  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
-}
-setInterval(updateUTCTime, 1000);
-updateUTCTime();
-
 </script>
 <script>
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
@@ -386,7 +370,7 @@ const map = L.map('map', {
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [googleSat]
+  layers: [googleSat,openAIP]
 }).setView([20,0],2);
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
