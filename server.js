@@ -1,6 +1,3 @@
-// ===============================================
-// GeoFS Flightradar Server (Final Version)
-// ===============================================
 
 require("dotenv").config();
 const express = require("express");
@@ -175,3 +172,4 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
