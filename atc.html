@@ -1,7 +1,16 @@
 <!doctype html>
 <html lang="zh-Hant">
 <head>
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+function updateUTCTime() {
+  const now = new Date();
+  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
+  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
+}
+setInterval(updateUTCTime, 1000);
+updateUTCTime();
+
+</script>
   <meta charset="utf-8" />
   <title>GeoFS ATC Screen</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -118,6 +127,12 @@
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
 </div>
+
+<!-- UTC Time Box -->
+<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); color: white; padding: 10px; border-radius: 5px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99999;">
+  UTC Time: --
+</div>
+
 <!-- 仿 Flightradar24 底部圖表容器 -->
 <div id="flightChartContainer"
   style="position:fixed;left:0;right:0;bottom:0;height:180px;background:#222;z-index:99999;
@@ -129,7 +144,16 @@
     <canvas id="flightChart"></canvas>
   </div>
 </div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+function updateUTCTime() {
+  const now = new Date();
+  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
+  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
+}
+setInterval(updateUTCTime, 1000);
+updateUTCTime();
+
+</script>
 <script>
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
 // Chart.js 仿 Flightradar24 風格
@@ -326,6 +350,24 @@ const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
+
+// 高德地图 (Amap)
+const amapStreets = L.tileLayer(
+  'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+  {
+    subdomains: "1234",
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+  }
+);
+
+const amapSatellite = L.tileLayer(
+  'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+  {
+    subdomains: "1234",
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图卫星</a>'
+  }
+);
+
 const openAIP = L.tileLayer(
   'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=409a25682b90c26541b6c25493950e17',
   {
@@ -355,7 +397,9 @@ L.control.layers(
     "Thunderforest Transport": Thunderforest_Transport,
     "Google Streets": googleStreet,
     "Google Hybrid": googleHybrid,
-    "Google Satellite": googleSat
+    "Google Satellite": googleSat,
+    "Amap Streets": amapStreets,
+    "Amap Satellite": amapSatellite
   },
   {
     "OpenAIP": openAIP
@@ -761,6 +805,15 @@ function connectWS() {
   ws.addEventListener('error', () => ws.close());
 }
 connectWS();
+
+function updateUTCTime() {
+  const now = new Date();
+  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
+  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
+}
+setInterval(updateUTCTime, 1000);
+updateUTCTime();
+
 </script>
 </body>
 </html>
