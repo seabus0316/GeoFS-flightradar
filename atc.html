@@ -350,20 +350,24 @@ const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
+
+// 高德地图 (Amap)
 const amapStreets = L.tileLayer(
   'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
   {
     subdomains: "1234",
-    attribution: '&copy; <a href="https://www.amap.com/">Amap Streets</a>'
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
   }
 );
+
 const amapSatellite = L.tileLayer(
   'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
   {
     subdomains: "1234",
-    attribution: '&copy; <a href="https://www.amap.com/">Amap Satellite</a>'
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图卫星</a>'
   }
 );
+
 const openAIP = L.tileLayer(
   'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=409a25682b90c26541b6c25493950e17',
   {
@@ -374,6 +378,7 @@ const openAIP = L.tileLayer(
     opacity: 0.8
   }
 );
+
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
@@ -393,8 +398,8 @@ L.control.layers(
     "Google Streets": googleStreet,
     "Google Hybrid": googleHybrid,
     "Google Satellite": googleSat,
-    "高德街道图": amapStreets,
-    "高德卫星图": amapSatellite
+    "Amap Streets": amapStreets,
+    "Amap Satellite": amapSatellite
   },
   {
     "OpenAIP": openAIP
@@ -809,5 +814,3 @@ updateUTCTime();
 </script>
 </body>
 </html>
-
-
