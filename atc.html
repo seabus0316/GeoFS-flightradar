@@ -361,7 +361,6 @@ L.control.layers(
     "OpenAIP": openAIP
   }
 ).addTo(map);
-
 // Canvas renderer
 const canvasRenderer = L.canvas();
 
@@ -739,6 +738,10 @@ function connectWS() {
         obj.rawPathForDisplay = obj.rawPathForDisplay.concat(
           tracks.map(t => [t.lat, t.lon, t.alt, t.speed || 0])
         );
+         if (!obj.rawTrack) obj.rawTrack = [];
+  obj.rawTrack = obj.rawTrack.concat(
+    tracks.map(t => ({lat: t.lat, lon: t.lon, alt: t.alt, speed: t.speed || 0, ts: t.ts}))
+  );
       }
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
