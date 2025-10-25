@@ -128,11 +128,13 @@ updateUTCTime();
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
 </div>
 
-<!-- UTC Time Box -->
-<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.6); color: white; padding: 10px; border-radius: 5px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99999;">
-  UTC Time: --
+<!-- UTC Time Box with Clocks -->
+<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99999; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+  <div style="margin-bottom: 8px; font-weight: bold;">UTC Time: <span id="utcTimeText">--</span></div>
+  <div id="clockContainer" style="display: flex; gap: 15px; justify-content: center;">
+    <!-- Clocks will be inserted here -->
+  </div>
 </div>
-
 <!-- 仿 Flightradar24 底部圖表容器 -->
 <div id="flightChartContainer"
   style="position:fixed;left:0;right:0;bottom:0;height:180px;background:#222;z-index:99999;
@@ -809,10 +811,96 @@ connectWS();
 function updateUTCTime() {
   const now = new Date();
   const utc = now.toISOString().replace('T', ' ').slice(0, 19);
-  document.getElementById('utcTime').textContent = 'UTC Time: ' + utc;
+  const el = document.getElementById('utcTimeText');
+  if (el) el.textContent = utc;
 }
+
+function getTimeInTimeZone(tz) {
+  try {
+    const timeStr = new Date().toLocaleTimeString("en-US", {
+      hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: tz
+    });
+    const [h, m, s] = timeStr.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, s, 0);
+    return d;
+  } catch (e) {
+    return new Date();
+  }
+}
+
+function rotateClock(svg, now) {
+  const hour = svg.querySelector("line[id$='-hour']");
+  const minute = svg.querySelector("line[id$='-minute']");
+  if (!hour || !minute) return;
+  const h = now.getHours() % 12, m = now.getMinutes();
+  hour.setAttribute("transform", `rotate(${h * 30 + m * 0.5} 20 20)`);
+  minute.setAttribute("transform", `rotate(${m * 6} 20 20)`);
+}
+
+function createClockSVG(id, label, timeZone) {
+  const container = document.createElement("div");
+  container.style.textAlign = "center";
+  container.style.fontSize = "10px";
+  container.innerHTML = `<div style="margin-bottom: 4px; font-weight: bold;">${label}</div>`;
+  
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "40");
+  svg.setAttribute("height", "40");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  
+  let hourNow = 12;
+  try {
+    const tStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", timeZone });
+    hourNow = parseInt(tStr, 10);
+  } catch {}
+  
+  const isDay = hourNow >= 6 && hourNow < 18;
+  const clockFaceURL = isDay
+    ? "https://clock-day.short.gy/0Fxzwe"
+    : "https://clock-day.short.gy/2ZpDoNight";
+  const pointerColor = isDay ? "black" : "white";
+
+  svg.innerHTML = `
+    <defs>
+      <clipPath id="clockClip-${id}">
+        <circle cx="20" cy="20" r="18"/>
+      </clipPath>
+      <g id="clockHands-${id}">
+        <line id="${id}-hour" x1="20" y1="20" x2="20" y2="11" stroke="${pointerColor}" stroke-width="2"/>
+        <line id="${id}-minute" x1="20" y1="20" x2="20" y2="7" stroke="${pointerColor}" stroke-width="1"/>
+      </g>
+    </defs>
+    <image href="${clockFaceURL}" x="0" y="0" width="40" height="40" clip-path="url(#clockClip-${id})"/>
+    <use href="#clockHands-${id}"/>
+  `;
+  
+  container.appendChild(svg);
+  return container;
+}
+
+function initializeClocks() {
+  const clockContainer = document.getElementById('clockContainer');
+  if (!clockContainer) return;
+  
+  const utcClock = createClockSVG("utc", "UTC", "UTC");
+  clockContainer.appendChild(utcClock);
+  rotateClock(utcClock, getTimeInTimeZone("UTC"));
+  
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localClock = createClockSVG("local", "Local", localTz);
+  clockContainer.appendChild(localClock);
+  rotateClock(localClock, getTimeInTimeZone(localTz));
+  
+  setInterval(() => {
+    rotateClock(utcClock, getTimeInTimeZone("UTC"));
+    rotateClock(localClock, getTimeInTimeZone(localTz));
+  }, 1000);
+}
+
 setInterval(updateUTCTime, 1000);
 updateUTCTime();
+initializeClocks();
 
 </script>
 </body>
