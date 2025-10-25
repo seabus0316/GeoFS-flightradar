@@ -1,8 +1,8 @@
 // ==UserScript==
-// @name         GeoFS Flightradar (ATC Reporter with Enhanced + Flight Info + Takeoff Time + Squawk)
+// @name         GeoFS Flightradar
 // @namespace    http://tampermonkey.net/
 // @version      1.8
-// @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
+// @description  ATC Reporter with Enhanced + Flight Info + Takeoff Time + Squawk. 傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
 // @author       SeaBus, GeoFS Explorer
 // @match        http://*/geofs.php*
 // @match        https://*/geofs.php*
@@ -248,4 +248,5 @@
   }, true);
 
 })();
+
 
