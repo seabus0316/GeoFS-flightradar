@@ -11,7 +11,7 @@ press"W" to hide the ui
 ATC Screen url: https://geofs-flightradar.onrender.com
 
 <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
-
+[![License](https://img.shields.io/badge/License-MIT%20License-green.svg)](https://opensource.org/license/MIT)
 
 <p align="center">
   <a href="https://github.com/seabus0316/GeoFS-flightradar/stargazers"><img src="https://img.shields.io/github/stars/seabus0316/GeoFS-flightradar.svg?style=for-the-badge" alt="Stargazers"></a>
