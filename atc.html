@@ -149,19 +149,41 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // X 軸用時間（或序號）
+  // ✅ 計算時間跨度，動態調整標籤格式
+  const firstTs = track[0]?.ts;
+  const lastTs = track[track.length - 1]?.ts;
+  const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
+  
+  // 根據時間跨度選擇格式
+  let timeFormat;
+  let maxTicks;
+  if (timeSpanHours > 6) {
+    // 超過 6 小時：只顯示小時
+    timeFormat = { hour: '2-digit', hour12: false };
+    maxTicks = 12;
+  } else if (timeSpanHours > 2) {
+    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 15;
+  } else {
+    // 少於 2 小時：顯示詳細時間
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 12;
+  }
+
+  // X 軸標籤
   const labels = track.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
-      return dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return dt.toLocaleTimeString('en-GB', timeFormat);
     }
     return i + 1;
   });
+  
   const altitudes = track.map(p => Math.round(p.alt));
   const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
 
   if (!flightChartObj) {
-    // 第一次建立
     flightChartObj = new Chart(ctx, {
       type: 'line',
       data: {
@@ -172,7 +194,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: 2,
+            pointRadius: 0, // ✅ 關閉點，讓線更清晰
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -181,7 +203,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: 2,
+            pointRadius: 0, // ✅ 關閉點
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -208,7 +230,14 @@ function showFlightChart(track) {
                 const idx = items[0].dataIndex;
                 const p = track[idx];
                 if (p.ts)
-                  return new Date(p.ts).toLocaleString('en-GB', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                  return new Date(p.ts).toLocaleString('en-GB', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                  });
                 return `Point ${idx+1}`;
               },
               label: (item) => {
@@ -221,56 +250,53 @@ function showFlightChart(track) {
           }
         },
         scales: {
-  x: {
-    title: { display: false },
-    ticks: {
-      color: "#fff",
-      font: { size: 11 },
-      maxRotation: 45,
-      minRotation: 0,
-      autoSkip: true,
-      maxTicksLimit: 12,
-      display: true
-    },
-    grid: { color: "#444" },
-    display: true
-  },
-  'y-alt': {
-    type: 'linear',
-    position: 'left',
-    min:0,
-    max:50000,
-    title: {
-      display: true,
-      text: 'Altitude (ft)',
-      color: "#00b4ff",
-      font: { size: 13, weight:'bold' }
-    },
-    grid: { color: "#444" },
-    ticks: { color: "#00b4ff", font: { size: 13 } }
-  },
-  'y-speed': {
-    type: 'linear',
-    position: 'right',
-    min: 0,
-    max:1000,
-    title: {
-      display: true,
-      text: 'Speed (kt)',
-      color: "#ffd300",
-      font: { size: 13, weight:'bold' }
-    },
-    grid: { drawOnChartArea: false },
-    ticks: { color: "#ffd300", font: { size: 13 } }
-  }
-}
+          x: {
+            title: { display: false },
+            ticks: {
+              color: "#fff",
+              font: { size: 11 },
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: maxTicks, // ✅ 動態調整
+              display: true
+            },
+            grid: { color: "#444" },
+            display: true
+          },
+          'y-alt': {
+            type: 'linear',
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Altitude (ft)',
+              color: "#00b4ff",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { color: "#444" },
+            ticks: { color: "#00b4ff", font: { size: 13 } }
+          },
+          'y-speed': {
+            type: 'linear',
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Speed (kt)',
+              color: "#ffd300",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { drawOnChartArea: false },
+            ticks: { color: "#ffd300", font: { size: 13 } }
+          }
+        }
       }
     });
   } else {
-    // 平滑更新資料，不 destroy
+    // 平滑更新資料
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // ✅ 更新 maxTicks
     flightChartObj.update();
   }
 }
