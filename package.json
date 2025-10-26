@@ -2,6 +2,7 @@
   "name": "geofs-flightradar",
   "version": "1.0.0",
   "description": "GeoFS Flightradar Server with MongoDB",
+  "license": "MIT",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
@@ -13,3 +14,4 @@
     "dotenv": "^16.3.1"
   }
 }
+
