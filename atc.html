@@ -432,7 +432,7 @@ const map = L.map('map', {
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [osmLayer,openAIP]
+  layers: [googleHybrid,openAIP]
 }).setView([20,0],2);
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
@@ -951,3 +951,4 @@ initializeClocks();
 </script>
 </body>
 </html>
+
