@@ -387,7 +387,7 @@ const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
   attribution: '&copy; OpenStreetMap contributors'
 });
 const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
-  attribution: '&copy; OpenStreetMap contributors'
+  attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 });
 const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
@@ -432,7 +432,7 @@ const map = L.map('map', {
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [googleHybrid,openAIP]
+  layers: [googleSat,openAIP]
 }).setView([20,0],2);
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
@@ -951,4 +951,3 @@ initializeClocks();
 </script>
 </body>
 </html>
-
