@@ -9,7 +9,7 @@ Install the user.js and It will send your position info to the atc screen
 press"W" to hide the ui
 
 [![License](https://img.shields.io/badge/License-MIT%20License-green.svg)](https://opensource.org/license/MIT)
-
+[![JavaScript](https://img.shields.io/badge/JavaScript-UserScript-yellow.svg)](https://github.com/seabus0316/GeoFS-flightradar/blob/main/user.js)
 ATC Screen url: https://geofs-flightradar.onrender.com
 
 <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
