@@ -8,6 +8,37 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
+    .github-ribbon {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  z-index: 99998;
+  pointer-events: none;
+}
+.github-ribbon a {
+  position: absolute;
+  bottom: 35px;
+  left: -40px;
+  transform: rotate(45deg);
+  width: 200px;
+  background: #c0392b;
+  color: white;
+  text-align: center;
+  padding: 8px 0;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  transition: background 0.3s ease;
+}
+.github-ribbon a:hover {
+  background: #a93226;
+}
     html,body,#map { height:100%; margin:0; padding:0; }
     .label {
       font-family: Inter, "Noto Sans TC", Arial, sans-serif;
@@ -107,6 +138,11 @@
   </style>
 </head>
 <body>
+<div class="github-ribbon">
+  <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank">
+    Visit GitHub Page
+  </a>
+</div>
 <div id="map"></div>
 <div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
 <div class="altitude-legend">
@@ -396,7 +432,7 @@ const map = L.map('map', {
   maxZoom: 18,
   minZoom: 2,
   maxBounds: [[-85, -360], [85, 360]],
-  layers: [googleSat,openAIP]
+  layers: [osmLayer,openAIP]
 }).setView([20,0],2);
 
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
