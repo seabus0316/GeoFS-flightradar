@@ -166,7 +166,37 @@ server.on('upgrade', (request, socket, head) => {
     wss.emit('connection', ws, request);
   });
 });
+// 拒絕照片
+app.post('/admin/photos/:id/reject', async (req, res) => {
+  const photo = await Photo.findById(req.params.id);
+  if (!photo) return res.status(404).json({ error: 'not found' });
+  photo.status = 'rejected';
+  await photo.save();
+  res.json({ message: 'rejected' });
+});
 
+// 🆕 加入這段：刪除照片（包含檔案）
+app.delete('/admin/photos/:id', async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (!photo) return res.status(404).json({ error: 'not found' });
+    
+    // 刪除實體檔案
+    const filePath = path.join(__dirname, photo.file);
+    const thumbPath = path.join(__dirname, photo.thumb);
+    
+    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
+    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
+    
+    // 刪除資料庫記錄
+    await Photo.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
 // clients bookkeeping (same as original)
 const clients = new Set(); // all ws clients
 const atcClients = new Set();
@@ -401,4 +431,5 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
 
