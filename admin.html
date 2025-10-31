@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JetPhotos Admin Panel</title>
+  <style>
+    body {
+      font-family: "Segoe UI", sans-serif;
+      background: #0d1117;
+      color: #e6edf3;
+      margin: 0;
+      padding: 20px;
+    }
+    h1 {
+      color: #58a6ff;
+    }
+    #login {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+    }
+    input, button {
+      padding: 8px 12px;
+      border-radius: 6px;
+      border: none;
+      font-size: 15px;
+    }
+    button {
+      cursor: pointer;
+      background: #238636;
+      color: white;
+    }
+    button.reject {
+      background: #da3633;
+    }
+    #photos {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .photo-card {
+      background: #161b22;
+      border-radius: 10px;
+      overflow: hidden;
+      width: 220px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      display: flex;
+      flex-direction: column;
+    }
+    .photo-card img {
+      width: 100%;
+      height: 150px;
+      object-fit: cover;
+    }
+    .photo-card .info {
+      padding: 10px;
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+    .actions {
+      display: flex;
+      justify-content: space-between;
+      padding: 10px;
+    }
+  </style>
+</head>
+<body>
+  <h1>JetPhotos Review Panel</h1>
+  <div id="login">
+    <p>Please enter admin password:</p>
+    <input id="pass" type="password" placeholder="Admin password">
+    <button onclick="login()">Login</button>
+  </div>
+
+  <div id="panel" style="display:none;">
+    <h2>Pending Photos</h2>
+    <div id="photos"></div>
+  </div>
+
+  <script>
+    let adminPass = '';
+    async function login() {
+      adminPass = document.getElementById('pass').value.trim();
+      if (!adminPass) return alert('Please enter password');
+      document.getElementById('login').style.display = 'none';
+      document.getElementById('panel').style.display = 'block';
+      loadPending();
+    }
+
+    async function loadPending() {
+      const res = await fetch('/admin/photos/pending', {
+        headers: { 'x-admin-pass': adminPass }
+      });
+      if (!res.ok) {
+        alert('Incorrect password or server error');
+        location.reload();
+        return;
+      }
+      const photos = await res.json();
+      const box = document.getElementById('photos');
+      box.innerHTML = '';
+      if (photos.length === 0) {
+        box.innerHTML = '<p>No pending photos at the moment 🎉</p>';
+        return;
+      }
+      photos.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'photo-card';
+        div.innerHTML = `
+          <img src="${p.thumb}" alt="">
+          <div class="info">
+            <strong>${p.caption || '(No description)'}</strong>
+            <small>by ${p.photographer || 'Anonymous'}</small>
+          </div>
+          <div class="actions">
+            <button onclick="approve('${p._id}')">Approve</button>
+            <button class="reject" onclick="reject('${p._id}')">Reject</button>
+          </div>
+        `;
+        box.appendChild(div);
+      });
+    }
+
+    async function approve(id) {
+      await fetch(`/admin/photos/${id}/approve`, {
+        method: 'POST',
+        headers: { 'x-admin-pass': adminPass }
+      });
+      loadPending();
+    }
+
+    async function reject(id) {
+      await fetch(`/admin/photos/${id}/reject`, {
+        method: 'POST',
+        headers: { 'x-admin-pass': adminPass }
+      });
+      loadPending();
+    }
+  </script>
+</body>
+</html>
