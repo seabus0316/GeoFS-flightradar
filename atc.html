@@ -7,6 +7,24 @@
   <title>GeoFS ATC Screen</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <div id="photoPanel" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+
+<script>
+fetch('/api/photos')
+  .then(r => r.json())
+  .then(list => {
+    const panel = document.getElementById('photoPanel');
+    list.forEach(p => {
+      const img = document.createElement('img');
+      img.src = p.thumb;
+      img.title = p.caption || '';
+      img.style = 'width:150px;border-radius:6px;cursor:pointer;';
+      img.onclick = () => window.open(p.file, '_blank');
+      panel.appendChild(img);
+    });
+  });
+</script>
+
   <style>
     .github-ribbon {
   position: fixed;
