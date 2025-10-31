@@ -54,6 +54,14 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'atc.html'));
 });
 
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'admin.html'));
+});
+
+app.get('/upload.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'upload.html'));
+});
+
 app.get('/health', (req, res) => res.send('ok'));
 
 // API: manual clear (optional for admin / ATC)
@@ -393,3 +401,4 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
