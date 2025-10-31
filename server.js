@@ -6,7 +6,11 @@ const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const mongoose = require('mongoose');
-
+// --- JetPhotos upload/review system ---
+const multer = require('multer');
+const fs = require('fs');
+const mime = require('mime-types');
+const sharp = require('sharp');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
@@ -16,6 +20,20 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_
 
 // ------------ MongoDB ------------
 mongoose.connect(MONGODB_URI)
+// === JetPhotos photo schema ===
+const photoSchema = new mongoose.Schema({
+  file: String,
+  thumb: String,
+  photographer: String,
+  caption: String,
+  tags: [String],
+  lat: Number,
+  lon: Number,
+  status: { type: String, default: 'pending' }, // pending / approved / rejected
+  createdAt: { type: Date, default: Date.now }
+}, { versionKey: false });
+
+const Photo = mongoose.model('Photo', photoSchema);
 
 const flightPointSchema = new mongoose.Schema({
   aircraftId: { type: String, index: true }, // e.g. callsign or id
@@ -50,6 +68,88 @@ app.delete('/clear/:aircraftId', async (req, res) => {
     console.error('clear error', err);
     res.status(500).json({ error: 'server' });
   }
+});
+// === JetPhotos upload system ===
+const UPLOAD_DIR = path.join(__dirname, 'uploads');
+if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
+app.use('/uploads', express.static(UPLOAD_DIR));
+
+// multer setup
+const storage = multer.diskStorage({
+  destination: UPLOAD_DIR,
+  filename: (req, file, cb) => {
+    const ext = mime.extension(file.mimetype) || 'jpg';
+    const name = Date.now() + '-' + Math.random().toString(36).slice(2, 9) + '.' + ext;
+    cb(null, name);
+  }
+});
+const upload = multer({ storage, limits: { fileSize: 30 * 1024 * 1024 } });
+
+// === 上傳照片 ===
+app.post('/api/upload', upload.single('photo'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ error: 'no file' });
+
+    const thumbPath = path.join(UPLOAD_DIR, 'thumb-' + file.filename);
+    await sharp(file.path).resize({ width: 1000, withoutEnlargement: true }).toFile(thumbPath);
+
+    const { photographer = 'anon', caption = '', tags = '', lat, lon } = req.body;
+    const photo = await Photo.create({
+      file: '/uploads/' + file.filename,
+      thumb: '/uploads/' + path.basename(thumbPath),
+      photographer,
+      caption,
+      tags: tags.split(',').map(s => s.trim()).filter(Boolean),
+      lat: lat ? Number(lat) : null,
+      lon: lon ? Number(lon) : null,
+      status: 'pending'
+    });
+
+    res.json({ ok: true, photo });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+// === JetPhotos admin review system ===
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
+
+// 密碼驗證中介層
+app.use('/admin', (req, res, next) => {
+  const pass = req.headers['x-admin-pass'];
+  if (pass !== ADMIN_PASSWORD) return res.status(403).json({ error: 'forbidden' });
+  next();
+});
+
+// 查詢待審核照片
+app.get('/admin/photos/pending', async (req, res) => {
+  const pending = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
+  res.json(pending);
+});
+
+// 核准照片
+app.post('/admin/photos/:id/approve', async (req, res) => {
+  const photo = await Photo.findById(req.params.id);
+  if (!photo) return res.status(404).json({ error: 'not found' });
+  photo.status = 'approved';
+  await photo.save();
+  res.json({ message: 'approved' });
+});
+
+// 拒絕照片
+app.post('/admin/photos/:id/reject', async (req, res) => {
+  const photo = await Photo.findById(req.params.id);
+  if (!photo) return res.status(404).json({ error: 'not found' });
+  photo.status = 'rejected';
+  await photo.save();
+  res.json({ message: 'rejected' });
+});
+
+// 公開 API：僅顯示已核准的照片
+app.get('/api/photos', async (req, res) => {
+  const photos = await Photo.find({ status: 'approved' }).sort({ createdAt: -1 });
+  res.json(photos);
 });
 
 // -------------- WebSocket upgrade --------------
