@@ -35,6 +35,9 @@
     button.reject {
       background: #da3633;
     }
+    button.delete {
+      background: #8B0000;
+    }
     #photos {
       display: flex;
       flex-wrap: wrap;
@@ -63,7 +66,8 @@
     }
     .actions {
       display: flex;
-      justify-content: space-between;
+      flex-direction: column;
+      gap: 5px;
       padding: 10px;
     }
   </style>
@@ -117,8 +121,9 @@
             <small>by ${p.photographer || 'Anonymous'}</small>
           </div>
           <div class="actions">
-            <button onclick="approve('${p._id}')">Approve</button>
-            <button class="reject" onclick="reject('${p._id}')">Reject</button>
+            <button onclick="approve('${p._id}')">✓ Approve</button>
+            <button class="reject" onclick="reject('${p._id}')">✗ Reject</button>
+            <button class="delete" onclick="deletePhoto('${p._id}')">🗑 Delete Forever</button>
           </div>
         `;
         box.appendChild(div);
@@ -139,6 +144,20 @@
         headers: { 'x-admin-pass': adminPass }
       });
       loadPending();
+    }
+
+    async function deletePhoto(id) {
+      if (!confirm('確定要永久刪除這張照片嗎？此操作無法復原！')) return;
+      const res = await fetch(`/admin/photos/${id}`, {
+        method: 'DELETE',
+        headers: { 'x-admin-pass': adminPass }
+      });
+      if (res.ok) {
+        alert('照片已永久刪除');
+        loadPending();
+      } else {
+        alert('刪除失敗，請稍後再試');
+      }
     }
   </script>
 </body>
