@@ -318,7 +318,7 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
+       plugins: {
           legend: {
             display: true,
             labels: {
@@ -327,7 +327,8 @@ function showFlightChart(track) {
             }
           },
           tooltip: {
-            enabled: true,
+            mode: 'index',
+            intersect: false,
             backgroundColor: "#222",
             borderColor: "#ffd300",
             borderWidth: 2,
@@ -674,7 +675,8 @@ function updateAircraft(id, data, trackPoint = null) {
   const labelClass = isEmergency ? 'label emergency' : 'label';
   const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
   const now = Date.now();
-
+  map.createPane('waypointPane');
+  map.getPane('waypointPane').style.zIndex = 401;
   ensureMeta(id);
   if (aircrafts.has(id)) {
     const obj = aircrafts.get(id);
