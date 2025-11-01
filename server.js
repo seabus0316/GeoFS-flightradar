@@ -1,26 +1,30 @@
-// server.js (MongoDB-integrated)
-// replace your existing server.js with this file
+// server.js (MongoDB + ImgBB integrated)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
 const WebSocket = require('ws');
 const path = require('path');
 const mongoose = require('mongoose');
-// --- JetPhotos upload/review system ---
 const multer = require('multer');
 const fs = require('fs');
 const mime = require('mime-types');
-const sharp = require('sharp');
+const FormData = require('form-data');
+const fetch = require('node-fetch');
+
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 
 // ------------ MongoDB ------------
 mongoose.connect(MONGODB_URI)
-// === JetPhotos photo schema ===
+  .then(() => console.log('MongoDB connected'))
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// === Photo schema ===
 const photoSchema = new mongoose.Schema({
   file: String,
   thumb: String,
@@ -29,14 +33,15 @@ const photoSchema = new mongoose.Schema({
   tags: [String],
   lat: Number,
   lon: Number,
-  status: { type: String, default: 'pending' }, // pending / approved / rejected
+  status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 }, { versionKey: false });
 
 const Photo = mongoose.model('Photo', photoSchema);
 
+// === Flight Point schema ===
 const flightPointSchema = new mongoose.Schema({
-  aircraftId: { type: String, index: true }, // e.g. callsign or id
+  aircraftId: { type: String, index: true },
   callsign: String,
   type: String,
   lat: Number,
@@ -44,12 +49,19 @@ const flightPointSchema = new mongoose.Schema({
   alt: Number,
   speed: Number,
   heading: Number,
-  ts: { type: Number, index: true } // timestamp in ms
+  ts: { type: Number, index: true }
 }, { versionKey: false });
 
 const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
 
-// ------------ app routes ------------
+// ------------ Express setup ------------
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
+
+// Serve static files
+app.use(express.static(__dirname));
+
+// Routes
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'atc.html'));
 });
@@ -64,12 +76,11 @@ app.get('/upload.html', (req, res) => {
 
 app.get('/health', (req, res) => res.send('ok'));
 
-// API: manual clear (optional for admin / ATC)
+// API: manual clear
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
     const { aircraftId } = req.params;
     await FlightPoint.deleteMany({ aircraftId });
-    // broadcast clear to ATC
     broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } });
     res.sendStatus(200);
   } catch (err) {
@@ -77,12 +88,11 @@ app.delete('/clear/:aircraftId', async (req, res) => {
     res.status(500).json({ error: 'server' });
   }
 });
-// === JetPhotos upload system ===
+
+// === JetPhotos upload system with ImgBB ===
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
-app.use('/uploads', express.static(UPLOAD_DIR));
 
-// multer setup
 const storage = multer.diskStorage({
   destination: UPLOAD_DIR,
   filename: (req, file, cb) => {
@@ -93,19 +103,42 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 30 * 1024 * 1024 } });
 
-// === 上傳照片 ===
+// Upload to ImgBB
 app.post('/api/upload', upload.single('photo'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
 
-    const thumbPath = path.join(UPLOAD_DIR, 'thumb-' + file.filename);
-    await sharp(file.path).resize({ width: 1000, withoutEnlargement: true }).toFile(thumbPath);
+    if (!IMGBB_API_KEY) {
+      return res.status(500).json({ error: 'ImgBB API key not configured' });
+    }
+
+    // Read file as base64
+    const imageBuffer = fs.readFileSync(file.path);
+    const base64Image = imageBuffer.toString('base64');
+
+    // Upload to ImgBB
+    const formData = new FormData();
+    formData.append('image', base64Image);
+
+    const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
+      method: 'POST',
+      body: formData
+    });
+
+    const imgbbData = await imgbbResponse.json();
+
+    if (!imgbbData.success) {
+      throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown error'));
+    }
+
+    // Delete local temp file
+    fs.unlinkSync(file.path);
 
     const { photographer = 'anon', caption = '', tags = '', lat, lon } = req.body;
     const photo = await Photo.create({
-      file: '/uploads/' + file.filename,
-      thumb: '/uploads/' + path.basename(thumbPath),
+      file: imgbbData.data.url,
+      thumb: imgbbData.data.thumb?.url || imgbbData.data.url,
       photographer,
       caption,
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
@@ -116,27 +149,25 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 
     res.json({ ok: true, photo });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
+    console.error('Upload error:', err);
+    res.status(500).json({ error: err.message || 'server error' });
   }
 });
-// === JetPhotos admin review system ===
+
+// === Admin review system ===
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
-// 密碼驗證中介層
 app.use('/admin', (req, res, next) => {
   const pass = req.headers['x-admin-pass'];
   if (pass !== ADMIN_PASSWORD) return res.status(403).json({ error: 'forbidden' });
   next();
 });
 
-// 查詢待審核照片
 app.get('/admin/photos/pending', async (req, res) => {
   const pending = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
   res.json(pending);
 });
 
-// 核准照片
 app.post('/admin/photos/:id/approve', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
   if (!photo) return res.status(404).json({ error: 'not found' });
@@ -145,7 +176,6 @@ app.post('/admin/photos/:id/approve', async (req, res) => {
   res.json({ message: 'approved' });
 });
 
-// 拒絕照片
 app.post('/admin/photos/:id/reject', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
   if (!photo) return res.status(404).json({ error: 'not found' });
@@ -154,7 +184,22 @@ app.post('/admin/photos/:id/reject', async (req, res) => {
   res.json({ message: 'rejected' });
 });
 
-// 公開 API：僅顯示已核准的照片
+app.delete('/admin/photos/:id', async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (!photo) return res.status(404).json({ error: 'not found' });
+    
+    // Note: We can't delete from ImgBB via API (free tier limitation)
+    // Just delete from database
+    await Photo.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 app.get('/api/photos', async (req, res) => {
   const photos = await Photo.find({ status: 'approved' }).sort({ createdAt: -1 });
   res.json(photos);
@@ -166,49 +211,14 @@ server.on('upgrade', (request, socket, head) => {
     wss.emit('connection', ws, request);
   });
 });
-// 拒絕照片
-app.post('/admin/photos/:id/reject', async (req, res) => {
-  const photo = await Photo.findById(req.params.id);
-  if (!photo) return res.status(404).json({ error: 'not found' });
-  photo.status = 'rejected';
-  await photo.save();
-  res.json({ message: 'rejected' });
-});
 
-// 🆕 加入這段：刪除照片（包含檔案）
-app.delete('/admin/photos/:id', async (req, res) => {
-  try {
-    const photo = await Photo.findById(req.params.id);
-    if (!photo) return res.status(404).json({ error: 'not found' });
-    
-    // 刪除實體檔案
-    const filePath = path.join(__dirname, photo.file);
-    const thumbPath = path.join(__dirname, photo.thumb);
-    
-    if (fs.existsSync(filePath)) fs.unlinkSync(filePath);
-    if (fs.existsSync(thumbPath)) fs.unlinkSync(thumbPath);
-    
-    // 刪除資料庫記錄
-    await Photo.findByIdAndDelete(req.params.id);
-    
-    res.json({ message: 'deleted' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
-  }
-});
-// clients bookkeeping (same as original)
-const clients = new Set(); // all ws clients
+const clients = new Set();
 const atcClients = new Set();
 const playerClients = new Set();
-
-// track aircraft state keyed by aircraft id (in-memory snapshot for quick broadcast)
 const aircrafts = new Map();
 
-// retention policy (ms)
-const RETENTION_MS = 12 * 60 * 60 * 1000; // 12 hours (same as original logic)
+const RETENTION_MS = 12 * 60 * 60 * 1000;
 
-// Helper: broadcast to ATC clients
 function broadcastToATC(obj) {
   const msg = JSON.stringify(obj);
   for (const ws of atcClients) {
@@ -218,19 +228,16 @@ function broadcastToATC(obj) {
   }
 }
 
-// Save flight point to MongoDB and prune old points for that aircraft
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
     const cutoff = Date.now() - RETENTION_MS;
-    // optional prune: remove points older than retention for this aircraft
     await FlightPoint.deleteMany({ aircraftId: pt.aircraftId, ts: { $lt: cutoff } });
   } catch (err) {
     console.error('saveFlightPoint error', err);
   }
 }
 
-// Query history for a given aircraftId (sorted)
 async function loadHistoryForAircraft(aircraftId, limit = 2000) {
   try {
     const docs = await FlightPoint.find({ aircraftId }).sort({ ts: 1 }).limit(limit).lean();
@@ -243,7 +250,6 @@ async function loadHistoryForAircraft(aircraftId, limit = 2000) {
   }
 }
 
-// On incoming websocket connection
 wss.on('connection', (ws, req) => {
   clients.add(ws);
   ws.role = 'unknown';
@@ -253,19 +259,15 @@ wss.on('connection', (ws, req) => {
     try {
       const msg = JSON.parse(data);
 
-      // hello message - register role
       if (msg.type === 'hello') {
         ws.role = msg.role || 'unknown';
 
         if (ws.role === 'atc') {
           atcClients.add(ws);
 
-          // 發送當前飛機 snapshot (in-memory)
           const payload = Array.from(aircrafts.values()).map(x => x.payload);
           ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
 
-          // 對每個在 snapshot 的 aircraft，從 DB 拉出歷史並發給這個 ATC client
-          // 若 aircrafts map 很大，這段可改成只拉特定 aircraftId 或做 rate-limit
           for (const [aircraftId] of aircrafts) {
             const tracks = await loadHistoryForAircraft(aircraftId, 5000);
             if (tracks && tracks.length > 0) {
@@ -275,17 +277,13 @@ wss.on('connection', (ws, req) => {
               }));
             }
           }
-
-          // 此外，也可以列出最近在 DB 但不在 snapshot 的 aircrafts（選擇性）
-          // (跳過以免一次發太多)
         } else if (ws.role === 'player') {
           playerClients.add(ws);
-          ws.aircraftId = null; // set on first position update
+          ws.aircraftId = null;
         }
         return;
       }
 
-      // position update from client player
       if (msg.type === 'position_update' && msg.payload) {
         const p = msg.payload;
         const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
@@ -313,10 +311,8 @@ wss.on('connection', (ws, req) => {
           flightPlan: p.flightPlan || []
         };
 
-        // update in-memory snapshot for quick broadcast & snapshot API
         aircrafts.set(id, { payload, lastSeen: Date.now() });
 
-        // store to MongoDB (non-blocking)
         saveFlightPoint({
           aircraftId: id,
           callsign: payload.callsign,
@@ -329,7 +325,6 @@ wss.on('connection', (ws, req) => {
           ts: payload.ts
         });
 
-        // broadcast update to ATC clients (same shape as original)
         broadcastToATC({
           type: 'aircraft_update',
           payload,
@@ -344,14 +339,12 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-      // client asked to clear its track (optional custom message type)
       if (msg.type === 'clear_track' && msg.aircraftId) {
         await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
         return;
       }
 
-      // client disconnect asked explicitly
       if (msg.type === 'disconnect' && msg.aircraftId) {
         await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
@@ -368,7 +361,6 @@ wss.on('connection', (ws, req) => {
     atcClients.delete(ws);
     playerClients.delete(ws);
 
-    // player disconnected -> clear its track from DB and notify ATC (same behaviour as original)
     if (ws.role === 'player' && ws.aircraftId) {
       try {
         await FlightPoint.deleteMany({ aircraftId: ws.aircraftId });
@@ -389,16 +381,14 @@ wss.on('connection', (ws, req) => {
   });
 });
 
-// cleanup stale aircrafts periodically (same as original)
 setInterval(async () => {
   const now = Date.now();
-  const timeout = 30000; // 30s
+  const timeout = 30000;
   let removed = [];
   for (const [id, v] of aircrafts.entries()) {
     if (now - v.lastSeen > timeout) {
       aircrafts.delete(id);
       removed.push(id);
-      // also clear DB history for that aircraft (same as original behaviour)
       try {
         await FlightPoint.deleteMany({ aircraftId: id });
       } catch (err) {
@@ -417,19 +407,15 @@ setInterval(async () => {
   }
 }, 5000);
 
-// periodic prune: delete anything older than retention (safety)
 setInterval(async () => {
   try {
     const cutoff = Date.now() - RETENTION_MS;
     await FlightPoint.deleteMany({ ts: { $lt: cutoff } });
-    // console.log('Pruned old flight points before', new Date(cutoff).toISOString());
   } catch (err) {
     console.error('Prune error', err);
   }
-}, 6 * 60 * 60 * 1000); // every 6h
+}, 6 * 60 * 60 * 1000);
 
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
-
