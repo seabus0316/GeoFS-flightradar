@@ -18,6 +18,7 @@ const wss = new WebSocket.Server({ noServer: true });
 const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
 // ------------ MongoDB ------------
 mongoose.connect(MONGODB_URI)
@@ -58,20 +59,24 @@ const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Serve static files
-app.use(express.static(__dirname));
+// Serve static files from public directory
+app.use(express.static(path.join(__dirname, 'public')));
 
 // Routes
 app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'atc.html'));
+  res.sendFile(path.join(__dirname, 'public', 'atc.html'));
 });
 
 app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'admin.html'));
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
 app.get('/upload.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'upload.html'));
+  res.sendFile(path.join(__dirname, 'public', 'upload.html'));
+});
+
+app.get('/gallery.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
 });
 
 app.get('/health', (req, res) => res.send('ok'));
@@ -137,15 +142,15 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 
     const { photographer = 'anon', caption = '', tags = '', lat, lon } = req.body;
     const photo = await Photo.create({
-    file: imgbbData.data.url,
-    thumb: imgbbData.data.url,  // ← 改這行：原本是 imgbbData.data.thumb.url
-    photographer,
-    caption,
-    tags: tags.split(',').map(s => s.trim()).filter(Boolean),
-    lat: lat ? Number(lat) : null,
-    lon: lon ? Number(lon) : null,
-    status: 'pending'
-  });
+      file: imgbbData.data.url,
+      thumb: imgbbData.data.url,
+      photographer,
+      caption,
+      tags: tags.split(',').map(s => s.trim()).filter(Boolean),
+      lat: lat ? Number(lat) : null,
+      lon: lon ? Number(lon) : null,
+      status: 'pending'
+    });
 
     res.json({ ok: true, photo });
   } catch (err) {
@@ -155,31 +160,6 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 });
 
 // === Admin review system ===
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
-
-// 修改靜態檔案路徑
-app.use(express.static(path.join(__dirname, 'public')));
-
-// 路由
-app.get('/', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'atc.html'));
-});
-
-// 可選：如果你想明確定義其他路由
-app.get('/admin.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
-});
-
-app.get('/upload.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'upload.html'));
-});
-
-app.get('/gallery.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
-});
-
-app.get('/health', (req, res) => res.send('ok'));
-
 app.post('/admin/photos/:id/approve', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
   if (!photo) return res.status(404).json({ error: 'not found' });
