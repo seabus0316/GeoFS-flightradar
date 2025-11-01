@@ -168,6 +168,10 @@ app.get('/admin/photos/pending', async (req, res) => {
   res.json(pending);
 });
 
+app.get('/gallery.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'gallery.html'));
+});
+
 app.post('/admin/photos/:id/approve', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
   if (!photo) return res.status(404).json({ error: 'not found' });
