@@ -493,6 +493,9 @@ const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
+const googleTer = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
 
 // 高德地图 (Amap)
 const amapStreets = L.tileLayer(
@@ -539,6 +542,7 @@ L.control.layers(
     "OpenStreetMap": osmLayer,
     "Thunderforest Transport": Thunderforest_Transport,
     "Google Streets": googleStreet,
+    "Google Terrain": googleTer,
     "Google Hybrid": googleHybrid,
     "Google Satellite": googleSat,
     "Amap Streets": amapStreets,
