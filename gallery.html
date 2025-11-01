@@ -1,0 +1,446 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JetPhotos Gallery - Aviation Photography</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #0a0e27 0%, #1a1f3a 100%);
+      color: #e6edf3;
+      min-height: 100vh;
+    }
+
+    header {
+      background: rgba(22, 27, 34, 0.95);
+      padding: 20px 0;
+      box-shadow: 0 2px 20px rgba(0, 0, 0, 0.5);
+      position: sticky;
+      top: 0;
+      z-index: 1000;
+      backdrop-filter: blur(10px);
+    }
+
+    .container {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 0 20px;
+    }
+
+    h1 {
+      color: #58a6ff;
+      font-size: 2.5em;
+      text-align: center;
+      margin-bottom: 10px;
+      text-shadow: 0 0 20px rgba(88, 166, 255, 0.5);
+    }
+
+    .subtitle {
+      text-align: center;
+      color: #8b949e;
+      font-size: 1.1em;
+      margin-bottom: 20px;
+    }
+
+    .search-bar {
+      display: flex;
+      gap: 10px;
+      max-width: 600px;
+      margin: 20px auto;
+      padding: 0 20px;
+    }
+
+    .search-bar input {
+      flex: 1;
+      padding: 12px 20px;
+      border: 2px solid #30363d;
+      border-radius: 8px;
+      background: #0d1117;
+      color: #e6edf3;
+      font-size: 16px;
+      transition: all 0.3s;
+    }
+
+    .search-bar input:focus {
+      outline: none;
+      border-color: #58a6ff;
+      box-shadow: 0 0 10px rgba(88, 166, 255, 0.3);
+    }
+
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 30px 0;
+      flex-wrap: wrap;
+    }
+
+    .stat-item {
+      text-align: center;
+      padding: 15px 30px;
+      background: rgba(22, 27, 34, 0.8);
+      border-radius: 10px;
+      border: 1px solid #30363d;
+    }
+
+    .stat-number {
+      font-size: 2em;
+      font-weight: bold;
+      color: #58a6ff;
+    }
+
+    .stat-label {
+      color: #8b949e;
+      margin-top: 5px;
+    }
+
+    .gallery {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+      gap: 25px;
+      padding: 40px 20px;
+    }
+
+    .photo-card {
+      background: rgba(22, 27, 34, 0.9);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      transition: transform 0.3s, box-shadow 0.3s;
+      cursor: pointer;
+      border: 1px solid #30363d;
+    }
+
+    .photo-card:hover {
+      transform: translateY(-8px);
+      box-shadow: 0 8px 30px rgba(88, 166, 255, 0.3);
+      border-color: #58a6ff;
+    }
+
+    .photo-card img {
+      width: 100%;
+      height: 240px;
+      object-fit: cover;
+      transition: transform 0.3s;
+    }
+
+    .photo-card:hover img {
+      transform: scale(1.05);
+    }
+
+    .photo-info {
+      padding: 15px;
+    }
+
+    .photo-title {
+      font-size: 1.1em;
+      font-weight: bold;
+      color: #e6edf3;
+      margin-bottom: 8px;
+      line-height: 1.4;
+    }
+
+    .photo-meta {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #8b949e;
+      font-size: 0.9em;
+      margin-bottom: 8px;
+    }
+
+    .photo-tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 10px;
+    }
+
+    .tag {
+      background: rgba(88, 166, 255, 0.15);
+      color: #58a6ff;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 0.85em;
+      border: 1px solid rgba(88, 166, 255, 0.3);
+    }
+
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      font-size: 1.3em;
+      color: #8b949e;
+    }
+
+    .loading::after {
+      content: '...';
+      animation: dots 1.5s steps(4, end) infinite;
+    }
+
+    @keyframes dots {
+      0%, 20% { content: '.'; }
+      40% { content: '..'; }
+      60%, 100% { content: '...'; }
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .empty-state img {
+      width: 200px;
+      opacity: 0.3;
+      margin-bottom: 20px;
+    }
+
+    .empty-state h2 {
+      color: #8b949e;
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+
+    .lightbox {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: rgba(0, 0, 0, 0.95);
+      z-index: 9999;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+    }
+
+    .lightbox.active {
+      display: flex;
+    }
+
+    .lightbox-content {
+      max-width: 90%;
+      max-height: 90%;
+      position: relative;
+    }
+
+    .lightbox img {
+      max-width: 100%;
+      max-height: 85vh;
+      border-radius: 8px;
+      box-shadow: 0 0 50px rgba(0, 0, 0, 0.8);
+    }
+
+    .lightbox-info {
+      background: rgba(22, 27, 34, 0.95);
+      padding: 15px 20px;
+      border-radius: 8px;
+      margin-top: 15px;
+      max-width: 600px;
+    }
+
+    .close-lightbox {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: rgba(218, 54, 51, 0.9);
+      color: white;
+      border: none;
+      width: 50px;
+      height: 50px;
+      border-radius: 50%;
+      font-size: 24px;
+      cursor: pointer;
+      transition: all 0.3s;
+    }
+
+    .close-lightbox:hover {
+      background: #da3633;
+      transform: rotate(90deg);
+    }
+
+    @media (max-width: 768px) {
+      h1 {
+        font-size: 1.8em;
+      }
+
+      .gallery {
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 15px;
+        padding: 20px 10px;
+      }
+
+      .stats {
+        gap: 20px;
+      }
+
+      .stat-item {
+        padding: 10px 20px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="container">
+      <h1>✈️ JetPhotos Gallery</h1>
+      <p class="subtitle">Aviation Photography Community</p>
+      
+      <div class="search-bar">
+        <input type="text" id="searchInput" placeholder="🔍 Search by caption, photographer, or tags...">
+      </div>
+
+      <div class="stats">
+        <div class="stat-item">
+          <div class="stat-number" id="totalPhotos">0</div>
+          <div class="stat-label">Photos</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-number" id="totalPhotographers">0</div>
+          <div class="stat-label">Photographers</div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <div class="container">
+    <div id="gallery" class="gallery">
+      <div class="loading">Loading amazing aviation photos</div>
+    </div>
+  </div>
+
+  <div id="lightbox" class="lightbox">
+    <button class="close-lightbox" onclick="closeLightbox()">×</button>
+    <div class="lightbox-content">
+      <img id="lightboxImage" src="" alt="">
+      <div class="lightbox-info">
+        <div class="photo-title" id="lightboxTitle"></div>
+        <div class="photo-meta" id="lightboxMeta"></div>
+        <div class="photo-tags" id="lightboxTags"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allPhotos = [];
+    let filteredPhotos = [];
+
+    async function loadPhotos() {
+      try {
+        const response = await fetch('/api/photos');
+        allPhotos = await response.json();
+        filteredPhotos = allPhotos;
+        displayPhotos(allPhotos);
+        updateStats(allPhotos);
+      } catch (error) {
+        console.error('Error loading photos:', error);
+        document.getElementById('gallery').innerHTML = `
+          <div class="empty-state">
+            <h2>Failed to load photos</h2>
+            <p>Please check your connection and try again.</p>
+          </div>
+        `;
+      }
+    }
+
+    function displayPhotos(photos) {
+      const gallery = document.getElementById('gallery');
+      
+      if (photos.length === 0) {
+        gallery.innerHTML = `
+          <div class="empty-state">
+            <h2>No photos found</h2>
+            <p>Try adjusting your search criteria</p>
+          </div>
+        `;
+        return;
+      }
+
+      gallery.innerHTML = photos.map((photo, index) => `
+        <div class="photo-card" onclick="openLightbox(${index})">
+          <img src="${photo.file}" alt="${photo.caption || 'Aviation photo'}" loading="lazy">
+          <div class="photo-info">
+            <div class="photo-title">${photo.caption || 'Untitled'}</div>
+            <div class="photo-meta">
+              <span>📸 ${photo.photographer || 'Anonymous'}</span>
+            </div>
+            ${photo.tags && photo.tags.length > 0 ? `
+              <div class="photo-tags">
+                ${photo.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+              </div>
+            ` : ''}
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function updateStats(photos) {
+      document.getElementById('totalPhotos').textContent = photos.length;
+      const photographers = new Set(photos.map(p => p.photographer || 'Anonymous'));
+      document.getElementById('totalPhotographers').textContent = photographers.size;
+    }
+
+    function openLightbox(index) {
+      const photo = filteredPhotos[index];
+      const lightbox = document.getElementById('lightbox');
+      
+      document.getElementById('lightboxImage').src = photo.file;
+      document.getElementById('lightboxTitle').textContent = photo.caption || 'Untitled';
+      document.getElementById('lightboxMeta').innerHTML = `📸 ${photo.photographer || 'Anonymous'}`;
+      
+      if (photo.tags && photo.tags.length > 0) {
+        document.getElementById('lightboxTags').innerHTML = 
+          photo.tags.map(tag => `<span class="tag">${tag}</span>`).join('');
+      } else {
+        document.getElementById('lightboxTags').innerHTML = '';
+      }
+      
+      lightbox.classList.add('active');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeLightbox() {
+      document.getElementById('lightbox').classList.remove('active');
+      document.body.style.overflow = 'auto';
+    }
+
+    document.getElementById('lightbox').addEventListener('click', function(e) {
+      if (e.target === this) {
+        closeLightbox();
+      }
+    });
+
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') {
+        closeLightbox();
+      }
+    });
+
+    document.getElementById('searchInput').addEventListener('input', function(e) {
+      const searchTerm = e.target.value.toLowerCase();
+      
+      filteredPhotos = allPhotos.filter(photo => {
+        const caption = (photo.caption || '').toLowerCase();
+        const photographer = (photo.photographer || '').toLowerCase();
+        const tags = (photo.tags || []).join(' ').toLowerCase();
+        
+        return caption.includes(searchTerm) || 
+               photographer.includes(searchTerm) || 
+               tags.includes(searchTerm);
+      });
+      
+      displayPhotos(filteredPhotos);
+      updateStats(filteredPhotos);
+    });
+
+    loadPhotos();
+  </script>
+</body>
+</html>
