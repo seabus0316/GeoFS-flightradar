@@ -157,10 +157,28 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 // === Admin review system ===
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
+// 修改靜態檔案路徑
+app.use(express.static(path.join(__dirname, 'public')));
+
+// 路由
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'atc.html'));
 });
 
+// 可選：如果你想明確定義其他路由
+app.get('/admin.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+app.get('/upload.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'upload.html'));
+});
+
+app.get('/gallery.html', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'gallery.html'));
+});
+
+app.get('/health', (req, res) => res.send('ok'));
 
 app.post('/admin/photos/:id/approve', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
