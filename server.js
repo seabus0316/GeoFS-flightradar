@@ -157,20 +157,10 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 // === Admin review system ===
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
-app.use('/admin', (req, res, next) => {
-  const pass = req.headers['x-admin-pass'];
-  if (pass !== ADMIN_PASSWORD) return res.status(403).json({ error: 'forbidden' });
-  next();
+app.get('/', (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'atc.html'));
 });
 
-app.get('/admin/photos/pending', async (req, res) => {
-  const pending = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
-  res.json(pending);
-});
-
-app.get('/gallery.html', (req, res) => {
-  res.sendFile(path.join(__dirname, 'gallery.html'));
-});
 
 app.post('/admin/photos/:id/approve', async (req, res) => {
   const photo = await Photo.findById(req.params.id);
