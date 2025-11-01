@@ -75,28 +75,6 @@ app.get('/upload.html', (req, res) => {
 });
 
 app.get('/health', (req, res) => res.send('ok'));
-// 加在其他 admin 路由附近
-app.post('/admin/photos/cleanup', async (req, res) => {
-  try {
-    // 找出所有不是 ImgBB 網址的照片
-    const invalidPhotos = await Photo.find({
-      file: { $not: /^https:\/\/(i\.ibb\.co|ibb\.co)/ }
-    });
-    
-    // 刪除這些無效照片
-    await Photo.deleteMany({
-      file: { $not: /^https:\/\/(i\.ibb\.co|ibb\.co)/ }
-    });
-    
-    res.json({ 
-      message: 'cleanup complete', 
-      deleted: invalidPhotos.length 
-    });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
-  }
-});
 
 // API: manual clear
 app.delete('/clear/:aircraftId', async (req, res) => {
@@ -441,4 +419,5 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
 
