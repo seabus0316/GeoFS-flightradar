@@ -97,11 +97,7 @@ app.post('/admin/photos/cleanup', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
-```
 
-然後在瀏覽器執行：
-```
-https://geofs-flightradar.onrender.com/admin/photos/cleanup
 // API: manual clear
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
@@ -445,3 +441,4 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
+
