@@ -470,7 +470,7 @@ fetch('/api/photos')
       const item = document.createElement('div');
       item.className = 'photo-item';
       item.innerHTML = `
-        <img src="${p.thumb}" alt="${p.caption || ''}" onclick="window.open('${p.file}', '_blank')">
+        <img src="${p.file}" alt="${p.caption || ''}" onclick="window.open('${p.file}', '_blank')">
         <div class="caption">
           <strong>${p.caption || 'Untitled'}</strong><br>
           <small>📸 ${p.photographer || 'Anonymous'}</small>
