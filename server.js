@@ -137,15 +137,15 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 
     const { photographer = 'anon', caption = '', tags = '', lat, lon } = req.body;
     const photo = await Photo.create({
-      file: imgbbData.data.url,
-      thumb: imgbbData.data.thumb?.url || imgbbData.data.url,
-      photographer,
-      caption,
-      tags: tags.split(',').map(s => s.trim()).filter(Boolean),
-      lat: lat ? Number(lat) : null,
-      lon: lon ? Number(lon) : null,
-      status: 'pending'
-    });
+    file: imgbbData.data.url,
+    thumb: imgbbData.data.url,  // ← 改這行：原本是 imgbbData.data.thumb.url
+    photographer,
+    caption,
+    tags: tags.split(',').map(s => s.trim()).filter(Boolean),
+    lat: lat ? Number(lat) : null,
+    lon: lon ? Number(lon) : null,
+    status: 'pending'
+  });
 
     res.json({ ok: true, photo });
   } catch (err) {
@@ -419,5 +419,3 @@ setInterval(async () => {
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
 });
-
-
