@@ -10,20 +10,31 @@
       background: #0d1117;
       color: #e6edf3;
       margin: 0;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
       padding: 20px;
     }
     h1 {
       color: #58a6ff;
+      text-align: center;
     }
     form {
       display: flex;
       flex-direction: column;
       gap: 12px;
+      width: 100%;
       max-width: 400px;
+      min-width: 320px;
       background: #161b22;
       padding: 20px;
       border-radius: 10px;
       box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      resize: both;
+      overflow: auto;
+      box-sizing: border-box;
     }
     label {
       font-weight: bold;
@@ -36,6 +47,12 @@
       width: 100%;
       background: #0d1117;
       color: #e6edf3;
+      box-sizing: border-box;
+    }
+    textarea {
+      resize: none; 
+      height: 100px;
+      flex: 1;
     }
     input[type=file] {
       background: transparent;
@@ -55,6 +72,11 @@
     #msg {
       margin-top: 20px;
       font-weight: bold;
+      text-align: center;
+    }
+    form > * {
+      margin-left: 0;
+      margin-right: 0;
     }
   </style>
 </head>
@@ -87,6 +109,15 @@
   <script>
     const form = document.getElementById('uploadForm');
     const msg = document.getElementById('msg');
+    const textarea = form.querySelector('textarea');
+
+    const resizeObserver = new ResizeObserver(() => {
+      const formWidth = form.clientWidth;
+      const formHeight = form.clientHeight;
+      textarea.style.width = '100%';
+      textarea.style.height = Math.max(80, formHeight * 0.2) + 'px';
+    });
+    resizeObserver.observe(form);
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
