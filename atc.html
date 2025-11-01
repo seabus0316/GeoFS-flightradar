@@ -7,25 +7,74 @@
   <title>GeoFS ATC Screen</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <div id="photoPanel" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+  
 
-<script>
-fetch('/api/photos')
-  .then(r => r.json())
-  .then(list => {
-    const panel = document.getElementById('photoPanel');
-    list.forEach(p => {
-      const img = document.createElement('img');
-      img.src = p.thumb;
-      img.title = p.caption || '';
-      img.style = 'width:150px;border-radius:6px;cursor:pointer;';
-      img.onclick = () => window.open(p.file, '_blank');
-      panel.appendChild(img);
-    });
-  });
-</script>
 
   <style>
+    /* 側邊照片面板 */
+#photoSidebar {
+  position: fixed;
+  right: -320px;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  background: rgba(22, 27, 34, 0.95);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+  transition: right 0.3s ease;
+  z-index: 99997;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+#photoSidebar.open {
+  right: 0;
+}
+
+#photoToggle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(22, 27, 34, 0.95);
+  color: #fff;
+  border: none;
+  padding: 20px 10px;
+  cursor: pointer;
+  z-index: 99998;
+  border-radius: 6px 0 0 6px;
+  font-size: 18px;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.4);
+}
+
+#photoToggle:hover {
+  background: rgba(35, 134, 54, 0.95);
+}
+
+.photo-item {
+  margin-bottom: 15px;
+  background: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.photo-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photo-item img:hover {
+  transform: scale(1.05);
+}
+
+.photo-item .caption {
+  padding: 8px;
+  font-size: 12px;
+  color: #e6edf3;
+}
     .github-ribbon {
   position: fixed;
   bottom: 0;
@@ -156,6 +205,12 @@ fetch('/api/photos')
   </style>
 </head>
 <body>
+  <!-- 側邊照片面板 -->
+<button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
+<div id="photoSidebar">
+  <h3 style="color:#58a6ff;margin-top:0;">JetPhotos Gallery</h3>
+  <div id="photoPanel"></div>
+</div>
 <div class="github-ribbon">
   <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank">
     Visit GitHub Page
@@ -399,7 +454,32 @@ function escapeHtml(s) {
     }[c];
   });
 }
+// 照片側邊欄切換
+function togglePhotoSidebar() {
+  const sidebar = document.getElementById('photoSidebar');
+  sidebar.classList.toggle('open');
+}
 
+// 載入照片（修改原有的 fetch 部分）
+fetch('/api/photos')
+  .then(r => r.json())
+  .then(list => {
+    const panel = document.getElementById('photoPanel');
+    panel.innerHTML = '';
+    list.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'photo-item';
+      item.innerHTML = `
+        <img src="${p.thumb}" alt="${p.caption || ''}" onclick="window.open('${p.file}', '_blank')">
+        <div class="caption">
+          <strong>${p.caption || 'Untitled'}</strong><br>
+          <small>📸 ${p.photographer || 'Anonymous'}</small>
+        </div>
+      `;
+      panel.appendChild(item);
+    });
+  })
+  .catch(err => console.error('載入照片失敗:', err));
 // 地圖設定
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
