@@ -8,6 +8,101 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
+    /* 側邊照片面板 */
+#photoSidebar {
+  position: fixed;
+  right: -320px;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  background: rgba(22, 27, 34, 0.95);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+  transition: right 0.3s ease;
+  z-index: 99997;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+#photoSidebar.open {
+  right: 0;
+}
+
+#photoToggle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(22, 27, 34, 0.95);
+  color: #fff;
+  border: none;
+  padding: 20px 10px;
+  cursor: pointer;
+  z-index: 99998;
+  border-radius: 6px 0 0 6px;
+  font-size: 18px;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.4);
+}
+
+#photoToggle:hover {
+  background: rgba(35, 134, 54, 0.95);
+}
+
+.photo-item {
+  margin-bottom: 15px;
+  background: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.photo-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photo-item img:hover {
+  transform: scale(1.05);
+}
+
+.photo-item .caption {
+  padding: 8px;
+  font-size: 12px;
+  color: #e6edf3;
+}
+    .github-ribbon {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  z-index: 99998;
+  pointer-events: none;
+}
+.github-ribbon a {
+  position: absolute;
+  bottom: 35px;
+  left: -40px;
+  transform: rotate(45deg);
+  width: 200px;
+  background: #c0392b;
+  color: white;
+  text-align: center;
+  padding: 8px 0;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  transition: background 0.3s ease;
+}
+.github-ribbon a:hover {
+  background: #a93226;
+}
     html,body,#map { height:100%; margin:0; padding:0; }
     .label {
       font-family: Inter, "Noto Sans TC", Arial, sans-serif;
@@ -107,6 +202,17 @@
   </style>
 </head>
 <body>
+  <!-- 側邊照片面板 -->
+<button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
+<div id="photoSidebar">
+  <h3 style="color:#58a6ff;margin-top:0;">JetPhotos Gallery</h3>
+  <div id="photoPanel"></div>
+</div>
+<div class="github-ribbon">
+  <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank">
+    Visit GitHub Page
+  </a>
+</div>
 <div id="map"></div>
 <div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
 <div class="altitude-legend">
@@ -121,7 +227,7 @@
 </div>
 
 <!-- UTC Time Box with Clocks -->
-<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99999; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99995; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
   <div style="margin-bottom: 8px; font-weight: bold;">UTC Time: <span id="utcTimeText">--</span></div>
   <div id="clockContainer" style="display: flex; gap: 15px; justify-content: center;">
     <!-- Clocks will be inserted here -->
@@ -149,19 +255,41 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // X 軸用時間（或序號）
+  // ✅ 計算時間跨度，動態調整標籤格式
+  const firstTs = track[0]?.ts;
+  const lastTs = track[track.length - 1]?.ts;
+  const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
+  
+  // 根據時間跨度選擇格式
+  let timeFormat;
+  let maxTicks;
+  if (timeSpanHours > 6) {
+    // 超過 6 小時：只顯示小時
+    timeFormat = { hour: '2-digit', hour12: false };
+    maxTicks = 12;
+  } else if (timeSpanHours > 2) {
+    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 15;
+  } else {
+    // 少於 2 小時：顯示詳細時間
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 12;
+  }
+
+  // X 軸標籤
   const labels = track.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
-      return dt.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', hour12: false });
+      return dt.toLocaleTimeString('en-GB', timeFormat);
     }
     return i + 1;
   });
+  
   const altitudes = track.map(p => Math.round(p.alt));
   const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
 
   if (!flightChartObj) {
-    // 第一次建立
     flightChartObj = new Chart(ctx, {
       type: 'line',
       data: {
@@ -172,7 +300,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: 2,
+            pointRadius: 0, // ✅ 關閉點，讓線更清晰
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -181,7 +309,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: 2,
+            pointRadius: 0, // ✅ 關閉點
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -190,7 +318,7 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
+       plugins: {
           legend: {
             display: true,
             labels: {
@@ -199,7 +327,8 @@ function showFlightChart(track) {
             }
           },
           tooltip: {
-            enabled: true,
+            mode: 'index',
+            intersect: false,
             backgroundColor: "#222",
             borderColor: "#ffd300",
             borderWidth: 2,
@@ -208,7 +337,14 @@ function showFlightChart(track) {
                 const idx = items[0].dataIndex;
                 const p = track[idx];
                 if (p.ts)
-                  return new Date(p.ts).toLocaleString('en-GB', { weekday: 'long', year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false });
+                  return new Date(p.ts).toLocaleString('en-GB', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                  });
                 return `Point ${idx+1}`;
               },
               label: (item) => {
@@ -221,56 +357,53 @@ function showFlightChart(track) {
           }
         },
         scales: {
-  x: {
-    title: { display: false },
-    ticks: {
-      color: "#fff",
-      font: { size: 11 },
-      maxRotation: 45,
-      minRotation: 0,
-      autoSkip: true,
-      maxTicksLimit: 12,
-      display: true
-    },
-    grid: { color: "#444" },
-    display: true
-  },
-  'y-alt': {
-    type: 'linear',
-    position: 'left',
-    min:0,
-    max:50000,
-    title: {
-      display: true,
-      text: 'Altitude (ft)',
-      color: "#00b4ff",
-      font: { size: 13, weight:'bold' }
-    },
-    grid: { color: "#444" },
-    ticks: { color: "#00b4ff", font: { size: 13 } }
-  },
-  'y-speed': {
-    type: 'linear',
-    position: 'right',
-    min: 0,
-    max:1000,
-    title: {
-      display: true,
-      text: 'Speed (kt)',
-      color: "#ffd300",
-      font: { size: 13, weight:'bold' }
-    },
-    grid: { drawOnChartArea: false },
-    ticks: { color: "#ffd300", font: { size: 13 } }
-  }
-}
+          x: {
+            title: { display: false },
+            ticks: {
+              color: "#fff",
+              font: { size: 11 },
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: maxTicks, // ✅ 動態調整
+              display: true
+            },
+            grid: { color: "#444" },
+            display: true
+          },
+          'y-alt': {
+            type: 'linear',
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Altitude (ft)',
+              color: "#00b4ff",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { color: "#444" },
+            ticks: { color: "#00b4ff", font: { size: 13 } }
+          },
+          'y-speed': {
+            type: 'linear',
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Speed (kt)',
+              color: "#ffd300",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { drawOnChartArea: false },
+            ticks: { color: "#ffd300", font: { size: 13 } }
+          }
+        }
       }
     });
   } else {
-    // 平滑更新資料，不 destroy
+    // 平滑更新資料
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // ✅ 更新 maxTicks
     flightChartObj.update();
   }
 }
@@ -319,13 +452,38 @@ function escapeHtml(s) {
     }[c];
   });
 }
+// 照片側邊欄切換
+function togglePhotoSidebar() {
+  const sidebar = document.getElementById('photoSidebar');
+  sidebar.classList.toggle('open');
+}
 
+// 載入照片（修改原有的 fetch 部分）
+fetch('/api/photos')
+  .then(r => r.json())
+  .then(list => {
+    const panel = document.getElementById('photoPanel');
+    panel.innerHTML = '';
+    list.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'photo-item';
+      item.innerHTML = `
+        <img src="${p.file}" alt="${p.caption || ''}" onclick="window.open('${p.file}', '_blank')">
+        <div class="caption">
+          <strong>${p.caption || 'Untitled'}</strong><br>
+          <small>📸 ${p.photographer || 'Anonymous'}</small>
+        </div>
+      `;
+      panel.appendChild(item);
+    });
+  })
+  .catch(err => console.error('載入照片失敗:', err));
 // 地圖設定
 const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
   attribution: '&copy; OpenStreetMap contributors'
 });
 const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
-  attribution: '&copy; OpenStreetMap contributors'
+  attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 });
 const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
@@ -334,6 +492,9 @@ const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}
   attribution: 'Map data &copy; Google'
 });
 const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleTer = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
 
@@ -382,6 +543,7 @@ L.control.layers(
     "OpenStreetMap": osmLayer,
     "Thunderforest Transport": Thunderforest_Transport,
     "Google Streets": googleStreet,
+    "Google Terrain": googleTer,
     "Google Hybrid": googleHybrid,
     "Google Satellite": googleSat,
     "Amap Streets": amapStreets,
@@ -513,7 +675,8 @@ function updateAircraft(id, data, trackPoint = null) {
   const labelClass = isEmergency ? 'label emergency' : 'label';
   const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
   const now = Date.now();
-
+  map.createPane('waypointPane');
+  map.getPane('waypointPane').style.zIndex = 401;
   ensureMeta(id);
   if (aircrafts.has(id)) {
     const obj = aircrafts.get(id);
@@ -773,6 +936,10 @@ function connectWS() {
     tracks.map(t => ({lat: t.lat, lon: t.lon, alt: t.alt, speed: t.speed || 0, ts: t.ts}))
   );
       }
+      if (focusedAircraftId === aircraftId) {
+  showAircraftTrack(aircraftId);
+}
+
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
         if (aircrafts.has(aircraftId)) {
