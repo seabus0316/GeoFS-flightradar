@@ -81,6 +81,79 @@ app.get('/gallery.html', (req, res) => {
 
 app.get('/health', (req, res) => res.send('ok'));
 
+// === Admin middleware ===
+function checkAdminPass(req, res, next) {
+  const pass = req.headers['x-admin-pass'];
+  if (pass === ADMIN_PASSWORD) {
+    next();
+  } else {
+    res.status(401).json({ error: 'Unauthorized' });
+  }
+}
+
+// === Admin review system ===
+app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
+  try {
+    const photos = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
+    res.json(photos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.post('/admin/photos/:id/approve', checkAdminPass, async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (!photo) return res.status(404).json({ error: 'not found' });
+    photo.status = 'approved';
+    await photo.save();
+    res.json({ message: 'approved' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.post('/admin/photos/:id/reject', checkAdminPass, async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (!photo) return res.status(404).json({ error: 'not found' });
+    photo.status = 'rejected';
+    await photo.save();
+    res.json({ message: 'rejected' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.delete('/admin/photos/:id', checkAdminPass, async (req, res) => {
+  try {
+    const photo = await Photo.findById(req.params.id);
+    if (!photo) return res.status(404).json({ error: 'not found' });
+    
+    // Note: We can't delete from ImgBB via API (free tier limitation)
+    // Just delete from database
+    await Photo.findByIdAndDelete(req.params.id);
+    
+    res.json({ message: 'deleted' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.get('/api/photos', async (req, res) => {
+  try {
+    const photos = await Photo.find({ status: 'approved' }).sort({ createdAt: -1 });
+    res.json(photos);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 // API: manual clear
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
@@ -157,44 +230,6 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     console.error('Upload error:', err);
     res.status(500).json({ error: err.message || 'server error' });
   }
-});
-
-// === Admin review system ===
-app.post('/admin/photos/:id/approve', async (req, res) => {
-  const photo = await Photo.findById(req.params.id);
-  if (!photo) return res.status(404).json({ error: 'not found' });
-  photo.status = 'approved';
-  await photo.save();
-  res.json({ message: 'approved' });
-});
-
-app.post('/admin/photos/:id/reject', async (req, res) => {
-  const photo = await Photo.findById(req.params.id);
-  if (!photo) return res.status(404).json({ error: 'not found' });
-  photo.status = 'rejected';
-  await photo.save();
-  res.json({ message: 'rejected' });
-});
-
-app.delete('/admin/photos/:id', async (req, res) => {
-  try {
-    const photo = await Photo.findById(req.params.id);
-    if (!photo) return res.status(404).json({ error: 'not found' });
-    
-    // Note: We can't delete from ImgBB via API (free tier limitation)
-    // Just delete from database
-    await Photo.findByIdAndDelete(req.params.id);
-    
-    res.json({ message: 'deleted' });
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'server error' });
-  }
-});
-
-app.get('/api/photos', async (req, res) => {
-  const photos = await Photo.find({ status: 'approved' }).sort({ createdAt: -1 });
-  res.json(photos);
 });
 
 // -------------- WebSocket upgrade --------------
