@@ -3,6 +3,8 @@
 # GeoFS Flightradar
 Just like the FlightRadar24 in real world
 
+[![DISCORD](https://img.shields.io/badge/Discord-7289DA?style=for-the-badge&logo=discord&logoColor=ffffff&labelColor])](https://discord.gg/2p7TwtznDV)
+[![GITHUB](https://img.shields.io/badge/GITHUB-24292F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seabus0316/GeoFS-FlightRadar/)
 
 # How to use?
 Install the user.js and It will send your position info to the atc screen
