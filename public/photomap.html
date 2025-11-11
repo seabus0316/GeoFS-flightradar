@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jet Photo Map</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1rem 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+        }
+        .stats {
+            font-size: 0.9rem;
+            margin-top: 0.3rem;
+            opacity: 0.9;
+        }
+        #map {
+            flex: 1;
+            width: 100%;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            z-index: 1000;
+        }
+        .photo-popup {
+            max-width: 300px;
+        }
+        .photo-popup img {
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+            border-radius: 8px;
+            margin-bottom: 0.5rem;
+        }
+        .photo-popup h3 {
+            font-size: 1rem;
+            margin-bottom: 0.5rem;
+            color: #333;
+        }
+        .photo-popup .info {
+            font-size: 0.85rem;
+            color: #666;
+            margin: 0.3rem 0;
+        }
+        .photo-popup .tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.3rem;
+            margin-top: 0.5rem;
+        }
+        .photo-popup .tag {
+            background: #667eea;
+            color: white;
+            padding: 0.2rem 0.5rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>✈️ Jet Photo Map</h1>
+        <div class="stats" id="stats">Loading...</div>
+    </header>
+    <div id="loading" class="loading">
+        <div>Loading photo data...</div>
+    </div>
+    <div id="map"></div>
+
+    <script>
+        const API_URL = 'https://geofs-flightradar.onrender.com/api/photos';
+
+        const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        });
+        
+        const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
+            attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        });
+        
+        const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; Google'
+        });
+        
+        const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; Google'
+        });
+        
+        const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; Google'
+        });
+        
+        const googleTer = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
+            attribution: 'Map data &copy; Google'
+        });
+
+        // Amap
+        const amapStreets = L.tileLayer(
+            'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+            {
+                subdomains: "1234",
+                attribution: '&copy; <a href="https://www.amap.com/">Amap</a>'
+            }
+        );
+
+        const amapSatellite = L.tileLayer(
+            'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+            {
+                subdomains: "1234",
+                attribution: '&copy; <a href="https://www.amap.com/">Amap Satellite</a>'
+            }
+        );
+
+        const openAIP = L.tileLayer(
+            'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=409a25682b90c26541b6c25493950e17',
+            {
+                attribution: '&copy; <a href="https://www.openaip.net/">OpenAIP</a>',
+                maxZoom: 18,
+                maxNativeZoom: 14,
+                transparent: true,
+                opacity: 0.8
+            }
+        );
+
+        const map = L.map('map', {
+            worldCopyJump: false,
+            maxZoom: 18,
+            minZoom: 2,
+            maxBounds: [[-85, -360], [85, 360]],
+            layers: [googleSat, openAIP]
+        }).setView([20, 0], 2);
+        L.control.layers(
+  {
+    "OpenStreetMap": osmLayer,
+    "Thunderforest Transport": Thunderforest_Transport,
+    "Google Streets": googleStreet,
+    "Google Terrain": googleTer,
+    "Google Hybrid": googleHybrid,
+    "Google Satellite": googleSat,
+    "Amap Streets": amapStreets,
+    "Amap Satellite": amapSatellite
+  },
+  {
+    "OpenAIP": openAIP
+  }
+).addTo(map);
+        // Custom plane icon
+        const planeIcon = L.divIcon({
+            html: '<div style="font-size: 24px;">✈️</div>',
+            className: 'plane-marker',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        // Load photo data
+        async function loadPhotos() {
+            try {
+                const response = await fetch(API_URL);
+                const photos = await response.json();
+
+                // Filter photos with location data
+                const photosWithLocation = photos.filter(photo => 
+                    photo.lat !== null && photo.lon !== null
+                );
+
+                // Update statistics
+                document.getElementById('stats').textContent = 
+                    `Total ${photos.length} photos, ${photosWithLocation.length} with location data`;
+                document.getElementById('loading').style.display = 'none';
+
+                // Add markers to map
+                photosWithLocation.forEach(photo => {
+                    const marker = L.marker([photo.lat, photo.lon], {
+                        icon: planeIcon
+                    }).addTo(map);
+
+                    // Create popup content
+                    const popupContent = `
+                        <div class="photo-popup">
+                            <img src="${photo.thumb}" alt="${photo.caption}">
+                            <h3>${photo.caption}</h3>
+                            <div class="info">📷 ${photo.photographer}</div>
+                            <div class="info">📅 ${new Date(photo.createdAt).toLocaleDateString('en-US')}</div>
+                            ${photo.tags.length > 0 ? `
+                                <div class="tags">
+                                    ${photo.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                                </div>
+                            ` : ''}
+                        </div>
+                    `;
+
+                    marker.bindPopup(popupContent, {
+                        maxWidth: 320
+                    });
+                });
+
+                // If there are photos, adjust map view to include all markers
+                if (photosWithLocation.length > 0) {
+                    const bounds = L.latLngBounds(
+                        photosWithLocation.map(photo => [photo.lat, photo.lon])
+                    );
+                    map.fitBounds(bounds, { padding: [50, 50] });
+                }
+
+            } catch (error) {
+                console.error('Failed to load photos:', error);
+                document.getElementById('loading').textContent = 'Failed to load. Please refresh the page.';
+            }
+        }
+
+        // Load data
+        loadPhotos();
+    </script>
+</body>
+</html>

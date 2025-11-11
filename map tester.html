@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <title>Tile Previewer — OSM / Custom Tiles</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    body { font-family: Inter, "Noto Sans TC", Arial, sans-serif; margin: 0; background: #f5f6f8; color:#111; }
+    header { padding:14px 18px; background:#fff; box-shadow:0 1px 4px rgba(0,0,0,0.06); display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+    header h1 { font-size:16px; margin:0; }
+    .controls { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    .controls label { font-size:13px; color:#444; }
+    input[type=text], input[type=number], select { padding:6px 8px; border-radius:6px; border:1px solid #d0d3d8; min-width:220px; }
+    input[type=range] { width:130px; }
+    button { padding:8px 10px; border-radius:8px; border:0; background:#0b78d1; color:#fff; cursor:pointer; box-shadow:0 2px 6px rgba(11,120,209,0.18); }
+    button.secondary { background:#fff; color:#0b78d1; border:1px solid #d0d3d8; box-shadow:none; }
+    main { display:flex; gap:12px; padding:12px; height:calc(100vh - 72px); box-sizing:border-box; }
+    #map { flex:1; border-radius:8px; height:100%; box-shadow:0 6px 20px rgba(0,0,0,0.08); overflow:hidden; }
+    .sidebar { width:360px; max-width:38%; background:#fff; border-radius:8px; padding:12px; box-shadow:0 6px 20px rgba(0,0,0,0.06); overflow:auto; }
+    .examples { display:flex; gap:6px; flex-wrap:wrap; margin-top:8px; }
+    .example-btn { background:#eee; color:#222; padding:6px 8px; border-radius:6px; border:0; cursor:pointer; font-size:13px; }
+    .field { margin:8px 0; }
+    .muted { color:#666; font-size:13px; }
+    .footer { margin-top:10px; font-size:13px; color:#666; }
+    pre { background:#0f1720; color:#d1d5db; padding:8px; border-radius:6px; overflow:auto; font-size:12px; }
+    .row { display:flex; gap:8px; align-items:center; }
+    .small { font-size:12px; color:#444; }
+    @media (max-width:900px){
+      .sidebar { width:320px; max-width:40%; }
+      header { gap:8px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Tile Previewer — 快速預覽地圖瓦片</h1>
+    <div class="controls">
+      <label class="small">URL template：</label>
+      <input id="tpl" type="text" placeholder="例如：https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" />
+      <button id="loadBtn">載入瓦片</button>
+      <button id="resetBtn" class="secondary">重設</button>
+    </div>
+  </header>
+
+  <main>
+    <div id="map"></div>
+
+    <aside class="sidebar">
+      <div class="field">
+        <div class="row">
+          <label class="small">子網域 (subdomains)：</label>
+          <input id="subdomains" type="text" value="a,b,c" />
+          <label class="small">透明度：</label>
+          <input id="opacity" type="range" min="0" max="1" step="0.05" value="1" />
+          <span id="opVal" class="small">1.00</span>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="small">起始中心 (lat, lon)：</label>
+        <div class="row">
+          <input id="lat" type="number" step="0.0001" value="23.5" />
+          <input id="lon" type="number" step="0.0001" value="121.0" />
+          <label class="small">縮放：</label>
+          <input id="zoom" type="number" value="6" min="0" max="18" />
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="small">Attribution（頁腳字樣，可改）：</label>
+        <input id="attr" type="text" value="&copy; Tiles" />
+      </div>
+
+      <div class="field">
+        <label class="small">快速範例：</label>
+        <div class="examples">
+          <button class="example-btn" data-tpl="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png">OSM Default</button>
+          <button class="example-btn" data-tpl="https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png">OpenTopoMap</button>
+          <button class="example-btn" data-tpl="https://cartodb-basemaps-a.global.ssl.fastly.net/light_all/{z}/{x}/{y}.png">Carto Light</button>
+          <button class="example-btn" data-tpl="https://cartodb-basemaps-a.global.ssl.fastly.net/dark_all/{z}/{x}/{y}.png">Carto Dark</button>
+          <button class="example-btn" data-tpl="https://stamen-tiles.a.ssl.fastly.net/terrain/{z}/{x}/{y}.jpg">Stamen Terrain</button>
+          <button class="example-btn" data-tpl="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}">ESRI Imagery</button>
+        </div>
+      </div>
+
+      <div class="field">
+        <label class="small">範例替換測試（會顯示替換後的實際 URL）：</label>
+        <div class="row">
+          <input id="testZ" type="number" value="6" min="0" max="18" style="width:70px" />
+          <input id="testX" type="number" value="32" min="0" style="width:90px" />
+          <input id="testY" type="number" value="21" min="0" style="width:90px" />
+          <button id="showUrl" class="secondary">顯示 URL</button>
+        </div>
+        <pre id="urlOut">...</pre>
+      </div>
+
+      <div class="field">
+        <div class="footer">
+          使用說明：在模板中使用 <code>{z}</code>、<code>{x}</code>、<code>{y}</code>，或 <code>{s}</code> 放子網域（例如 a,b,c）。<br>
+          若你的模板是 `{x}/{y}/{z}` 也沒關係，系統會自動替換。按「載入瓦片」就能預覽。快樂試圖吧 ✈️
+        </div>
+      </div>
+    </aside>
+  </main>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script>
+    // 初始化 Leaflet 地圖
+    const map = L.map('map', { zoomControl: true }).setView([23.5, 121.0], 6);
+    let currentTile = null;
+
+    // UI 元件
+    const tplInput = document.getElementById('tpl');
+    const subInput = document.getElementById('subdomains');
+    const loadBtn = document.getElementById('loadBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const opacityRange = document.getElementById('opacity');
+    const opVal = document.getElementById('opVal');
+    const latIn = document.getElementById('lat');
+    const lonIn = document.getElementById('lon');
+    const zoomIn = document.getElementById('zoom');
+    const attrIn = document.getElementById('attr');
+    const exampleBtns = document.querySelectorAll('.example-btn');
+    const testZ = document.getElementById('testZ'), testX = document.getElementById('testX'), testY = document.getElementById('testY');
+    const showUrlBtn = document.getElementById('showUrl'), urlOut = document.getElementById('urlOut');
+
+    // helper: normalize template placeholders {x},{y},{z} and support swapped orders like {x}/{y}/{z}
+    function normalizeTemplate(tpl) {
+      // Keep exactly {x},{y},{z},{s}
+      // Nothing fancy: just ensure curly braces present
+      return tpl.trim();
+    }
+
+    function buildTileUrl(tpl, z, x, y, s) {
+      return tpl.replace(/\{z\}/gi, z).replace(/\{x\}/gi, x).replace(/\{y\}/gi, y).replace(/\{s\}/gi, s);
+    }
+
+    function applyTileLayer(tpl, options = {}) {
+      // remove existing
+      if (currentTile) {
+        map.removeLayer(currentTile);
+        currentTile = null;
+      }
+
+      tpl = normalizeTemplate(tpl);
+      const subdomains = (options.subdomains || 'a,b,c').split(',').map(s => s.trim()).filter(Boolean);
+      const tileOptions = {
+        subdomains: subdomains.length ? subdomains : undefined,
+        maxZoom: options.maxZoom || 18,
+        attribution: options.attribution || '&copy; Tiles',
+        opacity: (options.opacity === 0 ? 0 : (options.opacity || 1)),
+      };
+
+      // Leaflet expects {z}/{x}/{y} placeholders; if user provided a template with different order, Leaflet will still replace {z}/{x}/{y} as-is.
+      currentTile = L.tileLayer(tpl, tileOptions).addTo(map);
+    }
+
+    // load button
+    loadBtn.addEventListener('click', () => {
+      const tpl = tplInput.value.trim();
+      if (!tpl) return alert('請輸入 tile URL 模板（含 {z}/{x}/{y}）');
+      const sub = subInput.value.trim();
+      const opacity = parseFloat(opacityRange.value);
+      const lat = parseFloat(latIn.value) || 23.5;
+      const lon = parseFloat(lonIn.value) || 121.0;
+      const zoom = parseInt(zoomIn.value) || 6;
+      const attr = attrIn.value || '&copy; Tiles';
+
+      map.setView([lat, lon], zoom);
+      applyTileLayer(tpl, { subdomains: sub, opacity: opacity, attribution: attr });
+      opVal.textContent = opacity.toFixed(2);
+    });
+
+    // reset to OSM Default
+    resetBtn.addEventListener('click', () => {
+      tplInput.value = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      subInput.value = 'a,b,c';
+      attrIn.value = '&copy; OpenStreetMap contributors';
+      opacityRange.value = 1;
+      opVal.textContent = '1.00';
+      latIn.value = 23.5; lonIn.value = 121.0; zoomIn.value = 6;
+      loadBtn.click();
+    });
+
+    // examples
+    exampleBtns.forEach(b => b.addEventListener('click', (ev) => {
+      tplInput.value = ev.currentTarget.getAttribute('data-tpl');
+      // quick attribution guesses
+      if (tplInput.value.includes('opentopomap')) attrIn.value = '&copy; OpenTopoMap contributors';
+      else if (tplInput.value.includes('cartodb')) attrIn.value = '&copy; Carto';
+      else if (tplInput.value.includes('stamen')) attrIn.value = '&copy; Stamen';
+      else if (tplInput.value.includes('arcgisonline')) attrIn.value = '&copy; Esri';
+      else attrIn.value = '&copy; Tiles';
+    }));
+
+    // show URL
+    showUrlBtn.addEventListener('click', () => {
+      const tpl = tplInput.value.trim();
+      if (!tpl) return alert('請先輸入模板');
+      const z = testZ.value, x = testX.value, y = testY.value;
+      // pick a subdomain
+      const s = (subInput.value.split(',')[0] || 'a').trim();
+      const resolved = buildTileUrl(tpl, z, x, y, s);
+      urlOut.textContent = resolved;
+    });
+
+    // opacity update
+    opacityRange.addEventListener('input', () => {
+      opVal.textContent = parseFloat(opacityRange.value).toFixed(2);
+      if (currentTile) currentTile.setOpacity(parseFloat(opacityRange.value));
+    });
+
+    // initial load
+    document.addEventListener('DOMContentLoaded', () => {
+      tplInput.value = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+      attrIn.value = '&copy; OpenStreetMap contributors';
+      loadBtn.click();
+    });
+  </script>
+</body>
+</html>

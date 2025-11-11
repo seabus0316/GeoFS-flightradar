@@ -1,0 +1,1342 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js">
+</script>
+  <meta charset="utf-8" />
+  <title>GeoFS ATC Screen</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <style>
+    /* Photo Map Markers */
+.plane-marker {
+  font-size: 24px;
+  cursor: pointer;
+}
+
+.photo-popup {
+  max-width: 300px;
+}
+
+.photo-popup img {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+  cursor: pointer;
+}
+
+.photo-popup h3 {
+  font-size: 1rem;
+  margin-bottom: 0.5rem;
+  color: #333;
+}
+
+.photo-popup .info {
+  font-size: 0.85rem;
+  color: #666;
+  margin: 0.3rem 0;
+}
+
+.photo-popup .tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  margin-top: 0.5rem;
+}
+
+.photo-popup .tag {
+  background: #667eea;
+  color: white;
+  padding: 0.2rem 0.5rem;
+  border-radius: 12px;
+  font-size: 0.75rem;
+}
+
+/* Photo Map Toggle */
+#photoMapToggle {
+  position: fixed;
+  left: 10px;
+  top: 100px;
+  background: rgba(102, 126, 234, 0.95);
+  color: #fff;
+  border: none;
+  padding: 10px 15px;
+  cursor: pointer;
+  z-index: 99996;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: bold;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+}
+
+#photoMapToggle:hover {
+  background: rgba(118, 75, 162, 0.95);
+}
+
+#photoMapToggle.active {
+  background: rgba(118, 75, 162, 0.95);
+}
+    /* 側邊照片面板 */
+#photoSidebar {
+  position: fixed;
+  right: -320px;
+  top: 0;
+  width: 300px;
+  height: 100%;
+  background: rgba(22, 27, 34, 0.95);
+  box-shadow: -2px 0 10px rgba(0,0,0,0.5);
+  transition: right 0.3s ease;
+  z-index: 99997;
+  overflow-y: auto;
+  padding: 10px;
+}
+
+#photoSidebar.open {
+  right: 0;
+}
+
+#photoToggle {
+  position: fixed;
+  right: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  background: rgba(22, 27, 34, 0.95);
+  color: #fff;
+  border: none;
+  padding: 20px 10px;
+  cursor: pointer;
+  z-index: 99998;
+  border-radius: 6px 0 0 6px;
+  font-size: 18px;
+  box-shadow: -2px 0 8px rgba(0,0,0,0.4);
+}
+
+#photoToggle:hover {
+  background: rgba(35, 134, 54, 0.95);
+}
+
+.photo-item {
+  margin-bottom: 15px;
+  background: #0d1117;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+}
+
+.photo-item img {
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.photo-item img:hover {
+  transform: scale(1.05);
+}
+
+.photo-item .caption {
+  padding: 8px;
+  font-size: 12px;
+  color: #e6edf3;
+}
+/* 新的 Discord 按鈕容器 */
+.social-buttons {
+  position: fixed;
+  bottom: 10px;
+  left: 10px;
+  display: flex;
+  gap: 10px;
+  z-index: 99997; /* z-index 保持不變 */
+}
+
+/* 按鈕的通用樣式 (未來可擴充) */
+.social-btn {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  font-size: 24px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+
+/* Discord 按鈕的專屬顏色 */
+.discord-btn {
+  background: #5865F2;
+  color: white;
+}
+    .github-ribbon {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 150px;
+  height: 150px;
+  overflow: hidden;
+  z-index: 99998;
+  pointer-events: none;
+}
+.github-ribbon a {
+  position: absolute;
+  bottom: 35px;
+  left: -40px;
+  transform: rotate(45deg);
+  width: 200px;
+  background: #c0392b;
+  color: white;
+  text-align: center;
+  padding: 8px 0;
+  font-family: Arial, sans-serif;
+  font-size: 13px;
+  font-weight: bold;
+  text-decoration: none;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+  pointer-events: auto;
+  transition: background 0.3s ease;
+}
+.github-ribbon a:hover {
+  background: #a93226;
+}
+    html,body,#map { height:100%; margin:0; padding:0; }
+    .label {
+      font-family: Inter, "Noto Sans TC", Arial, sans-serif;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(0,0,0,0.8);
+      color: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      white-space: nowrap;
+      margin-left: 6px;
+    }
+    .label.emergency {
+      background: rgba(139, 0, 0, 0.95);
+      animation: pulse 1s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+      50% { box-shadow: 0 0 15px rgba(255,0,0,0.8); }
+    }
+    .legend {
+      position: absolute;
+      left: 10px;
+      top: 10px;
+      background: rgba(146, 146, 146, 0.9);
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:12px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+    }
+    .altitude-legend {
+      position: absolute;
+      left: 10px;
+      bottom: 10px;
+      background: rgba(146, 146, 146, 0.9);
+      padding:8px 10px;
+      border-radius:6px;
+      font-size:11px;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+      min-width: 140px;
+    }
+    .altitude-legend-item {
+      display: flex;
+      align-items: center;
+      margin: 2px 0;
+    }
+    .altitude-color-box {
+      width: 12px;
+      height: 12px;
+      margin-right: 6px;
+      border-radius: 2px;
+    }
+    .waypoint-tooltip {
+      font-size: 11px !important;
+      padding: 3px 6px !important;
+      background: rgba(0, 0, 0, 0.85) !important;
+      border: 1px solid #ff6600 !important;
+      border-radius: 4px !important;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.3) !important;
+      font-weight: bold;
+      color: #fff !important;
+    }
+    .waypoint-tooltip::before {
+      border-top-color: rgba(0, 0, 0, 0.85) !important;
+    }
+    .waypoint-marker {
+      background: rgba(255, 102, 0, 0.9);
+      border: 3px solid #fff;
+      border-radius: 50%;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: bold;
+      color: #fff;
+      font-size: 10px;
+      text-shadow: 1px 1px 2px rgba(0,0,0,0.8);
+    }
+    .waypoint-passed {
+      background: rgba(100, 100, 100, 0.7) !important;
+      border-color: #666 !important;
+    }
+    .waypoint-active {
+      background: rgba(0, 255, 0, 0.9) !important;
+      border-color: #0f0 !important;
+      animation: pulse-active 1.5s ease-in-out infinite;
+    }
+    @keyframes pulse-active {
+      0%, 100% { transform: scale(1); box-shadow: 0 2px 8px rgba(0,255,0,0.4); }
+      50% { transform: scale(1.2); box-shadow: 0 2px 15px rgba(0,255,0,0.8); }
+    }
+    .route-arrow {
+      font-size: 16px;
+      color: #ff6600;
+      text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+    }
+  </style>
+</head>
+<body>
+  <!-- Photo Map Toggle Button -->
+<button id="photoMapToggle" onclick="togglePhotoMap()">📍 Photo Map</button>
+  <!-- 側邊照片面板 -->
+<button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
+<div id="photoSidebar">
+  <h3 style="color:#58a6ff;margin-top:0;">JetPhotos Gallery</h3>
+  <div id="photoPanel"></div>
+</div>
+<div class="github-ribbon">
+  <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank">
+    Visit GitHub Page
+  </a>
+</div>
+<div class="social-buttons">
+  <a href="https://discord.gg/YKfdMHPC2Y" class="social-btn discord-btn" target="_blank">
+    <img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg" alt="Discord" style="width: 30px; height: 30px;">
+  </a>
+</div>
+<div id="map"></div>
+<div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
+<div class="altitude-legend">
+  <div style="font-weight:bold;margin-bottom:4px;">高度圖例</div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffffff;"></div><span>&lt;100m</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffff00;"></div><span>100m+</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00ff00;"></div><span>~1000m</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00bfff;"></div><span>2500m+</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#0000ff;"></div><span>高空</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
+</div>
+
+<!-- UTC Time Box with Clocks -->
+<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 99995; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+  <div style="margin-bottom: 8px; font-weight: bold;">UTC Time: <span id="utcTimeText">--</span></div>
+  <div id="clockContainer" style="display: flex; gap: 15px; justify-content: center;">
+    <!-- Clocks will be inserted here -->
+  </div>
+</div>
+<!-- 仿 Flightradar24 底部圖表容器 -->
+<div id="flightChartContainer"
+  style="position:fixed;left:0;right:0;bottom:0;height:180px;background:#222;z-index:99999;
+    padding:12px 10px 0 10px;display:none;box-shadow:0 -2px 12px #000;">
+  <div style="font-family:'Inter','Noto Sans TC',Arial,sans-serif;font-size:14px;color:#fff;font-weight:bold;margin-bottom:3px;">
+    SPEED & ALTITUDE GRAPH
+  </div>
+  <div style="height:155px;padding-bottom:10px;">
+    <canvas id="flightChart"></canvas>
+  </div>
+</div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
+</script>
+<script>
+const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+// Chart.js 仿 Flightradar24 風格
+
+let flightChartObj;
+
+// 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
+function simplifyTrackData(track, maxPoints = 200) {
+  if (track.length <= maxPoints) return track;
+  
+  // 計算每個點的重要性（基於高度和速度變化）
+  const importance = track.map((point, i) => {
+    if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
+    
+    const prev = track[i - 1];
+    const next = track[i + 1];
+    
+    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
+    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
+    
+    return altChange + speedChange * 0.1; // 高度變化權重更高
+  });
+  
+  // 選擇最重要的點
+  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
+  indexed.sort((a, b) => b.importance - a.importance);
+  
+  const selected = indexed.slice(0, maxPoints);
+  selected.sort((a, b) => a.index - b.index);
+  
+  return selected.map(item => item.point);
+}
+
+function showFlightChart(track) {
+  const container = document.getElementById('flightChartContainer');
+  container.style.display = 'block';
+  const ctx = document.getElementById('flightChart').getContext('2d');
+
+  // 資料抽稀處理
+  const simplifiedTrack = simplifyTrackData(track, 200);
+  
+  // 計算時間跨度，動態調整標籤格式
+  const firstTs = simplifiedTrack[0]?.ts;
+  const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
+  const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
+  
+  // 根據時間跨度選擇格式
+  let timeFormat;
+  let maxTicks;
+  if (timeSpanHours > 6) {
+    // 超過 6 小時：只顯示小時
+    timeFormat = { hour: '2-digit', hour12: false };
+    maxTicks = 12;
+  } else if (timeSpanHours > 2) {
+    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 15;
+  } else {
+    // 少於 2 小時：顯示詳細時間
+    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
+    maxTicks = 12;
+  }
+
+  // X 軸標籤 - 使用抽稀後的資料
+  const labels = simplifiedTrack.map((p, i) => {
+    if (p.ts) {
+      const dt = new Date(p.ts);
+      return dt.toLocaleTimeString('en-GB', timeFormat);
+    }
+    return i + 1;
+  });
+  
+  const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+
+  if (!flightChartObj) {
+    flightChartObj = new Chart(ctx, {
+      type: 'line',
+      data: {
+        labels: labels,
+        datasets: [
+          {
+            label: 'Ground Speed',
+            data: speeds,
+            borderColor: '#ffd300',
+            backgroundColor: 'rgba(255,211,0,0.07)',
+            pointRadius: 0, // 關閉點，讓線更清晰
+            yAxisID: 'y-speed',
+            tension: 0.25
+          },
+          {
+            label: 'Altitude',
+            data: altitudes,
+            borderColor: '#00b4ff',
+            backgroundColor: 'rgba(0,180,255,0.07)',
+            pointRadius: 0, // 關閉點
+            yAxisID: 'y-alt',
+            tension: 0.25
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        maintainAspectRatio: false,
+       plugins: {
+          legend: {
+            display: true,
+            labels: {
+              color: "#fff",
+              font: { family: 'Inter', size: 14, weight: 'bold' }
+            }
+          },
+          tooltip: {
+            mode: 'index',
+            intersect: false,
+            backgroundColor: "#222",
+            borderColor: "#ffd300",
+            borderWidth: 2,
+            callbacks: {
+              title: (items) => {
+                const idx = items[0].dataIndex;
+                const p = simplifiedTrack[idx];
+                if (p.ts)
+                  return new Date(p.ts).toLocaleString('en-GB', { 
+                    weekday: 'short',
+                    month: 'short', 
+                    day: 'numeric', 
+                    hour: '2-digit', 
+                    minute: '2-digit',
+                    hour12: false 
+                  });
+                return `Point ${idx+1}`;
+              },
+              label: (item) => {
+                if (item.dataset.label === "Ground Speed")
+                  return `Ground Speed: ${item.formattedValue} kt`;
+                else
+                  return `Altitude: ${item.formattedValue} ft`;
+              }
+            }
+          }
+        },
+        scales: {
+          x: {
+            title: { display: false },
+            ticks: {
+              color: "#fff",
+              font: { size: 11 },
+              maxRotation: 45,
+              minRotation: 0,
+              autoSkip: true,
+              maxTicksLimit: maxTicks, // 動態調整
+              display: true
+            },
+            grid: { color: "#444" },
+            display: true
+          },
+          'y-alt': {
+            type: 'linear',
+            position: 'left',
+            title: {
+              display: true,
+              text: 'Altitude (ft)',
+              color: "#00b4ff",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { color: "#444" },
+            ticks: { color: "#00b4ff", font: { size: 13 } }
+          },
+          'y-speed': {
+            type: 'linear',
+            position: 'right',
+            title: {
+              display: true,
+              text: 'Speed (kt)',
+              color: "#ffd300",
+              font: { size: 13, weight:'bold' }
+            },
+            grid: { drawOnChartArea: false },
+            ticks: { color: "#ffd300", font: { size: 13 } }
+          }
+        }
+      }
+    });
+  } else {
+    // 平滑更新資料
+    const simplifiedTrack = simplifyTrackData(track, 200);
+    const labels = simplifiedTrack.map((p, i) => {
+      if (p.ts) {
+        const dt = new Date(p.ts);
+        return dt.toLocaleTimeString('en-GB', timeFormat);
+      }
+      return i + 1;
+    });
+    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+    
+    flightChartObj.data.labels = labels;
+    flightChartObj.data.datasets[0].data = speeds;
+    flightChartObj.data.datasets[1].data = altitudes;
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
+    flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
+  }
+}
+function hideFlightChart() {
+  document.getElementById('flightChartContainer').style.display = 'none';
+  if (flightChartObj) {
+    flightChartObj.destroy();
+    flightChartObj = null;
+  }
+}
+// 工具函式
+function getAltitudeColor(altFt) {
+  const alt = altFt || 0;
+  if (alt < 330) return "#ffffff";
+  if (alt < 3300) return "#ffff00";
+  if (alt < 8200) return "#00ff00";
+  if (alt < 20000) return "#00bfff";
+  if (alt < 30000) return "#0000ff";
+  if (alt < 40000) return "#800080";
+  return "#ff0000";
+}
+function formatSpeed(speedRaw) {
+  if (typeof speedRaw !== 'number') return '---';
+  let speed = speedRaw;
+  if (speedRaw < 50) speed = speedRaw * 1.94384;
+  return Math.round(speed);
+}
+function calculateDistance(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLon/2) * Math.sin(dLon/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+function escapeHtml(s) {
+  return String(s || '').replace(/[&<>"']/g, function(c) {
+    return {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#39;'
+    }[c];
+  });
+}
+// 照片側邊欄切換
+function togglePhotoSidebar() {
+  const sidebar = document.getElementById('photoSidebar');
+  sidebar.classList.toggle('open');
+}
+
+// 載入照片（修改原有的 fetch 部分）
+fetch('/api/photos')
+  .then(r => r.json())
+  .then(list => {
+    const panel = document.getElementById('photoPanel');
+    panel.innerHTML = '';
+    list.forEach(p => {
+      const item = document.createElement('div');
+      item.className = 'photo-item';
+      item.innerHTML = `
+        <img src="${p.file}" alt="${p.caption || ''}" onclick="window.open('${p.file}', '_blank')">
+        <div class="caption">
+          <strong>${p.caption || 'Untitled'}</strong><br>
+          <small>📸 ${p.photographer || 'Anonymous'}</small>
+        </div>
+      `;
+      panel.appendChild(item);
+    });
+  })
+  .catch(err => console.error('載入照片失敗:', err));
+// 地圖設定
+const osmLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  attribution: '&copy; OpenStreetMap contributors'
+});
+const Thunderforest_Transport = L.tileLayer('https://{s}.tile.thunderforest.com/transport/{z}/{x}/{y}{r}.png?apikey=7e63f2f7d95e4361ae0c15d5ab9b7f99', {
+  attribution: '&copy; <a href="http://www.thunderforest.com/">Thunderforest</a>, &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+});
+const googleStreet = L.tileLayer('https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleHybrid = L.tileLayer('https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+const googleTer = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
+  attribution: 'Map data &copy; Google'
+});
+
+// 高德地图 (Amap)
+const amapStreets = L.tileLayer(
+  'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
+  {
+    subdomains: "1234",
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+  }
+);
+
+const amapSatellite = L.tileLayer(
+  'https://webst0{s}.is.autonavi.com/appmaptile?style=6&x={x}&y={y}&z={z}',
+  {
+    subdomains: "1234",
+    attribution: '&copy; <a href="https://www.amap.com/">高德地图卫星</a>'
+  }
+);
+
+const openAIP = L.tileLayer(
+  'https://api.tiles.openaip.net/api/data/openaip/{z}/{x}/{y}.png?apiKey=409a25682b90c26541b6c25493950e17',
+  {
+    attribution: '&copy; <a href="https://www.openaip.net/">OpenAIP</a>',
+    maxZoom: 18,
+    maxNativeZoom: 14,
+    transparent: true,
+    opacity: 0.8
+  }
+);
+
+const map = L.map('map', {
+  worldCopyJump: false,
+  maxZoom: 18,
+  minZoom: 2,
+  maxBounds: [[-85, -360], [85, 360]],
+  layers: [googleSat,openAIP]
+}).setView([20,0],2);
+
+// 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
+map.createPane('waypointPane');
+map.getPane('waypointPane').style.zIndex = 550;
+
+L.control.layers(
+  {
+    "OpenStreetMap": osmLayer,
+    "Thunderforest Transport": Thunderforest_Transport,
+    "Google Streets": googleStreet,
+    "Google Terrain": googleTer,
+    "Google Hybrid": googleHybrid,
+    "Google Satellite": googleSat,
+    "Amap Streets": amapStreets,
+    "Amap Satellite": amapSatellite
+  },
+  {
+    "OpenAIP": openAIP
+  }
+).addTo(map);
+// Canvas renderer
+const canvasRenderer = L.canvas();
+
+const aircrafts = new Map();
+const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
+let focusedAircraftId = null;
+let flightPlanMarkers = [];
+
+function clearFlightPlanMarkers() {
+  flightPlanMarkers.forEach(m => map.removeLayer(m));
+  flightPlanMarkers = [];
+}
+
+function makeDivIcon(data){
+  const imgW=32,imgH=32,labelW=150,labelH=60,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
+  const color=getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const labelClass = isEmergency ? 'label emergency' : 'label';
+  const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+  const depShort = (data.departure||'').substring(0, 4);
+  const arrShort = (data.arrival||'').substring(0, 4);
+  
+  return L.divIcon({
+    html:`
+      <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
+        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
+        <div class="${labelClass}" style="border-left:3px solid ${color};">
+          <strong>${escapeHtml(data.callsign||'UNK')}</strong>
+          <div style="font-size:11px;">
+            ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
+          </div>
+          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+          ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+        </div>
+      </div>`,
+    className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
+  });
+}
+
+function crossesIDL(lon1, lon2) {
+  return Math.abs(lon1 - lon2) > 180;
+}
+function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
+  return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
+}
+
+// 軌跡
+function showAircraftTrack(id) {
+  const obj = aircrafts.get(id);
+  if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) return;
+  clearAllAircraftTracks();
+  const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
+  obj.displayPath = simplified;
+  for (let i = 1; i < obj.displayPath.length; i++) {
+    const prev = obj.displayPath[i-1];
+    const curr = obj.displayPath[i];
+    const alt = curr[2] || 0;
+    if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
+    const seg = L.polyline(
+      [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+      { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
+    ).addTo(map);
+    seg.bindTooltip(`${Math.round(alt)} ft`, {
+      sticky: true,
+      direction: 'right',
+      offset: [10, 0]
+    });
+    obj.segments.push(seg);
+  }
+}
+function clearAllAircraftTracks() {
+  for (const [id, obj] of aircrafts.entries()) {
+    if (obj.segments && obj.segments.length > 0) {
+      obj.segments.forEach(s => map.removeLayer(s));
+      obj.segments = [];
+    }
+  }
+}
+
+// 更新飛機
+const aircraftMeta = new Map();
+function ensureMeta(id) {
+  if (!aircraftMeta.has(id)) {
+    aircraftMeta.set(id, { lastRender: 0, pending: null });
+  }
+}
+function updateAircraft(id, data, trackPoint = null) {
+  ensureMeta(id);
+
+  // 取得前一次資料
+  let prev = null;
+  if (aircrafts.has(id)) {
+    prev = aircrafts.get(id).data;
+  }
+
+  // 判斷是否暫停
+  let paused = false;
+  if (prev) {
+    paused =
+      prev.alt === data.alt &&
+      prev.speed === data.speed &&
+      prev.heading === data.heading &&
+      prev.lat === data.lat &&
+      prev.lon === data.lon;
+  }
+
+  // 設定 paused 狀態
+  if (aircrafts.has(id)) {
+    aircrafts.get(id).paused = paused;
+    const obj = aircrafts.get(id);
+    const el = obj.marker.getElement && obj.marker.getElement();
+    if (el) el.style.opacity = paused ? "0.3" : "1";
+    if (paused) return; // 直接 return，不記錄資料、不更新
+  }
+
+  // 只有沒 paused 時才 push 新資料到 rawTrack 跟 rawPathForDisplay
+  const latlng = [data.lat, data.lon];
+  const color = getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const labelClass = isEmergency ? 'label emergency' : 'label';
+  const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+  const now = Date.now();
+  map.createPane('waypointPane');
+  map.getPane('waypointPane').style.zIndex = 401;
+  ensureMeta(id);
+  if (aircrafts.has(id)) {
+    const obj = aircrafts.get(id);
+    obj.lastSeen = now;
+    obj.data = data;
+    if (!obj.paused) { // 只有沒 paused 才記錄資料
+      if (trackPoint) {
+        if (!obj.rawTrack) obj.rawTrack = [];
+        obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed});
+        if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
+      }
+      if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+      obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
+    }
+    const meta = aircraftMeta.get(id);
+    const elapsed = now - meta.lastRender;
+    let shouldRender = false;
+    if (elapsed >= 1000) shouldRender = true;
+    else if (obj.displayPath && obj.displayPath.length > 0) {
+      const prevPath = obj.displayPath[obj.displayPath.length-1];
+      const d = calculateDistance(prevPath[0], prevPath[1], latlng[0], latlng[1]);
+      if (d > 1) shouldRender = true;
+    } else shouldRender = true;
+    if (shouldRender && !meta.pending) {
+      meta.pending = () => {
+        const m = obj.marker;
+        m.setLatLng(latlng);
+        const el = m.getElement && m.getElement();
+        if (el) {
+          const img = el.querySelector('img');
+          if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
+          const label = el.querySelector('.label');
+          if (label) {
+            const depShort = (data.departure||'').substring(0, 4);
+            const arrShort = (data.arrival||'').substring(0, 4);
+            label.className = labelClass;
+            label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
+              <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
+              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+              ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
+            label.style.borderLeft = `3px solid ${color}`;
+          }
+        } else {
+          m.setIcon(makeDivIcon(data));
+        }
+        meta.lastRender = Date.now();
+        meta.pending = null;
+        document.getElementById('connCount').textContent = aircrafts.size;
+        if (id === focusedAircraftId) {
+          showAircraftTrack(id);
+        }
+      };
+      requestAnimationFrame(meta.pending);
+    }
+  } else {
+    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
+    marker.on('click', () => {
+      clearAllAircraftTracks();
+      focusedAircraftId = id;
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+    });
+    aircrafts.set(id, {
+      marker,
+      displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
+      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:now, alt:data.alt, speed: data.speed}] : [],
+      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
+      segments: [],
+      lastSeen: now,
+      data,
+      paused: false
+    });
+    aircraftMeta.get(id).lastRender = now;
+  }
+  if (id === focusedAircraftId) {
+    showAircraftPanel(data, id);
+  }
+}
+function removeAircraft(id) {
+  if (aircrafts.has(id)) {
+    const o = aircrafts.get(id);
+    map.removeLayer(o.marker);
+    o.segments.forEach(s => map.removeLayer(s));
+    aircrafts.delete(id);
+    document.getElementById('connCount').textContent = aircrafts.size;
+  }
+}
+
+// Panel
+function showAircraftPanel(data, id) {
+  clearFlightPlanMarkers();
+  let plan = data.flightPlan;
+  if (typeof plan === 'string') {
+    try {
+      plan = JSON.parse(plan);
+    } catch (err) {
+      plan = null;
+    }
+  }
+  if (plan && Array.isArray(plan) && plan.length) {
+    const latlngs = [];
+    plan.forEach((wp, i) => {
+      const lat = Number(wp.lat),
+          lon = Number(wp.lon);
+      if (isNaN(lat) || isNaN(lon)) return;
+      const label = wp.ident || wp.name || ('WP' + (i + 1));
+      const waypointIcon = L.icon({
+        iconUrl: 'https://i.ibb.co/VWH3qBpX/2.png',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        tooltipAnchor: [0, -12]
+      });
+      // 加入 pane 屬性
+      const m = L.marker([lat, lon], {
+        icon: waypointIcon,
+        pane: 'waypointPane'
+      }).addTo(map).bindTooltip(label, {
+        permanent: false,
+        direction: 'top',
+        className: 'waypoint-tooltip',
+        offset: [0, -12]
+      });
+      flightPlanMarkers.push(m);
+      latlngs.push([lat, lon]);
+    });
+    if (latlngs.length > 1) {
+      // 加入 pane 屬性
+      const route = L.polyline(latlngs, {
+        color: '#CEA5D5',
+        weight: 4,
+        opacity: 1,
+        dashArray: '8 8',
+        pane: 'waypointPane'
+      }).addTo(map);
+      flightPlanMarkers.push(route);
+    }
+  }
+  
+  let waypointsHtml = '';
+  if (plan && Array.isArray(plan) && plan.length) {
+    waypointsHtml = `<div style="margin-top:6px;"><strong>未來航點:</strong>
+      <ol style="margin:4px 0 0 16px;padding:0;font-size:12px;">${
+        plan.map((wp, i) =>
+          `<li>${escapeHtml(wp.ident || wp.name || ('WP'+(i+1)))} (${Number(wp.lat).toFixed(3)}, ${Number(wp.lon).toFixed(3)})${
+            wp.alt ? ' @'+Math.round(Number(wp.alt))+'ft' : ''
+          }</li>`
+        ).join('')
+      }</ol></div>`;
+  }
+
+  let p = document.getElementById('aircraftPanel');
+  if (!p) {
+    p = document.createElement('div');
+    p.id = 'aircraftPanel';
+    Object.assign(p.style, {
+      position: 'absolute', top: '10px', right: '10px', width: '320px',
+      background: '#1a1d29',
+      color: '#fff',
+      borderRadius: '12px', padding: '0',
+      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
+      fontSize: '13px', zIndex: 9999,
+      fontFamily: 'Inter, "Noto Sans TC", Arial, sans-serif',
+      overflow: 'hidden'
+    });
+    document.body.appendChild(p);
+  }
+  const c = getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const emergencyBadge = isEmergency ? '<div style="background:#d32f2f;padding:8px;margin:-16px -16px 12px;font-weight:600;text-align:center;font-size:12px;letter-spacing:0.5px;">⚠️ EMERGENCY SQUAWK 7700</div>' : '';
+  const depShort = (data.departure||'').substring(0, 4);
+  const arrShort = (data.arrival||'').substring(0, 4);
+
+  p.innerHTML = `
+    <div style="background:linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);padding:16px;border-bottom:1px solid #2d3748;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
+        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
+        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
+      </div>
+      <div style="font-size:14px;color:#8b92a7;">${escapeHtml(data.flightNo || 'N/A')} · ${escapeHtml(data.type || 'Unknown Type')}</div>
+    </div>
+    ${emergencyBadge}
+    <div style="padding:16px;">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:16px;padding:12px;background:#0f1419;border-radius:8px;">
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">FROM</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;">${escapeHtml(depShort || '—')}</div>
+        </div>
+        <div style="color:#8b92a7;font-size:20px;">✈</div>
+        <div style="text-align:center;">
+          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">TO</div>
+          <div style="font-size:18px;font-weight:700;color:#fff;">${escapeHtml(arrShort || '—')}</div>
+        </div>
+      </div>
+      
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
+        <div style="background:#0f1419;padding:12px;border-radius:8px;border-left:3px solid #4a9eff;">
+          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">ALTITUDE</div>
+          <div style="font-size:20px;font-weight:700;color:#fff;">${Math.round(data.alt || 0)}</div>
+          <div style="font-size:11px;color:#8b92a7;">feet</div>
+        </div>
+        <div style="background:#0f1419;padding:12px;border-radius:8px;border-left:3px solid #ffd93d;">
+          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">SPEED</div>
+          <div style="font-size:20px;font-weight:700;color:#fff;">${formatSpeed(data.speed)}</div>
+          <div style="font-size:11px;color:#8b92a7;">knots</div>
+        </div>
+      </div>
+      
+      <div style="background:#0f1419;padding:12px;border-radius:8px;margin-bottom:12px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+          <div>
+            <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">SQUAWK</div>
+            <div style="font-size:16px;font-weight:600;color:${isEmergency ? '#ff4444' : '#fff'};">${escapeHtml(data.squawk || '—')}</div>
+          </div>
+          <div>
+            <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">HEADING</div>
+            <div style="font-size:16px;font-weight:600;color:#fff;">${Math.round(data.heading || 0)}°</div>
+          </div>
+        </div>
+      </div>
+      
+      ${data.takeoffTime ? `<div style="background:#0f1419;padding:12px;border-radius:8px;">
+        <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">TAKEOFF TIME (UTC)</div>
+        <div style="font-size:14px;font-weight:600;color:#fff;">${escapeHtml(data.takeoffTime)}</div>
+      </div>` : ''}
+    </div>`;
+    // 顯示飛行軌跡圖表
+  let trackArr = [];
+  if (aircrafts.has(id)) {
+    const obj = aircrafts.get(id);
+    if (obj.rawTrack && obj.rawTrack.length > 2) {
+      trackArr = obj.rawTrack; // 不切片，全部都顯示
+    } else if (obj.rawPathForDisplay && obj.rawPathForDisplay.length > 2) {
+      trackArr = obj.rawPathForDisplay.map(tp => ({
+        alt: tp[2],
+        speed: tp[3]
+      }));
+}
+  }
+  if (trackArr.length > 2) {
+    showFlightChart(trackArr);
+  } else {
+    hideFlightChart();
+  }
+}
+// Photo Map 功能
+let photoMapEnabled = false;
+let photoMarkers = [];
+
+const planeIcon = L.divIcon({
+  html: '<div style="font-size: 24px;">✈️</div>',
+  className: 'plane-marker',
+  iconSize: [30, 30],
+  iconAnchor: [15, 15]
+});
+
+function togglePhotoMap() {
+  const btn = document.getElementById('photoMapToggle');
+  photoMapEnabled = !photoMapEnabled;
+  
+  if (photoMapEnabled) {
+    btn.classList.add('active');
+    btn.textContent = '📍 Hide Photos';
+    loadPhotoMarkers();
+  } else {
+    btn.classList.remove('active');
+    btn.textContent = '📍 Photo Map';
+    clearPhotoMarkers();
+  }
+}
+
+function clearPhotoMarkers() {
+  photoMarkers.forEach(marker => map.removeLayer(marker));
+  photoMarkers = [];
+}
+
+async function loadPhotoMarkers() {
+  try {
+    const response = await fetch('/api/photos');
+    const photos = await response.json();
+    
+    const photosWithLocation = photos.filter(photo => 
+      photo.lat !== null && photo.lon !== null
+    );
+    
+    photosWithLocation.forEach(photo => {
+      const marker = L.marker([photo.lat, photo.lon], {
+        icon: planeIcon,
+        zIndexOffset: -1000 // 確保照片標記在飛機標記下方
+      }).addTo(map);
+      
+      const popupContent = `
+        <div class="photo-popup">
+          <img src="${photo.thumb}" alt="${escapeHtml(photo.caption)}" onclick="window.open('${photo.file}', '_blank')">
+          <h3>${escapeHtml(photo.caption)}</h3>
+          <div class="info">📷 ${escapeHtml(photo.photographer)}</div>
+          <div class="info">📅 ${new Date(photo.createdAt).toLocaleDateString('en-US')}</div>
+          ${photo.tags && photo.tags.length > 0 ? `
+            <div class="tags">
+              ${photo.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
+            </div>
+          ` : ''}
+        </div>
+      `;
+      
+      marker.bindPopup(popupContent, {
+        maxWidth: 320
+      });
+      
+      photoMarkers.push(marker);
+    });
+    
+    console.log(`Loaded ${photoMarkers.length} photo markers`);
+  } catch (error) {
+    console.error('Failed to load photo markers:', error);
+    alert('Failed to load photo locations. Please try again.');
+  }
+}
+// WebSocket
+let ws;
+function connectWS() {
+  ws = new WebSocket(WS_URL);
+  ws.addEventListener('open', () => ws.send(JSON.stringify({type: 'hello', role: 'atc'})));
+  ws.addEventListener('message', ev => {
+    try {
+      const m = JSON.parse(ev.data);
+      if (m.type === 'aircraft_update') {
+        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
+          updateAircraft(a.id, a, m.trackPoint)
+        );
+      }
+      else if (m.type === 'aircraft_snapshot') {
+        m.payload.forEach(a => updateAircraft(a.id, a));
+      }
+      // 處理批次更新
+else if (m.type === 'aircraft_batch_update') {
+  m.payload.forEach(a => updateAircraft(a.id, a));
+}
+else if (m.type === 'aircraft_track_history') {
+        const { aircraftId, tracks } = m.payload;
+        if (!tracks || tracks.length === 0) return;
+        
+        if (!aircrafts.has(aircraftId)) {
+          const lastTrack = tracks[tracks.length - 1];
+          const dummyData = {
+            callsign: aircraftId,
+            type: '??',
+            lat: lastTrack.lat,
+            lon: lastTrack.lon,
+            alt: lastTrack.alt,
+            heading: 0,
+            speed: lastTrack.speed || 0,
+            squawk: ''
+          };
+          const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
+          marker.on('click', () => {
+            clearAllAircraftTracks();
+            focusedAircraftId = aircraftId;
+            showAircraftTrack(aircraftId);
+            showAircraftPanel(dummyData, aircraftId);
+          });
+          aircrafts.set(aircraftId, {
+            marker,
+            path: [],
+            rawTrack: [],
+            rawPathForDisplay: [],
+            displayPath: [],
+            segments: [],
+            lastSeen: Date.now(),
+            data: dummyData
+          });
+        }
+        
+        const obj = aircrafts.get(aircraftId);
+        if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+        if (!obj.rawTrack) obj.rawTrack = [];
+        
+        // 清除舊資料以避免重複
+        obj.rawPathForDisplay = [];
+        obj.rawTrack = [];
+        
+        // 添加 history 資料
+        tracks.forEach(t => {
+          obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
+          obj.rawTrack.push({
+            lat: t.lat,
+            lon: t.lon,
+            alt: t.alt || 0,
+            speed: t.speed || 0,
+            ts: t.ts || Date.now()
+          });
+        });
+        
+        // 如果這架飛機正在被 focus,立即更新軌跡
+        if (focusedAircraftId === aircraftId) {
+          showAircraftTrack(aircraftId);
+        }
+      }
+
+      else if (m.type === 'aircraft_track_clear') {
+        const { aircraftId } = m.payload;
+        if (aircrafts.has(aircraftId)) {
+          aircrafts.get(aircraftId).segments.forEach(s => map.removeLayer(s));
+          aircrafts.get(aircraftId).segments = [];
+        }
+      }
+      else if (m.type === 'aircraft_remove') {
+        m.payload.forEach(id => removeAircraft(id));
+      }
+    } catch (e) {
+      console.warn('Message parse error:', e);
+    }
+  });
+  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
+  ws.addEventListener('error', () => ws.close());
+}
+connectWS();
+
+function updateUTCTime() {
+  const now = new Date();
+  const utc = now.toISOString().replace('T', ' ').slice(0, 19);
+  const el = document.getElementById('utcTimeText');
+  if (el) el.textContent = utc;
+}
+
+function getTimeInTimeZone(tz) {
+  try {
+    const timeStr = new Date().toLocaleTimeString("en-US", {
+      hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit", timeZone: tz
+    });
+    const [h, m, s] = timeStr.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h, m, s, 0);
+    return d;
+  } catch (e) {
+    return new Date();
+  }
+}
+
+function rotateClock(svg, now) {
+  const hour = svg.querySelector("line[id$='-hour']");
+  const minute = svg.querySelector("line[id$='-minute']");
+  if (!hour || !minute) return;
+  const h = now.getHours() % 12, m = now.getMinutes();
+  hour.setAttribute("transform", `rotate(${h * 30 + m * 0.5} 20 20)`);
+  minute.setAttribute("transform", `rotate(${m * 6} 20 20)`);
+}
+
+function createClockSVG(id, label, timeZone) {
+  const container = document.createElement("div");
+  container.style.textAlign = "center";
+  container.style.fontSize = "10px";
+  container.innerHTML = `<div style="margin-bottom: 4px; font-weight: bold;">${label}</div>`;
+  
+  const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  svg.setAttribute("width", "40");
+  svg.setAttribute("height", "40");
+  svg.setAttribute("viewBox", "0 0 40 40");
+  
+  let hourNow = 12;
+  try {
+    const tStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", timeZone });
+    hourNow = parseInt(tStr, 10);
+  } catch {}
+  
+  const isDay = hourNow >= 6 && hourNow < 18;
+  const clockFaceURL = isDay
+    ? "https://clock-day.short.gy/0Fxzwe"
+    : "https://clock-day.short.gy/2ZpDoNight";
+  const pointerColor = isDay ? "black" : "white";
+
+  svg.innerHTML = `
+    <defs>
+      <clipPath id="clockClip-${id}">
+        <circle cx="20" cy="20" r="18"/>
+      </clipPath>
+      <g id="clockHands-${id}">
+        <line id="${id}-hour" x1="20" y1="20" x2="20" y2="11" stroke="${pointerColor}" stroke-width="2"/>
+        <line id="${id}-minute" x1="20" y1="20" x2="20" y2="7" stroke="${pointerColor}" stroke-width="1"/>
+      </g>
+    </defs>
+    <image href="${clockFaceURL}" x="0" y="0" width="40" height="40" clip-path="url(#clockClip-${id})"/>
+    <use href="#clockHands-${id}"/>
+  `;
+  
+  container.appendChild(svg);
+  return container;
+}
+
+function initializeClocks() {
+  const clockContainer = document.getElementById('clockContainer');
+  if (!clockContainer) return;
+  
+  const utcClock = createClockSVG("utc", "UTC", "UTC");
+  clockContainer.appendChild(utcClock);
+  rotateClock(utcClock, getTimeInTimeZone("UTC"));
+  
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localClock = createClockSVG("local", "Local", localTz);
+  clockContainer.appendChild(localClock);
+  rotateClock(localClock, getTimeInTimeZone(localTz));
+  
+  setInterval(() => {
+    rotateClock(utcClock, getTimeInTimeZone("UTC"));
+    rotateClock(localClock, getTimeInTimeZone(localTz));
+  }, 1000);
+}
+
+setInterval(updateUTCTime, 1000);
+updateUTCTime();
+initializeClocks();
+
+</script>
+</body>
+</html>
