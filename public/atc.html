@@ -887,6 +887,10 @@ function updateAircraft(id, data, trackPoint = null) {
       focusedAircraftId = id;
       showAircraftTrack(id);
       showAircraftPanel(data, id);
+      map.setView([data.lat, data.lon], map.getZoom(), {
+    animate: true,
+    duration: 0.5
+  });
     });
     aircrafts.set(id, {
       marker,
@@ -902,6 +906,11 @@ function updateAircraft(id, data, trackPoint = null) {
   }
   if (id === focusedAircraftId) {
     showAircraftPanel(data, id);
+    map.panTo([data.lat, data.lon], {
+    animate: true,
+    duration: 0.3,
+    easeLinearity: 0.5
+  });
   }
 }
 function removeAircraft(id) {
