@@ -53,7 +53,25 @@
   border-radius: 12px;
   font-size: 0.75rem;
 }
+/* Aircraft Label Hover Effect */
+.leaflet-aircraft-icon .aircraft-tag {
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
 
+.leaflet-aircraft-icon:hover .aircraft-tag {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Aircraft Panel Modern Styling */
+#aircraftPanel {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#aircraftPanel button {
+  transition: all 0.2s ease;
+}
 /* Photo Map Toggle */
 #photoMapToggle {
   position: fixed;
@@ -725,20 +743,20 @@ function makeDivIcon(data){
   const arrShort = (data.arrival||'').substring(0, 4);
   
   return L.divIcon({
-    html:`
-      <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
-        <div class="${labelClass}" style="border-left:3px solid ${color};">
-          <strong>${escapeHtml(data.callsign||'UNK')}</strong>
-          <div style="font-size:11px;">
-            ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
-          </div>
-          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
-          ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+  html:`
+    <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
+      <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
+      <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
+        <strong>${escapeHtml(data.callsign||'UNK')}</strong>
+        <div style="font-size:11px;">
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
         </div>
-      </div>`,
-    className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
-  });
+        <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+      </div>
+    </div>`,
+  className:'leaflet-aircraft-icon',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
+});
 }
 
 function crossesIDL(lon1, lon2) {
@@ -1011,7 +1029,7 @@ function showAircraftPanel(data, id) {
     <div style="background:linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);padding:16px;border-bottom:1px solid #2d3748;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
         <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
-        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
+<button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
       </div>
       <div style="font-size:14px;color:#8b92a7;">${escapeHtml(data.flightNo || 'N/A')} · ${escapeHtml(data.type || 'Unknown Type')}</div>
     </div>
