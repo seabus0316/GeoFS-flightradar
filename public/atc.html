@@ -1143,87 +1143,6 @@ async function loadPhotoMarkers() {
     alert('Failed to load photo locations. Please try again.');
   }
 }
-  // 机场相关
-const airportIcon = L.icon({
-  iconUrl: 'https://i0.wp.com/microshare.io/wp-content/uploads/2024/04/airport2-icon.png?resize=510%2C510&ssl=1',
-  iconSize: [30, 30],
-  iconAnchor: [15, 15],
-  popupAnchor: [0, -16]
-});
-
-let airports = [];
-let airportMarkers = [];
-let airportsLoaded = false;
-
-async function loadAirports() {
-  if (airportsLoaded) return;
-  try {
-    const response = await fetch('https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json');
-    airports = await response.json();
-    airportsLoaded = true;
-    console.log(`Loaded ${airports.length} airports`);
-    updateAirportDisplay();
-  } catch (error) {
-    console.error('Failed to load airports:', error);
-  }
-}
-
-function updateAirportDisplay() {
-  const zoom = map.getZoom();
-  const bounds = map.getBounds();
-  
-  // 清除现有机场标记
-  airportMarkers.forEach(marker => map.removeLayer(marker));
-  airportMarkers = [];
-  
-  // 只在缩放级别 >= 7 时显示机场
-  if (zoom < 7) {
-    return;
-  }
-  
-  // 根据缩放级别限制显示的机场数量
-  let maxAirports = 50;
-  if (zoom >= 9) maxAirports = 200;
-  if (zoom >= 11) maxAirports = 500;
-  
-  // 过滤可见范围内的机场
-  const visibleAirports = airports.filter(airport => 
-    bounds.contains([airport.lat, airport.lon])
-  ).slice(0, maxAirports);
-  
-  visibleAirports.forEach(airport => {
-    const marker = L.marker([airport.lat, airport.lon], {
-      icon: airportIcon,
-      title: airport.name,
-      zIndexOffset: -2000
-    }).addTo(map);
-    
-    const popupContent = `
-      <div style="font-family: Inter, 'Noto Sans TC', Arial, sans-serif; min-width: 200px;">
-        <h3 style="margin: 0 0 8px 0; font-size: 16px; color: #333;">${escapeHtml(airport.name)}</h3>
-        <div style="font-size: 13px; color: #666;">
-          <strong>ICAO:</strong> ${escapeHtml(airport.icao)}<br>
-          <strong>Coordinates:</strong> ${airport.lat.toFixed(4)}°, ${airport.lon.toFixed(4)}°
-        </div>
-      </div>
-    `;
-    
-    marker.bindPopup(popupContent);
-    airportMarkers.push(marker);
-  });
-  
-  console.log(`Displaying ${airportMarkers.length} airports at zoom ${zoom}`);
-}
-
-// 加载机场数据
-loadAirports();
-
-// 监听地图缩放和移动事件
-map.on('zoomend moveend', () => {
-  if (airportsLoaded) {
-    updateAirportDisplay();
-  }
-});
 // WebSocket
 let ws;
 function connectWS() {
@@ -1417,7 +1336,6 @@ function initializeClocks() {
 setInterval(updateUTCTime, 1000);
 updateUTCTime();
 initializeClocks();
-
 </script>
 </body>
 </html>
