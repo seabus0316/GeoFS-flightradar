@@ -42,8 +42,8 @@ ATC Screen url: (hold on I'm still finding host)
 **Clone the repository**
 
 ```bash
-git clone https://github.com/seabus0316/GeoFS-flightradar.git
-cd GeoFS-flightradar
+  git clone https://github.com/seabus0316/GeoFS-flightradar.git
+  cd GeoFS-flightradar
 ```
 **Install dependencies**
 ```bash
