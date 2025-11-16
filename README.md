@@ -1,5 +1,3 @@
-<div align="center" style="line-height: 1;">
-
 # GeoFS Flightradar
 Just like the FlightRadar24 in real world
 
@@ -43,8 +41,8 @@ ATC Screen url: (hold on I'm still finding host)
 
 ```bash
 git clone https://github.com/seabus0316/GeoFS-flightradar.git
-cd GeoFS-flightradar
 
+cd GeoFS-flightradar
 ```
 **Install dependencies**
 ```bash
