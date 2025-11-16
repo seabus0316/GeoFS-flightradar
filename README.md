@@ -37,7 +37,7 @@ ATC Screen url: (hold on I'm still finding host)
 
 # Build and Development
 
-##For contributors and developers:
+## For contributors and developers:
 
 ```bash
 # Clone the repository
