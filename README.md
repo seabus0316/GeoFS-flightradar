@@ -34,3 +34,25 @@ ATC Screen url: (hold on I'm still finding host)
 
 # Map view
    <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
+# Build and Development
+
+For contributors and developers:
+
+```bash
+# Clone the repository
+git clone https://github.com/seabus0316/GeoFS-flightradar.git
+cd GeoFS-flightradar
+
+# Build command
+npm install
+
+# Run command
+npm start
+
+```
+# .env format
+```bash
+ADMIN_PASS=<JET PHOTOS ADMIN PASSWORD>
+IMGBB_API_KEY=<IMGBB API KEY>
+MONGODB_URL=<MONGODB ATLAS URL>
+```
