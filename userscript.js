@@ -13,7 +13,7 @@
   'use strict';
 
   /*** CONFIG ***/
-  const WS_URL = 'ws://localhost:3000/';
+  const WS_URL = 'ws://103.214.23.95/ws';
   const SEND_INTERVAL_MS = 500;
   /*************/
 
