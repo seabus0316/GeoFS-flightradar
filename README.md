@@ -22,8 +22,6 @@ ATC Screen url: (hold on I'm still finding host)
 [![GITHUB](https://img.shields.io/badge/GITHUB-24292F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seabus0316/GeoFS-flightradar/)
 [![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.onrender.com/)
 
-
-
 <a href="https://www.star-history.com/#seabus0316/GeoFS-flightradar&Date">
  <picture>
    <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/svg?repos=seabus0316/GeoFS-flightradar&type=Date&theme=dark" />
