@@ -1,3 +1,5 @@
+<div align="center" style="line-height: 1;">
+  
 # GeoFS Flightradar
 Just like the FlightRadar24 in real world
 
@@ -34,21 +36,22 @@ ATC Screen url: (hold on I'm still finding host)
    <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
 
 ## Build and Development
+</div>
 
 ### For contributors and developers:
 
-**Clone the repository**
+**1. Clone the repository**
 
 ```bash
 git clone https://github.com/seabus0316/GeoFS-flightradar.git
 
 cd GeoFS-flightradar
 ```
-**Install dependencies**
+**2. Install dependencies**
 ```bash
 npm install
 ```
-**Run the server**
+**3. Run the server**
 ```bash
 npm start
 ```
