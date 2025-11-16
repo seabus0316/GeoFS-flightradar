@@ -12,6 +12,7 @@ press"W" to hide the ui
 ATC Screen url: (hold on I'm still finding host)
 
 
+# Star History
 
 <p align="center">
   <a href="https://github.com/seabus0316/GeoFS-flightradar/stargazers"><img src="https://img.shields.io/github/stars/seabus0316/GeoFS-flightradar.svg?style=for-the-badge" alt="Stargazers"></a>
@@ -22,7 +23,6 @@ ATC Screen url: (hold on I'm still finding host)
 [![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.onrender.com/)
 
 
-# Star History
 
 <a href="https://www.star-history.com/#seabus0316/GeoFS-flightradar&Date">
  <picture>
