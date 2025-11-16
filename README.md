@@ -31,4 +31,5 @@ ATC Screen url: (hold on I'm still finding host)
    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=seabus0316/GeoFS-flightradar&type=Date" />
  </picture>
 </a>
+# Map view
    <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
