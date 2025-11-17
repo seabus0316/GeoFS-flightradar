@@ -13,7 +13,7 @@
   'use strict';
 
   /*** CONFIG ***/
-  const WS_URL = 'ws://103.214.23.95/ws';
+ const WS_URL = 'wss://geofs-flightradar.duckdns.org/ws';
   const SEND_INTERVAL_MS = 500;
   /*************/
 
@@ -130,7 +130,7 @@
   try {
     if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
       flightPlan = geofs.flightPlan.export();
-    }console.log('[ATC-Reporter] FlightPlan:', flightPlan);
+    }
   } catch (e) {}
   return {
     id: getPlayerCallsign(),
