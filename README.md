@@ -9,7 +9,7 @@ Just like the FlightRadar24 in real world
 Install the user.js and It will send your position info to the atc screen
 press"W" to hide the ui
 
-ATC Screen url: (hold on I'm still finding host)
+ATC Screen url: https://geofs-flightradar.duckdns.org/
 
 
 # Star History
