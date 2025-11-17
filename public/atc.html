@@ -924,11 +924,6 @@ function updateAircraft(id, data, trackPoint = null) {
   }
   if (id === focusedAircraftId) {
     showAircraftPanel(data, id);
-    map.panTo([data.lat, data.lon], {
-    animate: true,
-    duration: 0.3,
-    easeLinearity: 0.5
-  });
   }
 }
 function removeAircraft(id) {
@@ -1027,9 +1022,9 @@ function showAircraftPanel(data, id) {
 
   p.innerHTML = `
     <div style="background:linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);padding:16px;border-bottom:1px solid #2d3748;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
-<button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
+        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
+<button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
       </div>
       <div style="font-size:14px;color:#8b92a7;">${escapeHtml(data.flightNo || 'N/A')} · ${escapeHtml(data.type || 'Unknown Type')}</div>
     </div>
