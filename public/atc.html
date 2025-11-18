@@ -53,7 +53,25 @@
   border-radius: 12px;
   font-size: 0.75rem;
 }
+/* Aircraft Label Hover Effect */
+.leaflet-aircraft-icon .aircraft-tag {
+  transition: background-color 0.2s ease, opacity 0.2s ease;
+}
 
+.leaflet-aircraft-icon:hover .aircraft-tag {
+  background-color: rgba(0, 0, 0, 0.8) !important;
+}
+
+/* Aircraft Panel Modern Styling */
+#aircraftPanel {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+#aircraftPanel button {
+  transition: all 0.2s ease;
+}
 /* Photo Map Toggle */
 #photoMapToggle {
   position: fixed;
@@ -360,32 +378,23 @@ let flightChartObj;
 
 // 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
 function simplifyTrackData(track, maxPoints = 200) {
-  // 確保至少返回首尾兩點
-  if (!track || track.length === 0) return [];
-  if (track.length === 1) return track;
   if (track.length <= maxPoints) return track;
   
-  // 計算每個點的重要性(基於高度和速度變化)
+  // 計算每個點的重要性（基於高度和速度變化）
   const importance = track.map((point, i) => {
     if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
     
     const prev = track[i - 1];
     const next = track[i + 1];
     
-    const altChange = Math.abs((point.alt || 0) - (prev.alt || 0)) + 
-                     Math.abs((next.alt || 0) - (point.alt || 0));
-    const speedChange = Math.abs((point.speed || 0) - (prev.speed || 0)) + 
-                       Math.abs((next.speed || 0) - (point.speed || 0));
+    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
+    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
     
     return altChange + speedChange * 0.1; // 高度變化權重更高
   });
   
   // 選擇最重要的點
-  const indexed = track.map((point, i) => ({ 
-    point, 
-    importance: importance[i], 
-    index: i 
-  }));
+  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
   indexed.sort((a, b) => b.importance - a.importance);
   
   const selected = indexed.slice(0, maxPoints);
@@ -399,24 +408,10 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // 確保有有效數據
-  if (!track || track.length < 1) {
-    console.warn('No track data available');
-    hideFlightChart();
-    return;
-  }
-
-  // 資料抽稀處理 - 至少保留 2 個點
-  const simplifiedTrack = track.length <= 2 ? track : simplifyTrackData(track, 200);
+  // 資料抽稀處理
+  const simplifiedTrack = simplifyTrackData(track, 200);
   
-  // 再次確認簡化後仍有數據
-  if (simplifiedTrack.length === 0) {
-    console.warn('Simplified track is empty');
-    hideFlightChart();
-    return;
-  }
-  
-  // 計算時間跨度,動態調整標籤格式
+  // 計算時間跨度，動態調整標籤格式
   const firstTs = simplifiedTrack[0]?.ts;
   const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
   const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
@@ -425,15 +420,15 @@ function showFlightChart(track) {
   let timeFormat;
   let maxTicks;
   if (timeSpanHours > 6) {
-    // 超過 6 小時:只顯示小時
+    // 超過 6 小時：只顯示小時
     timeFormat = { hour: '2-digit', hour12: false };
     maxTicks = 12;
   } else if (timeSpanHours > 2) {
-    // 2-6 小時:顯示小時:分鐘(每 30 分鐘)
+    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 15;
   } else {
-    // 少於 2 小時:顯示詳細時間
+    // 少於 2 小時：顯示詳細時間
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 12;
   }
@@ -444,12 +439,11 @@ function showFlightChart(track) {
       const dt = new Date(p.ts);
       return dt.toLocaleTimeString('en-GB', timeFormat);
     }
-    return `Point ${i + 1}`;
+    return i + 1;
   });
   
-  // 確保數據有效性
-  const altitudes = simplifiedTrack.map(p => Math.round(p.alt || 0));
-  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed || 0)));
+  const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
 
   if (!flightChartObj) {
     flightChartObj = new Chart(ctx, {
@@ -462,7 +456,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: simplifiedTrack.length <= 5 ? 3 : 0, // 點少時顯示點
+            pointRadius: 0, // 關閉點，讓線更清晰
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -471,7 +465,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: simplifiedTrack.length <= 5 ? 3 : 0, // 點少時顯示點
+            pointRadius: 0, // 關閉點
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -480,7 +474,7 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
+       plugins: {
           legend: {
             display: true,
             labels: {
@@ -562,17 +556,24 @@ function showFlightChart(track) {
     });
   } else {
     // 平滑更新資料
+    const simplifiedTrack = simplifyTrackData(track, 200);
+    const labels = simplifiedTrack.map((p, i) => {
+      if (p.ts) {
+        const dt = new Date(p.ts);
+        return dt.toLocaleTimeString('en-GB', timeFormat);
+      }
+      return i + 1;
+    });
+    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+    
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
-    // 更新點的顯示
-    flightChartObj.data.datasets[0].pointRadius = simplifiedTrack.length <= 5 ? 3 : 0;
-    flightChartObj.data.datasets[1].pointRadius = simplifiedTrack.length <= 5 ? 3 : 0;
     flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
     flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
   }
 }
-
 function hideFlightChart() {
   document.getElementById('flightChartContainer').style.display = 'none';
   if (flightChartObj) {
@@ -742,20 +743,20 @@ function makeDivIcon(data){
   const arrShort = (data.arrival||'').substring(0, 4);
   
   return L.divIcon({
-    html:`
-      <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-        <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
-        <div class="${labelClass}" style="border-left:3px solid ${color};">
-          <strong>${escapeHtml(data.callsign||'UNK')}</strong>
-          <div style="font-size:11px;">
-            ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
-          </div>
-          <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
-          ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+  html:`
+    <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
+      <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
+      <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
+        <strong>${escapeHtml(data.callsign||'UNK')}</strong>
+        <div style="font-size:11px;">
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
         </div>
-      </div>`,
-    className:'',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
-  });
+        <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+      </div>
+    </div>`,
+  className:'leaflet-aircraft-icon',iconSize:[iconW,iconH],iconAnchor:[imgW/2,iconH/2]
+});
 }
 
 function crossesIDL(lon1, lon2) {
@@ -765,54 +766,29 @@ function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
 }
 
+// 軌跡
 function showAircraftTrack(id) {
   const obj = aircrafts.get(id);
-  if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) {
-    console.warn('No path data for aircraft', id);
-    return;
-  }
-  
+  if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) return;
   clearAllAircraftTracks();
-  
-  // 即使只有一個點也保留
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
-  
-  // 至少需要 2 個點才能畫線
-  if (obj.displayPath.length < 2) {
-    console.warn('Not enough points to draw track (need at least 2), current points:', obj.displayPath.length);
-    return;
-  }
-  
   for (let i = 1; i < obj.displayPath.length; i++) {
     const prev = obj.displayPath[i-1];
     const curr = obj.displayPath[i];
     const alt = curr[2] || 0;
-    
-    if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) {
-      continue;
-    }
-    
+    if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
     const seg = L.polyline(
       [ [prev[0], prev[1]], [curr[0], curr[1]] ],
-      { 
-        renderer: canvasRenderer, 
-        color: getAltitudeColor(alt), 
-        weight: 2, 
-        opacity: 0.8 
-      }
+      { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
     ).addTo(map);
-    
     seg.bindTooltip(`${Math.round(alt)} ft`, {
       sticky: true,
       direction: 'right',
       offset: [10, 0]
     });
-    
     obj.segments.push(seg);
   }
-  
-  console.log(`Drew ${obj.segments.length} track segments for aircraft ${id}`);
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
@@ -929,6 +905,10 @@ function updateAircraft(id, data, trackPoint = null) {
       focusedAircraftId = id;
       showAircraftTrack(id);
       showAircraftPanel(data, id);
+      map.setView([data.lat, data.lon], map.getZoom(), {
+    animate: true,
+    duration: 0.5
+  });
     });
     aircrafts.set(id, {
       marker,
@@ -1042,9 +1022,9 @@ function showAircraftPanel(data, id) {
 
   p.innerHTML = `
     <div style="background:linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);padding:16px;border-bottom:1px solid #2d3748;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
-        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
+        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
+<button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
       </div>
       <div style="font-size:14px;color:#8b92a7;">${escapeHtml(data.flightNo || 'N/A')} · ${escapeHtml(data.type || 'Unknown Type')}</div>
     </div>
