@@ -377,57 +377,30 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 let flightChartObj;
 
 // 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
-// 🔧 改進的資料抽稀函數 - 保證時間均勻分佈
 function simplifyTrackData(track, maxPoints = 200) {
   if (track.length <= maxPoints) return track;
   
-  // 策略:結合時間均勻採樣 + 重要點保留
-  const result = [];
-  
-  // 1. 一定保留首尾
-  result.push(track[0]);
-  
-  // 2. 計算時間跨度
-  const firstTs = track[0].ts || 0;
-  const lastTs = track[track.length - 1].ts || 0;
-  const totalDuration = lastTs - firstTs;
-  
-  if (totalDuration === 0) {
-    // 沒有時間戳,按索引均勻採樣
-    const step = Math.ceil(track.length / maxPoints);
-    for (let i = step; i < track.length - 1; i += step) {
-      result.push(track[i]);
-    }
-  } else {
-    // 有時間戳,按時間均勻採樣
-    const targetInterval = totalDuration / (maxPoints - 2); // 減去首尾
-    let lastAddedTs = firstTs;
+  // 計算每個點的重要性（基於高度和速度變化）
+  const importance = track.map((point, i) => {
+    if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
     
-    for (let i = 1; i < track.length - 1; i++) {
-      const point = track[i];
-      const currentTs = point.ts || 0;
-      
-      // 計算重要性分數
-      const prev = track[i - 1];
-      const next = track[i + 1];
-      const altChange = Math.abs(point.alt - prev.alt) + Math.abs((next.alt || 0) - point.alt);
-      const speedChange = Math.abs(point.speed - prev.speed) + Math.abs((next.speed || 0) - point.speed);
-      const importance = altChange + speedChange * 0.1;
-      
-      // 時間到了或重要性很高就保留
-      const timeSinceLastAdded = currentTs - lastAddedTs;
-      if (timeSinceLastAdded >= targetInterval || importance > 500) {
-        result.push(point);
-        lastAddedTs = currentTs;
-      }
-    }
-  }
+    const prev = track[i - 1];
+    const next = track[i + 1];
+    
+    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
+    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
+    
+    return altChange + speedChange * 0.1; // 高度變化權重更高
+  });
   
-  // 3. 保留最後一個點
-  result.push(track[track.length - 1]);
+  // 選擇最重要的點
+  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
+  indexed.sort((a, b) => b.importance - a.importance);
   
-  console.log(`📉 Simplified ${track.length} → ${result.length} points`);
-  return result;
+  const selected = indexed.slice(0, maxPoints);
+  selected.sort((a, b) => a.index - b.index);
+  
+  return selected.map(item => item.point);
 }
 
 function showFlightChart(track) {
@@ -435,15 +408,13 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // 🔧 增加抽稀點數上限至 500
-  const simplifiedTrack = simplifyTrackData(track, 500);
+  // 資料抽稀處理
+  const simplifiedTrack = simplifyTrackData(track, 200);
   
-  // 計算時間跨度,動態調整標籤格式
+  // 計算時間跨度，動態調整標籤格式
   const firstTs = simplifiedTrack[0]?.ts;
   const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
   const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
-  
-  console.log(`📊 Chart: ${simplifiedTrack.length} points, ${timeSpanHours.toFixed(1)}h span`);
   
   // 根據時間跨度選擇格式
   let timeFormat;
@@ -1202,209 +1173,115 @@ async function loadPhotoMarkers() {
   }
 }
 // WebSocket
-// 完整的 connectWS 函數
-// 在 atc.html 中找到並完整替換整個 connectWS 函數
-
 let ws;
 function connectWS() {
   ws = new WebSocket(WS_URL);
-  
-  ws.addEventListener('open', () => {
-    ws.send(JSON.stringify({type: 'hello', role: 'atc'}));
-  });
-  
+  ws.addEventListener('open', () => ws.send(JSON.stringify({type: 'hello', role: 'atc'})));
   ws.addEventListener('message', ev => {
     try {
       const m = JSON.parse(ev.data);
-      
-      // 1. 單個飛機更新
       if (m.type === 'aircraft_update') {
         (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
           updateAircraft(a.id, a, m.trackPoint)
         );
       }
-      
-      // 2. 快照（初始連接時的所有飛機）
       else if (m.type === 'aircraft_snapshot') {
         m.payload.forEach(a => updateAircraft(a.id, a));
       }
-      
-      // 3. ⭐ 新增：批次更新處理
-      else if (m.type === 'aircraft_batch_update') {
-        console.log(`📦 Batch update: ${m.payload.length} aircraft`);
-        m.payload.forEach(a => {
-          updateAircraft(a.id, a, true);
-        });
-      }
-      
-      // 4. ⭐ 修復：歷史軌跡處理
-      else if (m.type === 'aircraft_track_history') {
-        console.log('📥 Received track history:', m.payload);
-        
-        const { aircraftId, tracks } = m.payload;
-        
-        if (!tracks || tracks.length === 0) {
-          console.warn(`⚠️ No tracks for ${aircraftId}`);
-          return;
-        }
-        
-        console.log(`✈️ Loading ${tracks.length} history points for ${aircraftId}`);
+      // 處理批次更新
+else if (m.type === 'aircraft_batch_update') {
+  m.payload.forEach(a => updateAircraft(a.id, a));
+}
+else if (m.type === 'aircraft_track_history') {
+  const { aircraftId, tracks } = m.payload;
+  if (!tracks || tracks.length === 0) return;
 
-        // 確保 aircraft 物件存在
-        if (!aircrafts.has(aircraftId)) {
-          console.log(`✨ Creating aircraft entry for ${aircraftId}`);
-          const lastTrack = tracks[tracks.length - 1];
-          const dummyData = {
-            callsign: aircraftId,
-            type: '??',
-            lat: lastTrack.lat,
-            lon: lastTrack.lon,
-            alt: lastTrack.alt || 0,
-            heading: 0,
-            speed: lastTrack.speed || 0,
-            squawk: '',
-            flightNo: '',
-            departure: '',
-            arrival: '',
-            takeoffTime: ''
-          };
-          
-          const marker = L.marker([lastTrack.lat, lastTrack.lon], { 
-            icon: makeDivIcon(dummyData) 
-          }).addTo(map);
+  // 1. 確保 aircraft 物件存在
+  if (!aircrafts.has(aircraftId)) {
+    // 產生暫時的 marker，只包含最低限度資料
+    const lastTrack = tracks[tracks.length - 1];
+    const dummyData = {
+      callsign: aircraftId,
+      type: '??',
+      lat: lastTrack.lat,
+      lon: lastTrack.lon,
+      alt: lastTrack.alt,
+      heading: 0,
+      speed: lastTrack.speed || 0,
+      squawk: ''
+    };
+    const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
 
-          marker.on('click', () => {
-            clearAllAircraftTracks();
-            focusedAircraftId = aircraftId;
-            showAircraftTrack(aircraftId);
-            showAircraftPanel(dummyData, aircraftId);
-            map.setView([lastTrack.lat, lastTrack.lon], map.getZoom(), {
-              animate: true,
-              duration: 0.5
-            });
-          });
+    marker.on('click', () => {
+      clearAllAircraftTracks();
+      focusedAircraftId = aircraftId;
+      showAircraftTrack(aircraftId);
+      showAircraftPanel(dummyData, aircraftId);
+    });
 
-          aircrafts.set(aircraftId, {
-            marker,
-            path: [],
-            rawTrack: [],
-            rawPathForDisplay: [],
-            displayPath: [],
-            segments: [],
-            lastSeen: Date.now(),
-            data: dummyData,
-            paused: false
-          });
-        }
+    aircrafts.set(aircraftId, {
+      marker,
+      path: [],
+      rawTrack: [],
+      rawPathForDisplay: [],
+      displayPath: [],
+      segments: [],
+      lastSeen: Date.now(),
+      data: dummyData
+    });
+  }
 
-        const obj = aircrafts.get(aircraftId);
-        
-        // 初始化 rawTrack
-        if (!obj.rawTrack) obj.rawTrack = [];
-        
-        // 轉換 history 格式
-        const historyArr = tracks.map(t => ({
-          lat: t.lat,
-          lon: t.lon,
-          alt: t.alt || 0,
-          speed: t.speed || 0,
-          ts: t.ts || Date.now()
-        }));
-        
-        // 確保按時間排序 (舊到新)
-        historyArr.sort((a, b) => a.ts - b.ts);
-        
-        console.log(`📊 History range: ${new Date(historyArr[0].ts).toISOString()} to ${new Date(historyArr[historyArr.length-1].ts).toISOString()}`);
+  const obj = aircrafts.get(aircraftId);
+  if (!obj.rawTrack) obj.rawTrack = [];
+  
+  // 2. 準備 history 要 append 的資料
+  // 保證 tracks 時間排序由舊到新
+  const historyArr = tracks.map(t => ({
+    lat: t.lat,
+    lon: t.lon,
+    alt: t.alt || 0,
+    speed: t.speed || 0,
+    ts: t.ts || Date.now()
+  }));
 
-        // 🔧 改進的智能合併策略
-        if (obj.rawTrack.length === 0) {
-          // 沒有現有數據,直接使用 history
-          console.log('📋 No existing track, using history directly');
-          obj.rawTrack = historyArr;
-        } else {
-          // 有現有數據,需要合併
-          const existingOldest = obj.rawTrack[0].ts;
-          const existingNewest = obj.rawTrack[obj.rawTrack.length - 1].ts;
-          
-          console.log(`📊 Existing range: ${new Date(existingOldest).toISOString()} to ${new Date(existingNewest).toISOString()}`);
-          
-          // 🆕 改進:保留所有歷史數據,不只是時間範圍外的
-          // 使用 Map 來去重,優先保留歷史數據(更完整)
-          const mergedMap = new Map();
-          
-          // 先加入歷史數據
-          historyArr.forEach(point => {
-            const key = `${point.ts}_${point.lat.toFixed(4)}_${point.lon.toFixed(4)}`;
-            mergedMap.set(key, point);
-          });
-          
-          // 再加入現有數據(如果 key 不存在才加入)
-          obj.rawTrack.forEach(point => {
-            const key = `${point.ts}_${point.lat.toFixed(4)}_${point.lon.toFixed(4)}`;
-            if (!mergedMap.has(key)) {
-              mergedMap.set(key, point);
-            }
-          });
-          
-          // 按時間排序
-          obj.rawTrack = Array.from(mergedMap.values()).sort((a, b) => a.ts - b.ts);
-          
-          // 🆕 檢測並填補時間間隙
-          const gaps = [];
-          for (let i = 1; i < obj.rawTrack.length; i++) {
-            const timeDiff = (obj.rawTrack[i].ts - obj.rawTrack[i-1].ts) / 1000; // 秒
-            if (timeDiff > 300) { // 超過5分鐘視為間隙
-              gaps.push({
-                from: new Date(obj.rawTrack[i-1].ts).toISOString(),
-                to: new Date(obj.rawTrack[i].ts).toISOString(),
-                duration: Math.round(timeDiff / 60) + ' min'
-              });
-            }
-          }
-          
-          if (gaps.length > 0) {
-            console.warn(`⚠️ Detected ${gaps.length} time gaps:`, gaps);
-          }
-          
-          console.log(`✅ Merged to ${obj.rawTrack.length} unique points (was ${historyArr.length} + ${obj.rawTrack.length})`);
-        }
-      }
-      
-      // 5. 清除軌跡
+  // 3. 去掉與現有 rawTrack 重疊的部分
+  if (obj.rawTrack.length > 0) {
+    const firstExistingTS = obj.rawTrack[0].ts;
+    // historyArr 最後一個的時間戳如果跟現有重疊，pop 到沒有重疊為止
+    while (historyArr.length && historyArr[historyArr.length - 1].ts >= firstExistingTS) {
+      historyArr.pop();
+    }
+  }
+
+  // 4. prepend 舊資料到 rawTrack
+  obj.rawTrack = historyArr.concat(obj.rawTrack);
+
+  // 5. 更新路徑展示用
+  obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
+
+  // 6. 如果 focus 這架機，重畫軌跡
+  if (focusedAircraftId === aircraftId) {
+    showAircraftTrack(aircraftId);
+  }
+}
+
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
         if (aircrafts.has(aircraftId)) {
-          const obj = aircrafts.get(aircraftId);
-          obj.segments.forEach(s => map.removeLayer(s));
-          obj.segments = [];
-          obj.rawTrack = [];
-          obj.rawPathForDisplay = [];
-          obj.displayPath = [];
-          console.log(`🧹 Cleared track for ${aircraftId}`);
+          aircrafts.get(aircraftId).segments.forEach(s => map.removeLayer(s));
+          aircrafts.get(aircraftId).segments = [];
         }
       }
-      
-      // 6. 移除飛機
       else if (m.type === 'aircraft_remove') {
         m.payload.forEach(id => removeAircraft(id));
       }
-      
     } catch (e) {
-      console.error('❌ Message parse error:', e);
+      console.warn('Message parse error:', e);
     }
   });
-  
-  ws.addEventListener('close', () => {
-    console.log('🔌 WebSocket closed, reconnecting...');
-    setTimeout(connectWS, 2000);
-  });
-  
-  ws.addEventListener('error', (err) => {
-    console.error('❌ WebSocket error:', err);
-    ws.close();
-  });
+  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
+  ws.addEventListener('error', () => ws.close());
 }
-
 connectWS();
 
 function updateUTCTime() {
