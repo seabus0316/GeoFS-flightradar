@@ -376,32 +376,133 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 
 let flightChartObj;
 
-// 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
+// ===================== 新版資料抽稀算法 ======================
 function simplifyTrackData(track, maxPoints = 200) {
-  if (track.length <= maxPoints) return track;
-  
-  // 計算每個點的重要性（基於高度和速度變化）
-  const importance = track.map((point, i) => {
-    if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
-    
+  if (!Array.isArray(track) || track.length <= maxPoints) return track;
+
+  // 1. 先做幾何簡化（保持原物件結構）
+  const geom = douglasPeuckerObj(track, 0.0008);
+
+  // 2. 如果還是太多點，做混合抽稀
+  if (geom.length > maxPoints) {
+    return hybridObjSimplify(geom, maxPoints);
+  }
+
+  return geom;
+}
+
+// ========== Douglas–Peucker（保留原物件，不改格式） ==========
+function douglasPeuckerObj(points, tolerance) {
+  if (points.length <= 2) return points;
+
+  let maxDist = 0;
+  let maxIndex = 0;
+
+  const start = points[0];
+  const end = points[points.length - 1];
+
+  for (let i = 1; i < points.length - 1; i++) {
+    const dist = perpendicularDistanceObj(points[i], start, end);
+    if (dist > maxDist) {
+      maxDist = dist;
+      maxIndex = i;
+    }
+  }
+
+  if (maxDist > tolerance) {
+    const left = douglasPeuckerObj(points.slice(0, maxIndex + 1), tolerance);
+    const right = douglasPeuckerObj(points.slice(maxIndex), tolerance);
+    return left.slice(0, -1).concat(right);
+  } else {
+    return [start, end];
+  }
+}
+
+// ========== 計算垂直距離（使用 lat/lon） ==========
+function perpendicularDistanceObj(p, s, e) {
+  const x = p.lon,  y = p.lat;
+  const x1 = s.lon, y1 = s.lat;
+  const x2 = e.lon, y2 = e.lat;
+
+  const A = x - x1;
+  const B = y - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const len = C * C + D * D;
+  let t = len === 0 ? 0 : dot / len;
+
+  t = Math.max(0, Math.min(1, t));
+
+  const projX = x1 + t * C;
+  const projY = y1 + t * D;
+
+  return Math.sqrt((x - projX) ** 2 + (y - projY) ** 2);
+}
+
+// ======================= 混合策略抽稀 ========================
+function hybridObjSimplify(track, maxPoints) {
+  const scored = track.map((p, i) => {
+    if (i === 0 || i === track.length - 1) {
+      return { point: p, score: Infinity, index: i };
+    }
+
     const prev = track[i - 1];
     const next = track[i + 1];
-    
-    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
-    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
-    
-    return altChange + speedChange * 0.1; // 高度變化權重更高
+
+    let score = 0;
+
+    // 高度變化
+    score += Math.abs(p.alt - prev.alt) * 2;
+    score += Math.abs(next.alt - p.alt) * 2;
+
+    // 速度變化
+    score += Math.abs(p.speed - prev.speed) * 0.5;
+    score += Math.abs(next.speed - p.speed) * 0.5;
+
+    // 轉彎角
+    const turn = turnAngle(prev, p, next);
+    score += turn * 1.2;
+
+    // 點距離太遠
+    const d1 = geoDist(prev.lat, prev.lon, p.lat, p.lon);
+    const d2 = geoDist(p.lat, p.lon, next.lat, next.lon);
+    if (d1 > 50 || d2 > 50) score += 1000;
+
+    return { point: p, score, index: i };
   });
-  
-  // 選擇最重要的點
-  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
-  indexed.sort((a, b) => b.importance - a.importance);
-  
-  const selected = indexed.slice(0, maxPoints);
-  selected.sort((a, b) => a.index - b.index);
-  
-  return selected.map(item => item.point);
+
+  // 取 score 高的
+  scored.sort((a, b) => b.score - a.score);
+
+  const selected = scored.slice(0, maxPoints).sort((a, b) => a.index - b.index);
+
+  return selected.map(s => s.point);
 }
+
+// ========== 計算轉向角 ==========
+function turnAngle(a, b, c) {
+  const bearing1 = Math.atan2(b.lon - a.lon, b.lat - a.lat);
+  const bearing2 = Math.atan2(c.lon - b.lon, c.lat - b.lat);
+  let angle = Math.abs(bearing2 - bearing1) * 180 / Math.PI;
+  if (angle > 180) angle = 360 - angle;
+  return angle;
+}
+
+// ========== 地球距離（km） ==========
+function geoDist(lat1, lon1, lat2, lon2) {
+  const R = 6371;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+
+  const a = Math.sin(dLat/2)**2 +
+            Math.cos(lat1*Math.PI/180) * Math.cos(lat2*Math.PI/180) *
+            Math.sin(dLon/2)**2;
+
+  return R * (2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+}
+
 
 function showFlightChart(track) {
   const container = document.getElementById('flightChartContainer');
