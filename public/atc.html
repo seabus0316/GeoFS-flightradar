@@ -916,6 +916,28 @@ function updateAircraft(id, data, trackPoint = null) {
     animate: true,
     duration: 0.5
   });
+  const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
+    marker.on('click', () => {
+      clearAllAircraftTracks();
+      focusedAircraftId = id;
+      
+      // --- [新增] 向伺服器請求歷史資料 ---
+      if (ws && ws.readyState === WebSocket.OPEN) {
+          console.log(`Requesting history for ${id}`);
+          ws.send(JSON.stringify({ 
+              type: 'get_history',  // 注意：請確認你的伺服器端是否監聽這個 type 名稱
+              payload: id 
+          }));
+      }
+      // ---------------------------------
+
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+      map.setView([data.lat, data.lon], map.getZoom(), {
+        animate: true,
+        duration: 0.5
+      });
+    });
     });
     aircrafts.set(id, {
       marker,
@@ -1196,8 +1218,9 @@ else if (m.type === 'aircraft_track_history') {
     const { aircraftId, tracks } = m.payload;
     if (!tracks || tracks.length === 0) return;
 
-    // 如果飛機不存在，先建立一個佔位符
+    // 如果飛機不存在，先建立一個結構，但不立即顯示 Marker，等待資料合併
     if (!aircrafts.has(aircraftId)) {
+        // 先取最後一點作為初始化位置
         const lastTrack = tracks[tracks.length - 1];
         const dummyData = {
             callsign: aircraftId,
@@ -1209,6 +1232,8 @@ else if (m.type === 'aircraft_track_history') {
             speed: lastTrack.speed || 0,
             squawk: ''
         };
+        
+        // 建立 Marker
         const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
 
         marker.on('click', () => {
@@ -1216,6 +1241,7 @@ else if (m.type === 'aircraft_track_history') {
             focusedAircraftId = aircraftId;
             showAircraftTrack(aircraftId);
             showAircraftPanel(dummyData, aircraftId);
+            map.setView([lastTrack.lat, lastTrack.lon], map.getZoom(), { animate: true, duration: 0.5 });
         });
 
         aircrafts.set(aircraftId, {
@@ -1227,54 +1253,72 @@ else if (m.type === 'aircraft_track_history') {
             segments: [],
             lastSeen: Date.now(),
             data: dummyData,
-            paused: false // 確保初始化時不暫停
+            paused: false
         });
+        
+        // 確保 Meta 存在以免報錯
+        ensureMeta(aircraftId);
     }
 
     const obj = aircrafts.get(aircraftId);
     if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
     if (!obj.rawTrack) obj.rawTrack = [];
 
-    // ① 整理新收到的歷史資料 (標準化格式)
-    const newHistory = tracks.map(t => ({
-        lat: t.lat,
-        lon: t.lon,
-        alt: t.alt || 0,
-        speed: t.speed || 0,
-        ts: t.ts || 0 // 若無時間戳則設為0，避免排序錯誤
-    }));
+    // ① 整理歷史資料並「自動修正時間戳單位」
+    const newHistory = tracks.map(t => {
+        let ts = t.ts || 0;
+        // 如果時間戳很小（例如小於 30000000000），極大可能是 Unix Timestamp (秒)，需要轉為毫秒
+        if (ts > 0 && ts < 30000000000) {
+            ts = ts * 1000;
+        }
+        return {
+            lat: t.lat,
+            lon: t.lon,
+            alt: t.alt || 0,
+            speed: t.speed || 0,
+            ts: ts
+        };
+    });
 
-    // 確保歷史資料按時間排序
+    // 確保歷史資料按時間由舊到新排序
     newHistory.sort((a, b) => a.ts - b.ts);
 
-    // ② 合併邏輯：如果現有 track 有資料，我們要剔除 history 中與現有資料重疊或更晚的部分
+    // ② 合併邏輯：無縫拼接
     if (obj.rawTrack.length > 0) {
-        // 找出目前瀏覽器端紀錄的最早時間點
         const firstExistingTs = obj.rawTrack[0].ts;
+        const firstExistingLat = obj.rawTrack[0].lat;
         
-        // 過濾掉任何時間點 >= 現有最早時間點的歷史數據 (避免重複)
-        // 同時過濾掉無效的 timestamp (若 newHistory 包含無效時間)
-        let validHistory = [];
-        for (let i = 0; i < newHistory.length; i++) {
-            if (newHistory[i].ts < firstExistingTs) {
-                validHistory.push(newHistory[i]);
-            }
-        }
+        // 過濾掉時間點 >= 現有最早時間點的數據
+        // 額外檢查：如果歷史最後一點與現有第一點距離極近，也視為重複並過濾
+        let validHistory = newHistory.filter(h => {
+            // 時間必須早於現有數據
+            if (h.ts >= firstExistingTs) return false;
+            // 防止重複點 (如果經緯度完全一樣，視為同一個封包)
+            if (h.ts === firstExistingTs && h.lat === firstExistingLat) return false;
+            return true;
+        });
         
-        // ③ 把過濾後的歷史資料串接在現有資料前面
+        // 拼接：歷史 + 現有
         obj.rawTrack = validHistory.concat(obj.rawTrack);
     } else {
         // 如果原本沒有資料，直接使用歷史資料
         obj.rawTrack = newHistory;
     }
 
-    // ④ 更新顯示用的路徑陣列 (rawTrack → rawPathForDisplay)
+    // ③ 更新顯示用的路徑陣列 (rawTrack → rawPathForDisplay)
+    // 這是為了讓地圖畫線函數 (showAircraftTrack) 能讀懂
     obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
 
-    // ⑤ 若該飛機正是目前聚焦的飛機，立即重畫軌跡與圖表
+    // ④ 若該飛機是目前聚焦對象，強制重繪
     if (focusedAircraftId === aircraftId) {
+        // 清除舊線段，避免殘影
+        if (obj.segments) {
+            obj.segments.forEach(s => map.removeLayer(s));
+            obj.segments = [];
+        }
+        // 重畫
         showAircraftTrack(aircraftId);
-        // 順便更新圖表
+        // 更新底部圖表
         showAircraftPanel(obj.data, aircraftId);
     }
 }
