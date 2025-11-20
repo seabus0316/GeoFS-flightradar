@@ -1196,6 +1196,7 @@ else if (m.type === 'aircraft_track_history') {
     const { aircraftId, tracks } = m.payload;
     if (!tracks || tracks.length === 0) return;
 
+    // 如果飛機不存在，先建立一個佔位符
     if (!aircrafts.has(aircraftId)) {
         const lastTrack = tracks[tracks.length - 1];
         const dummyData = {
@@ -1225,7 +1226,8 @@ else if (m.type === 'aircraft_track_history') {
             displayPath: [],
             segments: [],
             lastSeen: Date.now(),
-            data: dummyData
+            data: dummyData,
+            paused: false // 確保初始化時不暫停
         });
     }
 
@@ -1233,57 +1235,49 @@ else if (m.type === 'aircraft_track_history') {
     if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
     if (!obj.rawTrack) obj.rawTrack = [];
 
-    // ① 把 history 包成 newHistory
+    // ① 整理新收到的歷史資料 (標準化格式)
     const newHistory = tracks.map(t => ({
         lat: t.lat,
         lon: t.lon,
         alt: t.alt || 0,
         speed: t.speed || 0,
-        ts: t.ts || Date.now()
+        ts: t.ts || 0 // 若無時間戳則設為0，避免排序錯誤
     }));
 
-    // ② 刪除 newHistory 的重疊區
+    // 確保歷史資料按時間排序
+    newHistory.sort((a, b) => a.ts - b.ts);
+
+    // ② 合併邏輯：如果現有 track 有資料，我們要剔除 history 中與現有資料重疊或更晚的部分
     if (obj.rawTrack.length > 0) {
-        const firstExisting = obj.rawTrack[0].ts;
-        while (newHistory.length && newHistory[newHistory.length - 1].ts >= firstExisting) {
-            newHistory.pop();
+        // 找出目前瀏覽器端紀錄的最早時間點
+        const firstExistingTs = obj.rawTrack[0].ts;
+        
+        // 過濾掉任何時間點 >= 現有最早時間點的歷史數據 (避免重複)
+        // 同時過濾掉無效的 timestamp (若 newHistory 包含無效時間)
+        let validHistory = [];
+        for (let i = 0; i < newHistory.length; i++) {
+            if (newHistory[i].ts < firstExistingTs) {
+                validHistory.push(newHistory[i]);
+            }
         }
+        
+        // ③ 把過濾後的歷史資料串接在現有資料前面
+        obj.rawTrack = validHistory.concat(obj.rawTrack);
+    } else {
+        // 如果原本沒有資料，直接使用歷史資料
+        obj.rawTrack = newHistory;
     }
 
-    // ③ ★ 把 newHistory 串到現有 rawTrack 前面（關鍵！！）
-    obj.rawTrack = newHistory.concat(obj.rawTrack);
-
-    // ④ rawTrack → rawPathForDisplay
+    // ④ 更新顯示用的路徑陣列 (rawTrack → rawPathForDisplay)
     obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
 
-    // ⑤ 若正在 focus → 重畫軌跡
+    // ⑤ 若該飛機正是目前聚焦的飛機，立即重畫軌跡與圖表
     if (focusedAircraftId === aircraftId) {
         showAircraftTrack(aircraftId);
+        // 順便更新圖表
+        showAircraftPanel(obj.data, aircraftId);
     }
-
-
-        // 清除舊資料以避免重複
-        obj.rawPathForDisplay = [];
-        obj.rawTrack = [];
-        
-        // 添加 history 資料
-        tracks.forEach(t => {
-          obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
-          obj.rawTrack.push({
-            lat: t.lat,
-            lon: t.lon,
-            alt: t.alt || 0,
-            speed: t.speed || 0,
-            ts: t.ts || Date.now()
-          });
-        });
-        
-        // 如果這架飛機正在被 focus,立即更新軌跡
-        if (focusedAircraftId === aircraftId) {
-          showAircraftTrack(aircraftId);
-        }
-      }
-
+}
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
         if (aircrafts.has(aircraftId)) {
