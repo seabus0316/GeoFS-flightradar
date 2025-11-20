@@ -376,180 +376,32 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 
 let flightChartObj;
 
-// 改進的資料抽稀函數 - 使用改良的 Douglas-Peucker 算法
+// 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
 function simplifyTrackData(track, maxPoints = 200) {
   if (track.length <= maxPoints) return track;
   
-  // 1. 首先使用 Douglas-Peucker 算法進行幾何簡化
-  const geometrySimplified = douglasPeuckerSimplify(track, 0.001); // 調整容差
-  
-  // 2. 如果還是太多點，使用混合策略
-  if (geometrySimplified.length > maxPoints) {
-    return hybridSimplify(geometrySimplified, maxPoints);
-  }
-  
-  return geometrySimplified;
-}
-
-// Douglas-Peucker 演算法 (保留軌跡形狀)
-function douglasPeuckerSimplify(points, tolerance) {
-  if (points.length <= 2) return points;
-  
-  // 找到距離起終點連線最遠的點
-  let maxDistance = 0;
-  let maxIndex = 0;
-  const start = points[0];
-  const end = points[points.length - 1];
-  
-  for (let i = 1; i < points.length - 1; i++) {
-    const distance = perpendicularDistance(points[i], start, end);
-    if (distance > maxDistance) {
-      maxDistance = distance;
-      maxIndex = i;
-    }
-  }
-  
-  // 如果最大距離大於容差，遞迴處理
-  if (maxDistance > tolerance) {
-    const left = douglasPeuckerSimplify(points.slice(0, maxIndex + 1), tolerance);
-    const right = douglasPeuckerSimplify(points.slice(maxIndex), tolerance);
-    return left.slice(0, -1).concat(right);
-  } else {
-    return [start, end];
-  }
-}
-
-// 計算點到線段的垂直距離
-function perpendicularDistance(point, lineStart, lineEnd) {
-  const [lat, lon, alt] = point;
-  const [lat1, lon1] = lineStart;
-  const [lat2, lon2] = lineEnd;
-  
-  // 使用經緯度差異的歐幾里得距離 (簡化計算)
-  const dx = lon2 - lon1;
-  const dy = lat2 - lat1;
-  const lenSq = dx * dx + dy * dy;
-  
-  if (lenSq === 0) {
-    return Math.sqrt(Math.pow(lat - lat1, 2) + Math.pow(lon - lon1, 2));
-  }
-  
-  let t = ((lat - lat1) * dy + (lon - lon1) * dx) / lenSq;
-  t = Math.max(0, Math.min(1, t));
-  
-  const projLat = lat1 + t * dy;
-  const projLon = lon1 + t * dx;
-  
-  return Math.sqrt(Math.pow(lat - projLat, 2) + Math.pow(lon - projLon, 2));
-}
-
-// 混合策略：結合重要性和均勻分佈
-function hybridSimplify(track, maxPoints) {
-  // 計算每個點的重要性分數
-  const scored = track.map((point, i) => {
-    let score = 0;
+  // 計算每個點的重要性（基於高度和速度變化）
+  const importance = track.map((point, i) => {
+    if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
     
-    // 1. 保留首尾點
-    if (i === 0 || i === track.length - 1) {
-      score = Infinity;
-    } else {
-      const prev = track[i - 1];
-      const next = track[i + 1];
-      
-      // 2. 高度變化權重 (更敏感)
-      const altChange = Math.abs(point[2] - prev[2]) + Math.abs(next[2] - point[2]);
-      score += altChange * 2;
-      
-      // 3. 速度變化權重
-      if (point[3] !== undefined && prev[3] !== undefined && next[3] !== undefined) {
-        const speedChange = Math.abs(point[3] - prev[3]) + Math.abs(next[3] - point[3]);
-        score += speedChange * 0.5;
-      }
-      
-      // 4. 轉向角度權重 (檢測急轉彎)
-      const angle = calculateTurnAngle(prev, point, next);
-      if (angle > 10) { // 轉向超過 10 度
-        score += angle * 1.5;
-      }
-      
-      // 5. 距離權重 (避免點太近或太遠)
-      const distPrev = calculateDistance(prev[0], prev[1], point[0], point[1]);
-      const distNext = calculateDistance(point[0], point[1], next[0], next[1]);
-      
-      // 如果相鄰點距離太遠，增加重要性
-      if (distPrev > 50 || distNext > 50) {
-        score += 1000;
-      }
-    }
+    const prev = track[i - 1];
+    const next = track[i + 1];
     
-    return { point, score, index: i };
+    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
+    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
+    
+    return altChange + speedChange * 0.1; // 高度變化權重更高
   });
   
-  // 按重要性排序並選取前 N 個
-  scored.sort((a, b) => b.score - a.score);
-  const selected = scored.slice(0, maxPoints);
+  // 選擇最重要的點
+  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
+  indexed.sort((a, b) => b.importance - a.importance);
   
-  // 按原始順序排序
+  const selected = indexed.slice(0, maxPoints);
   selected.sort((a, b) => a.index - b.index);
   
-  // 確保沒有太大的間隔
-  return ensureMaxDistance(selected.map(s => s.point), 80);
+  return selected.map(item => item.point);
 }
-
-// 計算轉向角度
-function calculateTurnAngle(p1, p2, p3) {
-  const bearing1 = Math.atan2(p2[1] - p1[1], p2[0] - p1[0]);
-  const bearing2 = Math.atan2(p3[1] - p2[1], p3[0] - p2[0]);
-  let angle = Math.abs(bearing2 - bearing1) * 180 / Math.PI;
-  if (angle > 180) angle = 360 - angle;
-  return angle;
-}
-
-// 確保相鄰點之間距離不超過最大值
-function ensureMaxDistance(track, maxDistKm) {
-  const result = [track[0]];
-  
-  for (let i = 1; i < track.length; i++) {
-    const prev = result[result.length - 1];
-    const curr = track[i];
-    const dist = calculateDistance(prev[0], prev[1], curr[0], curr[1]);
-    
-    // 如果距離太遠，插入中間點
-    if (dist > maxDistKm) {
-      const steps = Math.ceil(dist / maxDistKm);
-      for (let j = 1; j < steps; j++) {
-        const ratio = j / steps;
-        const interpLat = prev[0] + (curr[0] - prev[0]) * ratio;
-        const interpLon = prev[1] + (curr[1] - prev[1]) * ratio;
-        const interpAlt = prev[2] + (curr[2] - prev[2]) * ratio;
-        const interpSpeed = prev[3] !== undefined && curr[3] !== undefined
-          ? prev[3] + (curr[3] - prev[3]) * ratio
-          : prev[3];
-        result.push([interpLat, interpLon, interpAlt, interpSpeed]);
-      }
-    }
-    
-    result.push(curr);
-  }
-  
-  return result;
-}
-
-// 計算兩點之間的距離 (公里)
-function calculateDistance(lat1, lon1, lat2, lon2) {
-  const R = 6371;
-  const dLat = (lat2 - lat1) * Math.PI / 180;
-  const dLon = (lon2 - lon1) * Math.PI / 180;
-  const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLon/2) * Math.sin(dLon/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
-  return R * c;
-}
-
-// 使用範例
-// const track = [[lat, lon, alt, speed], ...];
-// const simplified = simplifyTrackData(track, 200);
 
 function showFlightChart(track) {
   const container = document.getElementById('flightChartContainer');
