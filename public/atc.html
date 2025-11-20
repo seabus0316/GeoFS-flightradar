@@ -806,9 +806,10 @@ function ensureMeta(id) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
   }
 }
+
 function updateAircraft(id, data, trackPoint = null) {
   ensureMeta(id);
-
+  let paused = false;
   // 取得前一次資料
   let prev = null;
   if (aircrafts.has(id)) {
