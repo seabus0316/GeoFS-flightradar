@@ -414,22 +414,6 @@ wss.on('connection', (ws, req) => {
         return;
       }
 
-// ============ 新增: 處理前端的歷史資料請求 ============
-      if (msg.type === 'get_history' && msg.payload) {
-        const aircraftId = msg.payload;
-        // 這裡可以把 limit 設大一點，因為是單獨請求一架飛機
-        const tracks = await loadHistoryForAircraft(aircraftId, 2000); 
-        
-        if (tracks && tracks.length > 0) {
-          ws.send(JSON.stringify({
-            type: 'aircraft_track_history',
-            payload: { aircraftId, tracks }
-          }));
-        }
-        return;
-      }
-      // ===================================================
-
       if (msg.type === 'disconnect' && msg.aircraftId) {
         await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
