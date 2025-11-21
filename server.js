@@ -1,4 +1,4 @@
-// server.js (優化版本)
+// server.js (去除去抽稀邏輯版本)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -10,7 +10,7 @@ const fs = require('fs');
 const mime = require('mime-types');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
-const compression = require('compression'); // 新增
+const compression = require('compression');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +21,7 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
-// ============ 新增:啟用壓縮 ============
+// 啟用壓縮 (保留此優化，因為它不影響資料解析度，只影響傳輸大小)
 app.use(compression());
 
 // MongoDB 連接
@@ -63,7 +63,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes (保持不變)
+// Routes
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
@@ -81,7 +81,7 @@ function checkAdminPass(req, res, next) {
   }
 }
 
-// Admin routes (保持不變,已有壓縮)
+// Admin routes
 app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
   try {
     const photos = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
@@ -150,7 +150,7 @@ app.delete('/clear/:aircraftId', async (req, res) => {
   }
 });
 
-// Upload (保持不變)
+// Upload
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
@@ -211,7 +211,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
   }
 });
 
-// ============ WebSocket 優化 ============
+// ============ WebSocket 設定 ============
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
@@ -225,7 +225,7 @@ const aircrafts = new Map();
 
 const RETENTION_MS = 12 * 60 * 60 * 1000;
 
-// ============ 新增:批次廣播優化 ============
+// ============ 批次廣播優化 (保留批次發送，但不影響資料完整性) ============
 let broadcastQueue = [];
 let broadcastTimer = null;
 
@@ -270,24 +270,7 @@ function broadcastToATC(obj) {
   sendToATC(obj);
 }
 
-// ============ 新增:資料抽稀函數 ============
-function simplifyTrack(track, maxPoints = 1000) {
-  if (track.length <= maxPoints) return track;
-  
-  const step = Math.ceil(track.length / maxPoints);
-  const simplified = [];
-  
-  for (let i = 0; i < track.length; i += step) {
-    simplified.push(track[i]);
-  }
-  
-  // 確保保留最後一點
-  if (simplified[simplified.length - 1] !== track[track.length - 1]) {
-    simplified.push(track[track.length - 1]);
-  }
-  
-  return simplified;
-}
+// ============ 已移除資料抽稀函數 (simplifyTrack) ============
 
 async function saveFlightPoint(pt) {
   try {
@@ -299,7 +282,7 @@ async function saveFlightPoint(pt) {
   }
 }
 
-async function loadHistoryForAircraft(aircraftId, limit = 1000) { // 從 2000 降到 1000
+async function loadHistoryForAircraft(aircraftId, limit = 2000) { // 恢復為較高的限制 2000
   try {
     const docs = await FlightPoint.find({ aircraftId })
       .sort({ ts: 1 })
@@ -310,8 +293,8 @@ async function loadHistoryForAircraft(aircraftId, limit = 1000) { // 從 2000 �
       lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts
     }));
     
-    // 抽稀後再傳送
-    return simplifyTrack(fullTrack, 500);
+    // 直接回傳完整軌跡，不進行抽稀
+    return fullTrack;
   } catch (err) {
     console.error('loadHistoryForAircraft error', err);
     return [];
@@ -337,7 +320,8 @@ wss.on('connection', (ws, req) => {
           ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
 
           for (const [aircraftId] of aircrafts) {
-            const tracks = await loadHistoryForAircraft(aircraftId, 1000);
+            // 讀取完整歷史記錄 (limit 2000)
+            const tracks = await loadHistoryForAircraft(aircraftId, 2000);
             if (tracks && tracks.length > 0) {
               ws.send(JSON.stringify({
                 type: 'aircraft_track_history',
@@ -393,7 +377,7 @@ wss.on('connection', (ws, req) => {
           ts: payload.ts
         });
 
-        // ============ 使用批次廣播 ============
+        // 使用批次廣播 (但不抽稀)
         queueBroadcast({
           type: 'aircraft_update',
           payload,
