@@ -1193,77 +1193,89 @@ else if (m.type === 'aircraft_batch_update') {
   m.payload.forEach(a => updateAircraft(a.id, a));
 }
 else if (m.type === 'aircraft_track_history') {
-  const { aircraftId, tracks } = m.payload;
-  if (!tracks || tracks.length === 0) return;
+        const { aircraftId, tracks } = m.payload;
+        // 基本檢查：確保 tracks 是一個有效的陣列
+        if (!tracks || !Array.isArray(tracks) || tracks.length === 0) return;
 
-  // 1. 確保 aircraft 物件存在
-  if (!aircrafts.has(aircraftId)) {
-    // 產生暫時的 marker，只包含最低限度資料
-    const lastTrack = tracks[tracks.length - 1];
-    const dummyData = {
-      callsign: aircraftId,
-      type: '??',
-      lat: lastTrack.lat,
-      lon: lastTrack.lon,
-      alt: lastTrack.alt,
-      heading: 0,
-      speed: lastTrack.speed || 0,
-      squawk: ''
-    };
-    const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
+        // 1. 確保 aircraft 物件存在 (若無則建立 dummy marker，避免報錯)
+        if (!aircrafts.has(aircraftId)) {
+          const lastTrack = tracks[tracks.length - 1];
+          const dummyData = {
+            callsign: aircraftId,
+            type: 'Loading...',
+            lat: Number(lastTrack.lat),
+            lon: Number(lastTrack.lon),
+            alt: Number(lastTrack.alt || 0),
+            heading: 0,
+            speed: Number(lastTrack.speed || 0),
+            squawk: ''
+          };
+          
+          const marker = L.marker([dummyData.lat, dummyData.lon], { 
+            icon: makeDivIcon(dummyData) 
+          }).addTo(map);
 
-    marker.on('click', () => {
-      clearAllAircraftTracks();
-      focusedAircraftId = aircraftId;
-      showAircraftTrack(aircraftId);
-      showAircraftPanel(dummyData, aircraftId);
-    });
+          marker.on('click', () => {
+            clearAllAircraftTracks();
+            focusedAircraftId = aircraftId;
+            showAircraftTrack(aircraftId);
+            showAircraftPanel(dummyData, aircraftId);
+          });
 
-    aircrafts.set(aircraftId, {
-      marker,
-      path: [],
-      rawTrack: [],
-      rawPathForDisplay: [],
-      displayPath: [],
-      segments: [],
-      lastSeen: Date.now(),
-      data: dummyData
-    });
-  }
+          aircrafts.set(aircraftId, {
+            marker,
+            path: [],
+            rawTrack: [],
+            rawPathForDisplay: [],
+            displayPath: [],
+            segments: [],
+            lastSeen: Date.now(),
+            data: dummyData,
+            paused: false
+          });
+        }
 
-  const obj = aircrafts.get(aircraftId);
-  if (!obj.rawTrack) obj.rawTrack = [];
-  
-  // 2. 準備 history 要 append 的資料
-  // 保證 tracks 時間排序由舊到新
-  const historyArr = tracks.map(t => ({
-    lat: t.lat,
-    lon: t.lon,
-    alt: t.alt || 0,
-    speed: t.speed || 0,
-    ts: t.ts || Date.now()
-  }));
+        const obj = aircrafts.get(aircraftId);
+        if (!obj.rawTrack) obj.rawTrack = [];
+        
+        // 2. 整理與清洗歷史資料 (強制轉為數字，並確保有時間戳)
+        const historyArr = tracks.map(t => ({
+          lat: Number(t.lat),
+          lon: Number(t.lon),
+          alt: Number(t.alt || 0),
+          speed: Number(t.speed || 0),
+          // 如果後端沒給 ts，就用當下時間遞減一點點或是直接用 Date.now()，避免 null
+          ts: t.ts ? new Date(t.ts).getTime() : Date.now() 
+        })).sort((a, b) => a.ts - b.ts); // 確保歷史資料是依照時間排序的
 
-  // 3. 去掉與現有 rawTrack 重疊的部分
-  if (obj.rawTrack.length > 0) {
-    const firstExistingTS = obj.rawTrack[0].ts;
-    // historyArr 最後一個的時間戳如果跟現有重疊，pop 到沒有重疊為止
-    while (historyArr.length && historyArr[historyArr.length - 1].ts >= firstExistingTS) {
-      historyArr.pop();
-    }
-  }
+        // 3. 合併邏輯：將歷史資料合併到現有的 rawTrack 前面
+        if (obj.rawTrack.length > 0) {
+          // 取得目前本地資料中最早的一個時間點
+          const firstExistingTS = obj.rawTrack[0].ts;
+          
+          // 只保留歷史資料中「早於」現有資料的部分，避免重疊或衝突
+          const validHistory = historyArr.filter(t => t.ts < firstExistingTS);
+          
+          // 合併：歷史 + 現有
+          obj.rawTrack = validHistory.concat(obj.rawTrack);
+        } else {
+          // 如果本地原本沒資料，直接使用歷史資料
+          obj.rawTrack = historyArr;
+        }
 
-  // 4. prepend 舊資料到 rawTrack
-  obj.rawTrack = historyArr.concat(obj.rawTrack);
+        // 4. 更新顯示用的路徑資料 (Array format)
+        obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
 
-  // 5. 更新路徑展示用
-  obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
-
-  // 6. 如果 focus 這架機，重畫軌跡
-  if (focusedAircraftId === aircraftId) {
-    showAircraftTrack(aircraftId);
-  }
-}
+        // 5. 如果目前使用者正鎖定這架飛機，立即刷新畫面
+        if (focusedAircraftId === aircraftId) {
+          // 重畫地圖軌跡
+          showAircraftTrack(aircraftId);
+          // 重要修復：同時刷新下方的 高度/速度 圖表
+          if (obj.rawTrack.length > 2) {
+             showFlightChart(obj.rawTrack);
+          }
+        }
+      }
 
       else if (m.type === 'aircraft_track_clear') {
         const { aircraftId } = m.payload;
