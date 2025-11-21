@@ -408,33 +408,27 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // 資料抽稀處理
-  const simplifiedTrack = simplifyTrackData(track, 200);
-  
-  // 計算時間跨度，動態調整標籤格式
-  const firstTs = simplifiedTrack[0]?.ts;
-  const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
+  // 計算時間跨度,動態調整標籤格式
+  const firstTs = track[0]?.ts;
+  const lastTs = track[track.length - 1]?.ts;
   const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
   
   // 根據時間跨度選擇格式
   let timeFormat;
   let maxTicks;
   if (timeSpanHours > 6) {
-    // 超過 6 小時：只顯示小時
     timeFormat = { hour: '2-digit', hour12: false };
     maxTicks = 12;
   } else if (timeSpanHours > 2) {
-    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 15;
   } else {
-    // 少於 2 小時：顯示詳細時間
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 12;
   }
 
-  // X 軸標籤 - 使用抽稀後的資料
-  const labels = simplifiedTrack.map((p, i) => {
+  // X 軸標籤 - 使用原始資料
+  const labels = track.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
       return dt.toLocaleTimeString('en-GB', timeFormat);
@@ -442,8 +436,8 @@ function showFlightChart(track) {
     return i + 1;
   });
   
-  const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
-  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+  const altitudes = track.map(p => Math.round(p.alt));
+  const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
 
   if (!flightChartObj) {
     flightChartObj = new Chart(ctx, {
@@ -456,7 +450,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: 0, // 關閉點，讓線更清晰
+            pointRadius: 0,
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -465,7 +459,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: 0, // 關閉點
+            pointRadius: 0,
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -474,7 +468,7 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-       plugins: {
+        plugins: {
           legend: {
             display: true,
             labels: {
@@ -491,7 +485,7 @@ function showFlightChart(track) {
             callbacks: {
               title: (items) => {
                 const idx = items[0].dataIndex;
-                const p = simplifiedTrack[idx];
+                const p = track[idx];  // ✅ 使用 track
                 if (p.ts)
                   return new Date(p.ts).toLocaleString('en-GB', { 
                     weekday: 'short',
@@ -521,7 +515,7 @@ function showFlightChart(track) {
               maxRotation: 45,
               minRotation: 0,
               autoSkip: true,
-              maxTicksLimit: maxTicks, // 動態調整
+              maxTicksLimit: maxTicks,
               display: true
             },
             grid: { color: "#444" },
@@ -555,23 +549,22 @@ function showFlightChart(track) {
       }
     });
   } else {
-    // 平滑更新資料
-    const simplifiedTrack = simplifyTrackData(track, 200);
-    const labels = simplifiedTrack.map((p, i) => {
+    // 平滑更新資料 - 直接使用原始資料
+    const labels = track.map((p, i) => {
       if (p.ts) {
         const dt = new Date(p.ts);
         return dt.toLocaleTimeString('en-GB', timeFormat);
       }
       return i + 1;
     });
-    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
-    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+    const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
+    const altitudes = track.map(p => Math.round(p.alt));
     
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
-    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
-    flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks;
+    flightChartObj.update('none');
   }
 }
 function hideFlightChart() {
