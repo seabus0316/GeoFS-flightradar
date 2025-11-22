@@ -5,84 +5,231 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>JetPhotos Upload Center</title>
   <style>
+    :root {
+      --bg-primary: #0d1117;
+      --bg-secondary: #161b22;
+      --text-primary: #e6edf3;
+      --accent: #58a6ff;
+      --success: #238636;
+      --success-hover: #2ea043;
+      --border-radius: 10px;
+      --shadow: 0 0 10px rgba(0,0,0,0.4);
+      --transition: all 0.3s ease;
+    }
+    
+    * {
+      box-sizing: border-box;
+    }
+    
     body {
       font-family: "Segoe UI", sans-serif;
-      background: #0d1117;
-      color: #e6edf3;
+      background: var(--bg-primary);
+      color: var(--text-primary);
       margin: 0;
       padding: 20px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
     }
+    
+    .container {
+      width: 100%;
+      max-width: 800px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+    }
+    
     h1 {
-      color: #58a6ff;
+      color: var(--accent);
+      text-align: center;
+      margin-bottom: 10px;
+      font-size: 2rem;
     }
+    
+    .subtitle {
+      text-align: center;
+      color: #8b949e;
+      margin-bottom: 20px;
+      font-size: 0.9rem;
+    }
+    
     form {
       display: flex;
       flex-direction: column;
-      gap: 12px;
-      max-width: 400px;
-      background: #161b22;
-      padding: 20px;
-      border-radius: 10px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.4);
+      gap: 16px;
+      width: 500px;
+      height: 550px;
+      background: var(--bg-secondary);
+      padding: 25px;
+      border-radius: var(--border-radius);
+      box-shadow: var(--shadow);
+      transition: var(--transition);
+      overflow: auto;
+      min-width: 400px;
+      min-height: 500px;
+      max-width: 800px;
+      max-height: 900px;
+      resize: both;
     }
+    
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    
     label {
       font-weight: bold;
+      font-size: 0.9rem;
     }
+    
     input, textarea {
       border-radius: 6px;
-      border: none;
-      padding: 8px;
+      border: 1px solid #30363d;
+      padding: 10px;
       font-size: 15px;
       width: 100%;
-      background: #0d1117;
-      color: #e6edf3;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      transition: var(--transition);
     }
+    
+    textarea {
+      resize: none;
+      flex-grow: 1;
+      min-height: 80px;
+    }
+    
+    input:focus, textarea:focus {
+      outline: none;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
+    }
+    
     input[type=file] {
       background: transparent;
-    }
-    button {
-      background: #238636;
+      padding: 8px 0;
       border: none;
-      padding: 10px;
+    }
+    
+    .coordinates {
+      display: flex;
+      gap: 10px;
+    }
+    
+    .coordinates input {
+      flex: 1;
+    }
+    
+    button {
+      background: var(--success);
+      border: none;
+      padding: 12px;
       border-radius: 6px;
-      font-size: 15px;
+      font-size: 16px;
+      font-weight: bold;
       color: white;
       cursor: pointer;
+      transition: var(--transition);
+      margin-top: 10px;
     }
+    
     button:hover {
-      background: #2ea043;
+      background: var(--success-hover);
+      transform: translateY(-2px);
     }
+    
     #msg {
       margin-top: 20px;
       font-weight: bold;
+      text-align: center;
+      padding: 12px;
+      border-radius: var(--border-radius);
+      width: 100%;
+      transition: var(--transition);
+    }
+    
+    .success {
+      background: rgba(35, 134, 54, 0.2);
+      color: #3fb950;
+    }
+    
+    .error {
+      background: rgba(248, 81, 73, 0.2);
+      color: #f85149;
+    }
+    
+    .info {
+      background: rgba(88, 166, 255, 0.2);
+      color: var(--accent);
+    }
+    
+    @media (max-width: 600px) {
+      body {
+        padding: 15px;
+      }
+      
+      .container {
+        max-width: 100%;
+      }
+      
+      form {
+        padding: 20px;
+        min-width: unset;
+        resize: none;
+        width: 100%;
+        height: auto;
+      }
+      
+      h1 {
+        font-size: 1.7rem;
+      }
     }
   </style>
 </head>
 <body>
-  <h1>📸 JetPhotos Upload Center</h1>
-  <form id="uploadForm">
-    <label>Select Photo:</label>
-    <input type="file" name="photo" accept="image/*" required>
+  <div class="container">
+    <h1>📸 JetPhotos Upload Center</h1>
+    <p class="subtitle">Share your aviation photography with the world</p>
+    
+    <form id="uploadForm">
+      <div class="form-group">
+        <label for="photo">Select Photo:</label>
+        <input type="file" id="photo" name="photo" accept="image/*" required>
+      </div>
+      
+      <div class="form-group">
+        <label for="photographer">Photographer Name:</label>
+        <input type="text" id="photographer" name="photographer" placeholder="Your name (optional)">
+      </div>
+      
+      <div class="form-group" style="flex-grow: 1;">
+        <label for="caption">Description:</label>
+        <textarea id="caption" name="caption" placeholder="e.g., EVA Air A321 taking off RCSS"></textarea>
+      </div>
+      
+      <div class="form-group">
+        <label for="tags">Tags (comma separated):</label>
+        <input type="text" id="tags" name="tags" placeholder="A321,EVA Air,RCSS">
+      </div>
+      
+      <div class="form-group">
+        <label>Coordinates (optional):</label>
+        <div class="coordinates">
+          <input type="number" step="any" name="lat" placeholder="Latitude">
+          <input type="number" step="any" name="lon" placeholder="Longitude">
+        </div>
+      </div>
 
-    <label>Photographer Name:</label>
-    <input type="text" name="photographer" placeholder="Your name (optional)">
+      <button type="submit">Upload Photo</button>
+    </form>
 
-    <label>Description:</label>
-    <textarea name="caption" placeholder="e.g., EVA Air A321 taking off RCSS"></textarea>
-
-    <label>Tags (comma separated):</label>
-    <input type="text" name="tags" placeholder="A321,EVA Air,RCSS">
-
-    <label>Coordinates (optional):</label>
-    <div style="display:flex; gap:8px;">
-      <input type="number" step="any" name="lat" placeholder="Latitude">
-      <input type="number" step="any" name="lon" placeholder="Longitude">
-    </div>
-
-    <button type="submit">Upload</button>
-  </form>
-
-  <div id="msg"></div>
+    <div id="msg"></div>
+  </div>
 
   <script>
     const form = document.getElementById('uploadForm');
@@ -91,6 +238,8 @@
     form.addEventListener('submit', async e => {
       e.preventDefault();
       msg.textContent = '⏳ Uploading...';
+      msg.className = 'info';
+      
       const fd = new FormData(form);
 
       try {
@@ -101,13 +250,16 @@
         const data = await res.json();
         if (res.ok) {
           msg.textContent = '✅ Upload successful! Your photo will be displayed after admin approval.';
+          msg.className = 'success';
           form.reset();
         } else {
           msg.textContent = '❌ Upload failed: ' + (data.error || res.statusText);
+          msg.className = 'error';
         }
       } catch (err) {
         console.error(err);
         msg.textContent = '⚠️ An error occurred, please try again later.';
+        msg.className = 'error';
       }
     });
   </script>
