@@ -20,7 +20,7 @@ ATC Screen url: https://geofs-flightradar.duckdns.org/
 </p>
 
 [![GITHUB](https://img.shields.io/badge/GITHUB-24292F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seabus0316/GeoFS-flightradar/)
-[![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.onrender.com/)
+[![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.duckdns.org/)
 
 <a href="https://www.star-history.com/#seabus0316/GeoFS-flightradar&Date">
  <picture>
