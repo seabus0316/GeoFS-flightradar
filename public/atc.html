@@ -408,27 +408,33 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // 計算時間跨度,動態調整標籤格式
-  const firstTs = track[0]?.ts;
-  const lastTs = track[track.length - 1]?.ts;
+  // 資料抽稀處理
+  const simplifiedTrack = simplifyTrackData(track, 200);
+  
+  // 計算時間跨度，動態調整標籤格式
+  const firstTs = simplifiedTrack[0]?.ts;
+  const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
   const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
   
   // 根據時間跨度選擇格式
   let timeFormat;
   let maxTicks;
   if (timeSpanHours > 6) {
+    // 超過 6 小時：只顯示小時
     timeFormat = { hour: '2-digit', hour12: false };
     maxTicks = 12;
   } else if (timeSpanHours > 2) {
+    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 15;
   } else {
+    // 少於 2 小時：顯示詳細時間
     timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 12;
   }
 
-  // X 軸標籤 - 使用原始資料
-  const labels = track.map((p, i) => {
+  // X 軸標籤 - 使用抽稀後的資料
+  const labels = simplifiedTrack.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
       return dt.toLocaleTimeString('en-GB', timeFormat);
@@ -436,8 +442,8 @@ function showFlightChart(track) {
     return i + 1;
   });
   
-  const altitudes = track.map(p => Math.round(p.alt));
-  const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
+  const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
 
   if (!flightChartObj) {
     flightChartObj = new Chart(ctx, {
@@ -450,7 +456,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: 0,
+            pointRadius: 0, // 關閉點，讓線更清晰
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -459,7 +465,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: 0,
+            pointRadius: 0, // 關閉點
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -468,7 +474,7 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-        plugins: {
+       plugins: {
           legend: {
             display: true,
             labels: {
@@ -485,7 +491,7 @@ function showFlightChart(track) {
             callbacks: {
               title: (items) => {
                 const idx = items[0].dataIndex;
-                const p = track[idx];  // ✅ 使用 track
+                const p = simplifiedTrack[idx];
                 if (p.ts)
                   return new Date(p.ts).toLocaleString('en-GB', { 
                     weekday: 'short',
@@ -515,7 +521,7 @@ function showFlightChart(track) {
               maxRotation: 45,
               minRotation: 0,
               autoSkip: true,
-              maxTicksLimit: maxTicks,
+              maxTicksLimit: maxTicks, // 動態調整
               display: true
             },
             grid: { color: "#444" },
@@ -549,22 +555,23 @@ function showFlightChart(track) {
       }
     });
   } else {
-    // 平滑更新資料 - 直接使用原始資料
-    const labels = track.map((p, i) => {
+    // 平滑更新資料
+    const simplifiedTrack = simplifyTrackData(track, 200);
+    const labels = simplifiedTrack.map((p, i) => {
       if (p.ts) {
         const dt = new Date(p.ts);
         return dt.toLocaleTimeString('en-GB', timeFormat);
       }
       return i + 1;
     });
-    const speeds = track.map(p => Math.round(formatSpeed(p.speed)));
-    const altitudes = track.map(p => Math.round(p.alt));
+    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
     
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
-    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks;
-    flightChartObj.update('none');
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
+    flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
   }
 }
 function hideFlightChart() {
@@ -628,12 +635,12 @@ fetch('/api/photos')
       const item = document.createElement('div');
       item.className = 'photo-item';
       item.innerHTML = `
-        <img src="${p.thumb}" alt="${p.caption || ''}" onclick="window.open('${p.thumb}', '_blank')">
-        <div class="caption">
-          <strong>${p.caption || 'Untitled'}</strong><br>
-          <small>📸 ${p.photographer || 'Anonymous'}</small>
-        </div>
-      `;
+      <img src="${p.thumb}" alt="${p.caption || ''}" loading="lazy" onclick="window.open('${p.thumb}', '_blank')">
+      <div class="caption">
+        <strong>${p.caption || 'Untitled'}</strong><br>
+        <small>📸 ${p.photographer || 'Anonymous'}</small>
+      </div>
+`;
       panel.appendChild(item);
     });
   })
@@ -799,10 +806,9 @@ function ensureMeta(id) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
   }
 }
-
 function updateAircraft(id, data, trackPoint = null) {
   ensureMeta(id);
-  let paused = false;
+
   // 取得前一次資料
   let prev = null;
   if (aircrafts.has(id)) {
@@ -810,21 +816,15 @@ function updateAircraft(id, data, trackPoint = null) {
   }
 
   // 判斷是否暫停
-  function isPaused(prev, data) {
-    if (!prev) return false;
-
-    const dist = calculateDistance(prev.lat, prev.lon, data.lat, data.lon);
-
-    // 低於 0.05 km（50 公尺）視為沒動
-    const tooSmallMove = dist < 0.05;
-
-    const sameAlt = Math.abs(prev.alt - data.alt) < 5;     // 高度差少於 5 ft 視為不動
-    const sameSpeed = Math.abs(prev.speed - data.speed) < 1;
-    const sameHead  = Math.abs(prev.heading - data.heading) < 1;
-
-    return tooSmallMove && sameAlt && sameSpeed && sameHead;
+  let paused = false;
+  if (prev) {
+    paused =
+      prev.alt === data.alt &&
+      prev.speed === data.speed &&
+      prev.heading === data.heading &&
+      prev.lat === data.lat &&
+      prev.lon === data.lon;
   }
-
 
   // 設定 paused 狀態
   if (aircrafts.has(id)) {
@@ -901,19 +901,15 @@ function updateAircraft(id, data, trackPoint = null) {
   } else {
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
     marker.on('click', () => {
-    clearAllAircraftTracks();
-    focusedAircraftId = id;
-    showAircraftTrack(id);
-    
-    // 取得最新的飛機資料
-    const currentData = aircrafts.get(id)?.data || data;
-    
-    showAircraftPanel(currentData, id);
-    map.setView([currentData.lat, currentData.lon], map.getZoom(), {
-      animate: true,
-      duration: 0.5
-    });
+      clearAllAircraftTracks();
+      focusedAircraftId = id;
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+      map.setView([data.lat, data.lon], map.getZoom(), {
+    animate: true,
+    duration: 0.5
   });
+    });
     aircrafts.set(id, {
       marker,
       displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
@@ -1191,34 +1187,27 @@ else if (m.type === 'aircraft_batch_update') {
 }
 else if (m.type === 'aircraft_track_history') {
         const { aircraftId, tracks } = m.payload;
-        // 基本檢查：確保 tracks 是一個有效的陣列
-        if (!tracks || !Array.isArray(tracks) || tracks.length === 0) return;
-
-        // 1. 確保 aircraft 物件存在 (若無則建立 dummy marker，避免報錯)
+        if (!tracks || tracks.length === 0) return;
+        
         if (!aircrafts.has(aircraftId)) {
           const lastTrack = tracks[tracks.length - 1];
           const dummyData = {
             callsign: aircraftId,
-            type: 'Loading...',
-            lat: Number(lastTrack.lat),
-            lon: Number(lastTrack.lon),
-            alt: Number(lastTrack.alt || 0),
+            type: '??',
+            lat: lastTrack.lat,
+            lon: lastTrack.lon,
+            alt: lastTrack.alt,
             heading: 0,
-            speed: Number(lastTrack.speed || 0),
+            speed: lastTrack.speed || 0,
             squawk: ''
           };
-          
-          const marker = L.marker([dummyData.lat, dummyData.lon], { 
-            icon: makeDivIcon(dummyData) 
-          }).addTo(map);
-
+          const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
           marker.on('click', () => {
             clearAllAircraftTracks();
             focusedAircraftId = aircraftId;
             showAircraftTrack(aircraftId);
             showAircraftPanel(dummyData, aircraftId);
           });
-
           aircrafts.set(aircraftId, {
             marker,
             path: [],
@@ -1227,50 +1216,33 @@ else if (m.type === 'aircraft_track_history') {
             displayPath: [],
             segments: [],
             lastSeen: Date.now(),
-            data: dummyData,
-            paused: false
+            data: dummyData
           });
         }
-
+        
         const obj = aircrafts.get(aircraftId);
+        if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
         if (!obj.rawTrack) obj.rawTrack = [];
         
-        // 2. 整理與清洗歷史資料 (強制轉為數字，並確保有時間戳)
-        const historyArr = tracks.map(t => ({
-          lat: Number(t.lat),
-          lon: Number(t.lon),
-          alt: Number(t.alt || 0),
-          speed: Number(t.speed || 0),
-          // 如果後端沒給 ts，就用當下時間遞減一點點或是直接用 Date.now()，避免 null
-          ts: t.ts ? new Date(t.ts).getTime() : Date.now() 
-        })).sort((a, b) => a.ts - b.ts); // 確保歷史資料是依照時間排序的
-
-        // 3. 合併邏輯：將歷史資料合併到現有的 rawTrack 前面
-        if (obj.rawTrack.length > 0) {
-          // 取得目前本地資料中最早的一個時間點
-          const firstExistingTS = obj.rawTrack[0].ts;
-          
-          // 只保留歷史資料中「早於」現有資料的部分，避免重疊或衝突
-          const validHistory = historyArr.filter(t => t.ts < firstExistingTS);
-          
-          // 合併：歷史 + 現有
-          obj.rawTrack = validHistory.concat(obj.rawTrack);
-        } else {
-          // 如果本地原本沒資料，直接使用歷史資料
-          obj.rawTrack = historyArr;
-        }
-
-        // 4. 更新顯示用的路徑資料 (Array format)
-        obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt, t.speed]);
-
-        // 5. 如果目前使用者正鎖定這架飛機，立即刷新畫面
+        // 清除舊資料以避免重複
+        obj.rawPathForDisplay = [];
+        obj.rawTrack = [];
+        
+        // 添加 history 資料
+        tracks.forEach(t => {
+          obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
+          obj.rawTrack.push({
+            lat: t.lat,
+            lon: t.lon,
+            alt: t.alt || 0,
+            speed: t.speed || 0,
+            ts: t.ts || Date.now()
+          });
+        });
+        
+        // 如果這架飛機正在被 focus,立即更新軌跡
         if (focusedAircraftId === aircraftId) {
-          // 重畫地圖軌跡
           showAircraftTrack(aircraftId);
-          // 重要修復：同時刷新下方的 高度/速度 圖表
-          if (obj.rawTrack.length > 2) {
-             showFlightChart(obj.rawTrack);
-          }
         }
       }
 
