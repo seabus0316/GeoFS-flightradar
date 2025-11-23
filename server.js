@@ -1,4 +1,4 @@
-// server.js (優化版本)
+// server.js (正確整合版本)
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
@@ -10,7 +10,7 @@ const fs = require('fs');
 const mime = require('mime-types');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
-const compression = require('compression'); // 新增
+const compression = require('compression');
 
 const app = express();
 const server = http.createServer(app);
@@ -21,7 +21,6 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
 
-// ============ 新增:啟用壓縮 ============
 app.use(compression());
 
 // MongoDB 連接
@@ -63,7 +62,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes (保持不變)
+// Routes
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
@@ -81,7 +80,7 @@ function checkAdminPass(req, res, next) {
   }
 }
 
-// Admin routes (保持不變,已有壓縮)
+// Admin routes
 app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
   try {
     const photos = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
@@ -150,7 +149,7 @@ app.delete('/clear/:aircraftId', async (req, res) => {
   }
 });
 
-// Upload (保持不變)
+// Upload
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
@@ -211,7 +210,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
   }
 });
 
-// ============ WebSocket 優化 ============
+// ============ WebSocket ============
 server.on('upgrade', (request, socket, head) => {
   wss.handleUpgrade(request, socket, head, (ws) => {
     wss.emit('connection', ws, request);
@@ -225,7 +224,7 @@ const aircrafts = new Map();
 
 const RETENTION_MS = 12 * 60 * 60 * 1000;
 
-// ============ 新增:批次廣播優化 ============
+// 批次廣播優化
 let broadcastQueue = [];
 let broadcastTimer = null;
 
@@ -235,7 +234,6 @@ function queueBroadcast(obj) {
   if (!broadcastTimer) {
     broadcastTimer = setTimeout(() => {
       if (broadcastQueue.length > 0) {
-        // 合併多個更新為一個訊息
         const updates = broadcastQueue.filter(m => m.type === 'aircraft_update');
         const others = broadcastQueue.filter(m => m.type !== 'aircraft_update');
         
@@ -252,7 +250,7 @@ function queueBroadcast(obj) {
         broadcastQueue = [];
       }
       broadcastTimer = null;
-    }, 100); // 100ms 批次間隔
+    }, 100);
   }
 }
 
@@ -266,29 +264,72 @@ function sendToATC(obj) {
 }
 
 function broadcastToATC(obj) {
-  // 直接發送(用於非頻繁更新)
   sendToATC(obj);
 }
 
-// ============ 新增:資料抽稀函數 ============
-function simplifyTrack(track, maxPoints = 1000) {
+// ============ 智能抽稀函數 ============
+function intelligentSimplifyTrack(track, maxPoints = 5000) {
   if (track.length <= maxPoints) return track;
   
-  const step = Math.ceil(track.length / maxPoints);
-  const simplified = [];
+  const importance = [];
   
-  for (let i = 0; i < track.length; i += step) {
-    simplified.push(track[i]);
+  for (let i = 0; i < track.length; i++) {
+    const point = track[i];
+    let score = 0;
+    
+    // 起降階段重要
+    if (point.alt < 1524) score += 100;
+    
+    // 高度變化
+    if (i > 0) {
+      const altChange = Math.abs(point.alt - track[i-1].alt);
+      score += altChange / 10;
+    }
+    
+    // 速度變化
+    if (i > 0) {
+      const speedChange = Math.abs(point.speed - track[i-1].speed);
+      score += speedChange / 5;
+    }
+    
+    // 首尾點
+    if (i === 0 || i === track.length - 1) score += 1000;
+    
+    // 時間間隔大
+    if (i > 0 && point.ts && track[i-1].ts) {
+      const timeDiff = point.ts - track[i-1].ts;
+      if (timeDiff > 60000) score += 50;
+    }
+    
+    importance.push({ point, score, index: i });
   }
   
-  // 確保保留最後一點
-  if (simplified[simplified.length - 1] !== track[track.length - 1]) {
-    simplified.push(track[track.length - 1]);
-  }
+  importance.sort((a, b) => b.score - a.score);
+  const selected = importance.slice(0, maxPoints);
+  selected.sort((a, b) => a.index - b.index);
   
-  return simplified;
+  return selected.map(item => item.point);
 }
 
+function adaptiveSimplifyTrack(track) {
+  if (!track || track.length === 0) return [];
+  if (track.length <= 1000) return track;
+  
+  const firstTs = track[0].ts;
+  const lastTs = track[track.length - 1].ts;
+  const timeSpanHours = (lastTs - firstTs) / (1000 * 60 * 60);
+  
+  let maxPoints;
+  if (timeSpanHours < 1) maxPoints = 2000;
+  else if (timeSpanHours < 3) maxPoints = 3000;
+  else if (timeSpanHours < 6) maxPoints = 5000;
+  else if (timeSpanHours < 12) maxPoints = 8000;
+  else maxPoints = 10000;
+  
+  return intelligentSimplifyTrack(track, maxPoints);
+}
+
+// ============ 資料儲存與載入 ============
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
@@ -299,7 +340,7 @@ async function saveFlightPoint(pt) {
   }
 }
 
-async function loadHistoryForAircraft(aircraftId, limit = 20000) { // 從 2000 降到 1000
+async function loadHistoryForAircraft(aircraftId, limit = 50000) {
   try {
     const docs = await FlightPoint.find({ aircraftId })
       .sort({ ts: 1 })
@@ -307,17 +348,21 @@ async function loadHistoryForAircraft(aircraftId, limit = 20000) { // 從 2000 �
       .lean();
     
     const fullTrack = docs.map(d => ({
-      lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts
+      lat: d.lat,
+      lon: d.lon,
+      alt: d.alt,
+      speed: d.speed,
+      ts: d.ts
     }));
     
-    // 抽稀後再傳送
-    return simplifyTrack(fullTrack, 500);
+    return adaptiveSimplifyTrack(fullTrack);
   } catch (err) {
     console.error('loadHistoryForAircraft error', err);
     return [];
   }
 }
 
+// ============ WebSocket 連接處理 (只有一個!) ============
 wss.on('connection', (ws, req) => {
   clients.add(ws);
   ws.role = 'unknown';
@@ -333,21 +378,46 @@ wss.on('connection', (ws, req) => {
         if (ws.role === 'atc') {
           atcClients.add(ws);
 
+          // 先發送當前狀態
           const payload = Array.from(aircrafts.values()).map(x => x.payload);
           ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
 
-          for (const [aircraftId] of aircrafts) {
-            const tracks = await loadHistoryForAircraft(aircraftId, 1000);
-            if (tracks && tracks.length > 0) {
-              ws.send(JSON.stringify({
-                type: 'aircraft_track_history',
-                payload: { aircraftId, tracks }
-              }));
+          // 非同步載入歷史資料
+          setImmediate(async () => {
+            for (const [aircraftId] of aircrafts) {
+              try {
+                const tracks = await loadHistoryForAircraft(aircraftId, 50000);
+                if (tracks && tracks.length > 0) {
+                  ws.send(JSON.stringify({
+                    type: 'aircraft_track_history',
+                    payload: { aircraftId, tracks }
+                  }));
+                }
+              } catch (err) {
+                console.error(`Error loading history for ${aircraftId}:`, err);
+              }
             }
-          }
+          });
         } else if (ws.role === 'player') {
           playerClients.add(ws);
           ws.aircraftId = null;
+        }
+        return;
+      }
+
+      // 處理前端的歷史資料請求
+      if (msg.type === 'request_track_history' && msg.aircraftId) {
+        try {
+          const tracks = await loadHistoryForAircraft(msg.aircraftId, 50000);
+          
+          ws.send(JSON.stringify({
+            type: 'aircraft_track_history',
+            payload: { aircraftId: msg.aircraftId, tracks }
+          }));
+          
+          console.log(`✅ Sent ${tracks.length} history points for ${msg.aircraftId}`);
+        } catch (err) {
+          console.error('Error handling track history request:', err);
         }
         return;
       }
@@ -393,16 +463,10 @@ wss.on('connection', (ws, req) => {
           ts: payload.ts
         });
 
-        // ============ 使用批次廣播 ============
         queueBroadcast({
           type: 'aircraft_update',
           payload,
-          trackPoint: {
-            lat: payload.lat,
-            lon: payload.lon,
-            alt: payload.alt,
-            timestamp: payload.ts
-          }
+          trackPoint: true
         });
 
         return;
@@ -486,6 +550,14 @@ setInterval(async () => {
     console.error('Prune error', err);
   }
 }, 6 * 60 * 60 * 1000);
+
+// 效能監控
+setInterval(() => {
+  console.log('=== Server Stats ===');
+  console.log(`Connected clients: ${clients.size} (ATC: ${atcClients.size}, Players: ${playerClients.size})`);
+  console.log(`Tracked aircrafts: ${aircrafts.size}`);
+  console.log('===================');
+}, 5 * 60 * 1000);
 
 server.listen(PORT, () => {
   console.log(`Server listening on port ${PORT}`);
