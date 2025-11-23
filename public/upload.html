@@ -62,16 +62,18 @@
       flex-direction: column;
       gap: 16px;
       width: 500px;
+      height: 550px;
       background: var(--bg-secondary);
       padding: 25px;
       border-radius: var(--border-radius);
       box-shadow: var(--shadow);
       transition: var(--transition);
-      overflow: hidden;
+      overflow: auto;
       min-width: 400px;
+      min-height: 500px;
       max-width: 800px;
-      position: relative;
-      resize: horizontal;
+      max-height: 900px;
+      resize: both;
     }
     
     .form-group {
@@ -99,6 +101,8 @@
     /* Prevent description box from being resized individually */
     textarea {
       resize: none;
+      flex-grow: 1;
+      min-height: 80px;
     }
     
     input:focus, textarea:focus {
@@ -165,32 +169,6 @@
       color: var(--accent);
     }
     
-    .resize-indicator {
-      position: absolute;
-      bottom: 5px;
-      right: 5px;
-      width: 15px;
-      height: 15px;
-      opacity: 0.5;
-      transition: opacity 0.3s;
-      pointer-events: none;
-    }
-    
-    .resize-indicator::after {
-      content: '';
-      position: absolute;
-      bottom: 3px;
-      right: 3px;
-      width: 10px;
-      height: 10px;
-      border-right: 2px solid var(--accent);
-      border-bottom: 2px solid var(--accent);
-    }
-    
-    form:hover .resize-indicator {
-      opacity: 1;
-    }
-    
     @media (max-width: 600px) {
       body {
         padding: 15px;
@@ -205,6 +183,7 @@
         min-width: unset;
         resize: none;
         width: 100%;
+        height: auto;
       }
       
       h1 {
@@ -229,9 +208,9 @@
         <input type="text" id="photographer" name="photographer" placeholder="Your name (optional)">
       </div>
       
-      <div class="form-group">
+      <div class="form-group" style="flex-grow: 1;">
         <label for="caption">Description:</label>
-        <textarea id="caption" name="caption" rows="3" placeholder="e.g., EVA Air A321 taking off RCSS"></textarea>
+        <textarea id="caption" name="caption" placeholder="e.g., EVA Air A321 taking off RCSS"></textarea>
       </div>
       
       <div class="form-group">
@@ -248,7 +227,10 @@
       </div>
 
       <button type="submit">Upload Photo</button>
-      
+    </form>
+
+    <div id="msg"></div>
+  </div>
 
   <script>
     const form = document.getElementById('uploadForm');
