@@ -437,7 +437,13 @@ function showFlightChart(track) {
   const labels = simplifiedTrack.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
-      return dt.toLocaleTimeString('en-GB', timeFormat);
+      return dt.toLocaleTimeString('en-GB', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+       second: '2-digit',
+       hour12: false,
+     timeZone: 'Asia/Taipei'  // 明確指定時區
+    });
     }
     return i + 1;
   });
