@@ -359,12 +359,12 @@
 </div>
 <!-- 仿 Flightradar24 底部圖表容器 -->
 <div id="flightChartContainer"
-  style="position:fixed;left:0;right:0;bottom:0;height:180px;background:#222;z-index:99999;
+  style="position:fixed;left:0;right:0;bottom:0;height:250px;background:#222;z-index:99999;
     padding:12px 10px 0 10px;display:none;box-shadow:0 -2px 12px #000;">
   <div style="font-family:'Inter','Noto Sans TC',Arial,sans-serif;font-size:14px;color:#fff;font-weight:bold;margin-bottom:3px;">
     SPEED & ALTITUDE GRAPH
   </div>
-  <div style="height:155px;padding-bottom:10px;">
+  <div style="height:225px;padding-bottom:10px;">
     <canvas id="flightChart"></canvas>
   </div>
 </div>
@@ -408,30 +408,46 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // ✅ 先抽稀數據，降低到合理的點數
-  const simplifiedTrack = simplifyTrackData(track, 100); // 降低到 100 個點
-  
-  // 計算時間跨度
+  // 抽稀數據（適度抽稀，保留足夠細節）
+  const simplifiedTrack = simplifyTrackData(track, 200); // 增加到 200 個點
+
   const firstTs = simplifiedTrack[0]?.ts;
   const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
-  const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
+  const timeSpanMinutes = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60) : 0;
   
-  // 根據時間跨度選擇格式
+  // 根據時間跨度動態調整標籤數量和格式
   let timeFormat;
   let maxTicks;
-  if (timeSpanHours > 6) {
-    maxTicks = 8;  // ✅ 減少刻度數量
-  } else if (timeSpanHours > 2) {
-    maxTicks = 10;
+  let showSeconds = false;
+  
+  if (timeSpanMinutes > 120) {
+    // 超過 2 小時：每 15 分鐘一個標籤
+    maxTicks = Math.ceil(timeSpanMinutes / 15);
+    timeFormat = 'HH:mm';
+  } else if (timeSpanMinutes > 30) {
+    // 30-120 分鐘：每 5 分鐘一個標籤
+    maxTicks = Math.ceil(timeSpanMinutes / 5);
+    timeFormat = 'HH:mm';
+  } else if (timeSpanMinutes > 10) {
+    // 10-30 分鐘：每 2 分鐘一個標籤
+    maxTicks = Math.ceil(timeSpanMinutes / 2);
+    timeFormat = 'HH:mm';
   } else {
-    maxTicks = 12;
+    // 少於 10 分鐘：顯示秒數
+    maxTicks = Math.ceil(timeSpanMinutes * 2); // 每 30 秒一個標籤
+    timeFormat = 'HH:mm:ss';
+    showSeconds = true;
   }
 
-  // X 軸標籤 - 使用抽稀後的資料
+  // X 軸標籤
   const labels = simplifiedTrack.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
-      return dt.toISOString().slice(11, 19);
+      if (showSeconds) {
+        return dt.toISOString().slice(11, 19); // HH:MM:SS
+      } else {
+        return dt.toISOString().slice(11, 16); // HH:MM
+      }
     }
     return i + 1;
   });
@@ -450,7 +466,7 @@ function showFlightChart(track) {
             data: speeds,
             borderColor: '#ffd300',
             backgroundColor: 'rgba(255,211,0,0.07)',
-            pointRadius: 0, // 關閉點，讓線更清晰
+            pointRadius: 0,
             yAxisID: 'y-speed',
             tension: 0.25
           },
@@ -459,7 +475,7 @@ function showFlightChart(track) {
             data: altitudes,
             borderColor: '#00b4ff',
             backgroundColor: 'rgba(0,180,255,0.07)',
-            pointRadius: 0, // 關閉點
+            pointRadius: 0,
             yAxisID: 'y-alt',
             tension: 0.25
           }
@@ -468,7 +484,11 @@ function showFlightChart(track) {
       options: {
         responsive: true,
         maintainAspectRatio: false,
-       plugins: {
+        interaction: {
+          mode: 'index',
+          intersect: false,
+        },
+        plugins: {
           legend: {
             display: true,
             labels: {
@@ -486,15 +506,10 @@ function showFlightChart(track) {
               title: (items) => {
                 const idx = items[0].dataIndex;
                 const p = simplifiedTrack[idx];
-                if (p.ts)
-                  return new Date(p.ts).toLocaleString('en-GB', { 
-                    weekday: 'short',
-                    month: 'short', 
-                    day: 'numeric', 
-                    hour: '2-digit', 
-                    minute: '2-digit',
-                    hour12: false 
-                  });
+                if (p.ts) {
+                  const dt = new Date(p.ts);
+                  return dt.toISOString().slice(0, 19).replace('T', ' ') + ' UTC';
+                }
                 return `Point ${idx+1}`;
               },
               label: (item) => {
@@ -511,15 +526,17 @@ function showFlightChart(track) {
             title: { display: false },
             ticks: {
               color: "#fff",
-              font: { size: 11 },
-              maxRotation: 45,
-              minRotation: 0,
+              font: { size: 10 }, // 縮小字體
+              maxRotation: 90, // ✅ 垂直顯示標籤
+              minRotation: 45, // ✅ 至少 45 度
               autoSkip: true,
-              maxTicksLimit: maxTicks, // 動態調整
-              display: true
+              autoSkipPadding: 5, // ✅ 減少間距，顯示更多標籤
+              maxTicksLimit: maxTicks,
             },
-            grid: { color: "#444" },
-            display: true
+            grid: { 
+              color: "#444",
+              drawOnChartArea: true,
+            },
           },
           'y-alt': {
             type: 'linear',
@@ -549,23 +566,12 @@ function showFlightChart(track) {
       }
     });
   } else {
-    // 平滑更新資料
-    const simplifiedTrack = simplifyTrackData(track, 200);
-    const labels = simplifiedTrack.map((p, i) => {
-      if (p.ts) {
-        const dt = new Date(p.ts);
-        return dt.toLocaleTimeString('en-GB', timeFormat);
-      }
-      return i + 1;
-    });
-    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
-    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
-    
+    // 更新現有圖表
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
-    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
-    flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
+    flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks;
+    flightChartObj.update('none');
   }
 }
 function hideFlightChart() {
