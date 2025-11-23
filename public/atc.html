@@ -901,15 +901,19 @@ function updateAircraft(id, data, trackPoint = null) {
   } else {
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
     marker.on('click', () => {
-      clearAllAircraftTracks();
-      focusedAircraftId = id;
-      showAircraftTrack(id);
-      showAircraftPanel(data, id);
-      map.setView([data.lat, data.lon], map.getZoom(), {
-    animate: true,
-    duration: 0.5
-  });
+    clearAllAircraftTracks();
+    focusedAircraftId = id;
+    showAircraftTrack(id);
+    
+    // 取得最新的飛機資料
+    const currentData = aircrafts.get(id)?.data || data;
+    
+    showAircraftPanel(currentData, id);
+    map.setView([currentData.lat, currentData.lon], map.getZoom(), {
+      animate: true,
+      duration: 0.5
     });
+  });
     aircrafts.set(id, {
       marker,
       displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
