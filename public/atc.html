@@ -408,10 +408,10 @@ function showFlightChart(track) {
   container.style.display = 'block';
   const ctx = document.getElementById('flightChart').getContext('2d');
 
-  // 資料抽稀處理
-  const simplifiedTrack = simplifyTrackData(track, 200);
+  // ✅ 先抽稀數據，降低到合理的點數
+  const simplifiedTrack = simplifyTrackData(track, 100); // 降低到 100 個點
   
-  // 計算時間跨度，動態調整標籤格式
+  // 計算時間跨度
   const firstTs = simplifiedTrack[0]?.ts;
   const lastTs = simplifiedTrack[simplifiedTrack.length - 1]?.ts;
   const timeSpanHours = firstTs && lastTs ? (lastTs - firstTs) / (1000 * 60 * 60) : 0;
@@ -420,16 +420,10 @@ function showFlightChart(track) {
   let timeFormat;
   let maxTicks;
   if (timeSpanHours > 6) {
-    // 超過 6 小時：只顯示小時
-    timeFormat = { hour: '2-digit', hour12: false };
-    maxTicks = 12;
+    maxTicks = 8;  // ✅ 減少刻度數量
   } else if (timeSpanHours > 2) {
-    // 2-6 小時：顯示小時:分鐘（每 30 分鐘）
-    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
-    maxTicks = 15;
+    maxTicks = 10;
   } else {
-    // 少於 2 小時：顯示詳細時間
-    timeFormat = { hour: '2-digit', minute: '2-digit', hour12: false };
     maxTicks = 12;
   }
 
@@ -437,13 +431,7 @@ function showFlightChart(track) {
   const labels = simplifiedTrack.map((p, i) => {
     if (p.ts) {
       const dt = new Date(p.ts);
-      return dt.toLocaleTimeString('en-GB', { 
-      hour: '2-digit', 
-      minute: '2-digit', 
-       second: '2-digit',
-       hour12: false,
-     timeZone: 'Asia/Taipei'  // 明確指定時區
-    });
+      return dt.toISOString().slice(11, 19);
     }
     return i + 1;
   });
