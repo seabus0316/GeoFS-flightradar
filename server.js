@@ -216,7 +216,7 @@ server.on('upgrade', (request, socket, head) => {
   // 檢查路徑是否為 /ws
   const pathname = new URL(request.url, 'http://localhost').pathname;
   
-  if (pathname === '/ws') {
+  if (pathname === '/ws' || pathname === '/') {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit('connection', ws, request);
     });
