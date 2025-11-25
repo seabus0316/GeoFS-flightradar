@@ -20,6 +20,105 @@ const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
+// --- Socket.IO 加入 ---
+const { Server: IOServer } = require("socket.io");
+
+const io = new IOServer(server, {
+  cors: {
+    origin: "*",
+  },
+  pingInterval: 25000,
+  pingTimeout: 60000
+});
+
+// Socket.IO 客戶端集合
+const ioAtcClients = new Set();
+const ioPlayerClients = new Set();
+
+io.on("connection", (socket) => {
+  console.log("Socket.IO client connected");
+
+  socket.on("hello", (msg) => {
+    socket.role = msg.role || "unknown";
+
+    if (socket.role === "atc") {
+      ioAtcClients.add(socket);
+
+      const snapshot = Array.from(aircrafts.values()).map((x) => x.payload);
+      socket.emit("aircraft_snapshot", snapshot);
+
+      for (const [aircraftId] of aircrafts) {
+        loadHistoryForAircraft(aircraftId).then((tracks) => {
+          if (tracks?.length) {
+            socket.emit("aircraft_track_history", { aircraftId, tracks });
+          }
+        });
+      }
+    }
+
+    if (socket.role === "player") {
+      ioPlayerClients.add(socket);
+      socket.aircraftId = null;
+    }
+  });
+
+  socket.on("position_update", async (msg) => {
+    const p = msg.payload;
+
+    const id = p.id || (p.callsign ? p.callsign + ":" + (p.playerId || "p") : null);
+    if (!id) return;
+
+    if (socket.role === "player") socket.aircraftId = id;
+
+    const payload = {
+      id,
+      callsign: p.callsign || "UNK",
+      type: p.type || "",
+      lat: +p.lat || 0,
+      lon: +p.lon || 0,
+      alt: +p.alt || 0,
+      heading: +p.heading || 0,
+      speed: +p.speed || 0,
+      flightNo: p.flightNo || "",
+      departure: p.departure || "",
+      arrival: p.arrival || "",
+      takeoffTime: p.takeoffTime || "",
+      squawk: p.squawk || "",
+      flightPlan: p.flightPlan || [],
+      ts: Date.now()
+    };
+
+    aircrafts.set(id, { payload, lastSeen: Date.now() });
+    saveFlightPoint({
+      aircraftId: id,
+      callsign: payload.callsign,
+      type: payload.type,
+      lat: payload.lat,
+      lon: payload.lon,
+      alt: payload.alt,
+      speed: payload.speed,
+      heading: payload.heading,
+      ts: payload.ts
+    });
+
+    // --- Socket.IO 廣播 ---
+    ioAtcClients.forEach((s) => {
+      s.emit("aircraft_update", payload);
+    });
+  });
+
+  socket.on("disconnect", async () => {
+    ioAtcClients.delete(socket);
+    ioPlayerClients.delete(socket);
+
+    if (socket.role === "player" && socket.aircraftId) {
+      await FlightPoint.deleteMany({ aircraftId: socket.aircraftId });
+      ioAtcClients.forEach((s) => {
+        s.emit("aircraft_track_clear", { aircraftId: socket.aircraftId });
+      });
+    }
+  });
+});
 
 // ============ 新增:啟用壓縮 ============
 app.use(compression());
