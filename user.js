@@ -16,6 +16,12 @@
   const WS_URL = 'ws://localhost:3000/';
   const SEND_INTERVAL_MS = 500;
   /*************/
+  const socket = io("https://geofs-flightradar.duckdns.org", {
+    transports: ["websocket", "polling"]
+  });
+
+  socket.emit("hello", { role: "player" });
+  socket.emit("position_update", payload);
 
   function log(...args) {
     console.log('[ATC-Reporter]', ...args);
