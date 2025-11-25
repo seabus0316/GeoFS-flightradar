@@ -1,7 +1,7 @@
 // server.js (混合版 - Socket.IO + WebSocket)
 require('dotenv').config();
 const express = require('express');
-const https = require('https');  // ← 改用 https
+const http = require('http');  // ← 改用 https
 const fs = require('fs');        // ← 讀取證書
 const WebSocket = require('ws');
 const path = require('path');
@@ -19,7 +19,7 @@ const app = express();
 const SSL_KEY = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/privkey.pem';
 const SSL_CERT = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/fullchain.pem';
 
-const server = https.createServer(app);
+const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
 const PORT = process.env.PORT || 443;
