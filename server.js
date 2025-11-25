@@ -1,12 +1,12 @@
 // server.js (混合版 - Socket.IO + WebSocket)
 require('dotenv').config();
 const express = require('express');
-const http = require('http');
+const https = require('https');  // ← 改用 https
+const fs = require('fs');        // ← 讀取證書
 const WebSocket = require('ws');
 const path = require('path');
 const mongoose = require('mongoose');
 const multer = require('multer');
-const fs = require('fs');
 const mime = require('mime-types');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
@@ -14,10 +14,15 @@ const compression = require('compression');
 const { Server: IOServer } = require("socket.io");
 
 const app = express();
-const server = http.createServer(app);
+
+// ← 加這段:讀取 SSL 證書
+const SSL_KEY = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/privkey.pem';
+const SSL_CERT = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/fullchain.pem';
+
+const server = https.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 443;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
@@ -128,7 +133,11 @@ function broadcastToATC(obj) {
 
 // ============ Socket.IO 設定 ============
 const io = new IOServer(server, {
-  cors: { origin: "*" },
+  cors: { 
+    origin: ["https://www.geo-fs.com", "https://geo-fs.com"],  // ← 明確指定來源
+    methods: ["GET", "POST"],
+    credentials: true
+  },
   pingInterval: 25000,
   pingTimeout: 60000
 });
@@ -513,8 +522,8 @@ setInterval(async () => {
   }
 }, 6 * 60 * 60 * 1000);
 
-server.listen(PORT, () => {
-  console.log(`Server listening on port ${PORT}`);
-  console.log(`WebSocket: ws://localhost:${PORT}/ws`);
-  console.log(`Socket.IO: http://localhost:${PORT}/socket.io/`);
+server.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ HTTPS Server listening on port ${PORT}`);
+  console.log(`✅ WebSocket: wss://geofs-flightradar.duckdns.org/ws`);
+  console.log(`✅ Socket.IO: https://geofs-flightradar.duckdns.org/socket.io/`);
 });
