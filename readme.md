@@ -1,17 +1,18 @@
 <div align="center" style="line-height: 1;">
-
+  
 # GeoFS Flightradar
 Just like the FlightRadar24 in real world
 
+[![License](https://img.shields.io/badge/License-MIT%20License-green.svg)](https://opensource.org/license/MIT)
 
 # How to use?
 Install the user.js and It will send your position info to the atc screen
 press"W" to hide the ui
 
-ATC Screen url: https://geofs-flightradar.onrender.com
+ATC Screen url: https://geofs-flightradar.duckdns.org/
 
-<img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
 
+# Star History
 
 <p align="center">
   <a href="https://github.com/seabus0316/GeoFS-flightradar/stargazers"><img src="https://img.shields.io/github/stars/seabus0316/GeoFS-flightradar.svg?style=for-the-badge" alt="Stargazers"></a>
@@ -19,10 +20,7 @@ ATC Screen url: https://geofs-flightradar.onrender.com
 </p>
 
 [![GITHUB](https://img.shields.io/badge/GITHUB-24292F?style=for-the-badge&logo=github&logoColor=white)](https://github.com/seabus0316/GeoFS-flightradar/)
-[![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.onrender.com/)
-
-
-# Star History
+[![UTC SCREEN](https://img.shields.io/badge/ATC%20SCREEN-008B8B?style=for-the-badge&logo=circle&logoColor=white)](https://geofs-flightradar.duckdns.org/)
 
 <a href="https://www.star-history.com/#seabus0316/GeoFS-flightradar&Date">
  <picture>
@@ -31,3 +29,33 @@ ATC Screen url: https://geofs-flightradar.onrender.com
    <img alt="Star History Chart" src="https://api.star-history.com/svg?repos=seabus0316/GeoFS-flightradar&type=Date" />
  </picture>
 </a>
+
+# Map view
+   <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
+
+## Build and Development
+</div>
+
+### For contributors and developers:
+
+**1. Clone the repository**
+
+```bash
+git clone https://github.com/seabus0316/GeoFS-flightradar.git
+
+cd GeoFS-flightradar
+```
+**2. Install dependencies**
+```bash
+npm install
+```
+**3. Run the server**
+```bash
+npm start
+```
+# .env format
+```bash
+ADMIN_PASS=<JET PHOTOS ADMIN PASSWORD>
+IMGBB_API_KEY=<IMGBB API KEY>
+MONGODB_URL=<MONGODB ATLAS URL>
+```
