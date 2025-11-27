@@ -22,7 +22,7 @@ const SSL_CERT = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/fullchain.
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-const PORT = process.env.PORT || 443;
+const PORT = process.env.PORT || 3000;
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
 const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
