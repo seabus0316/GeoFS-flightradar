@@ -13,7 +13,7 @@
   'use strict';
 
   /*** CONFIG ***/
-  const WS_URL = 'ws://localhost:3000/';
+  const WS_URL = 'wss://geofs-flightradar.duckdns.org/ws';
   const SEND_INTERVAL_MS = 500;
   /*************/
 
