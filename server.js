@@ -43,9 +43,14 @@ const ioPlayerClients = new Set();
 // ============ 啟用壓縮 ============
 app.use(compression());
 
-// MongoDB 連接
 mongoose.connect(MONGODB_URI)
-  .then(() => console.log('MongoDB connected'))
+  .then(() => {
+    console.log('MongoDB connected');
+    // 新增索引
+    FlightPoint.collection.createIndex({ aircraftId: 1, ts: 1 });
+    FlightPoint.collection.createIndex({ ts: 1 });
+    console.log('✅ MongoDB indexes created');
+  })
   .catch(err => console.error('MongoDB connection error:', err));
 
 // Schemas
@@ -431,7 +436,81 @@ app.delete('/clear/:aircraftId', async (req, res) => {
     res.status(500).json({ error: 'server' });
   }
 });
+// 新增：單一飛機的歷史軌跡 API
+app.get('/api/tracks/:aircraftId', async (req, res) => {
+  try {
+    const { aircraftId } = req.params;
+    const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
+    
+    const docs = await FlightPoint.find({
+      aircraftId: aircraftId,
+      ts: { $gte: startTime }
+    })
+    .sort({ ts: 1 })
+    .limit(5000)
+    .lean();
+    
+    const tracks = docs.map(d => ({
+      lat: d.lat,
+      lon: d.lon,
+      alt: d.alt || 0,
+      speed: d.speed || 0,
+      ts: d.ts
+    }));
+    
+    res.json({ tracks });
+  } catch (err) {
+    console.error('Error fetching tracks:', err);
+    res.status(500).json({ error: 'Failed to fetch tracks' });
+  }
+});
 
+// 新增：所有當前飛機的歷史軌跡 API
+app.get('/api/tracks/all', async (req, res) => {
+  try {
+    const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
+    
+    // 取得所有當前連線的飛機 ID
+    const currentAircraftIds = Array.from(aircrafts.keys());
+    
+    if (currentAircraftIds.length === 0) {
+      return res.json({});
+    }
+    
+    // 查詢這些飛機的歷史軌跡
+    const docs = await FlightPoint.find({
+      aircraftId: { $in: currentAircraftIds },
+      ts: { $gte: startTime }
+    })
+    .sort({ ts: 1 })
+    .lean();
+    
+    // 按飛機 ID 分組
+    const grouped = {};
+    docs.forEach(d => {
+      if (!grouped[d.aircraftId]) {
+        grouped[d.aircraftId] = [];
+      }
+      grouped[d.aircraftId].push({
+        lat: d.lat,
+        lon: d.lon,
+        alt: d.alt || 0,
+        speed: d.speed || 0,
+        ts: d.ts
+      });
+    });
+    
+    // 對每個飛機的軌跡進行簡化（避免資料過大）
+    Object.keys(grouped).forEach(aircraftId => {
+      grouped[aircraftId] = simplifyTrack(grouped[aircraftId], 500);
+    });
+    
+    res.json(grouped);
+  } catch (err) {
+    console.error('Error fetching all tracks:', err);
+    res.status(500).json({ error: 'Failed to fetch all tracks' });
+  }
+});
 // Upload
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);

@@ -765,7 +765,82 @@ function crossesIDL(lon1, lon2) {
 function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
 }
+// 從後端載入歷史軌跡
+async function loadHistoryFromBackend(aircraftId) {
+  try {
+    // 設定要載入的時間範圍（例如：最近 6 小時）
+    const hoursBack = 6;
+    const startTime = Date.now() - (hoursBack * 60 * 60 * 1000);
+    
+    const response = await fetch(`/api/tracks/${aircraftId}?start=${startTime}`);
+    if (!response.ok) {
+      console.warn('Failed to load history:', response.status);
+      return null;
+    }
+    
+    const historyData = await response.json();
+    return historyData;
+  } catch (error) {
+    console.error('Error loading history:', error);
+    return null;
+  }
+}
 
+// 載入所有當前飛機的歷史軌跡
+async function loadAllHistoryFromBackend() {
+  try {
+    const hoursBack = 6;
+    const startTime = Date.now() - (hoursBack * 60 * 60 * 1000);
+    
+    const response = await fetch(`/api/tracks/all?start=${startTime}`);
+    if (!response.ok) {
+      console.warn('Failed to load all history:', response.status);
+      return;
+    }
+    
+    const allTracks = await response.json();
+    
+    // 將歷史資料合併到現有飛機
+    for (const [aircraftId, tracks] of Object.entries(allTracks)) {
+      if (aircrafts.has(aircraftId)) {
+        const obj = aircrafts.get(aircraftId);
+        if (!obj.rawTrack) obj.rawTrack = [];
+        if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+        
+        // 合併歷史資料（避免重複）
+        const existingTimestamps = new Set(obj.rawTrack.map(t => t.ts));
+        
+        tracks.forEach(t => {
+          if (!existingTimestamps.has(t.ts)) {
+            obj.rawTrack.push({
+              lat: t.lat,
+              lon: t.lon,
+              alt: t.alt || 0,
+              speed: t.speed || 0,
+              ts: t.ts
+            });
+            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
+          }
+        });
+        
+        // 按時間排序
+        obj.rawTrack.sort((a, b) => a.ts - b.ts);
+        
+        // 限制總數量
+        if (obj.rawTrack.length > 5000) {
+          obj.rawTrack = obj.rawTrack.slice(-5000);
+        }
+        if (obj.rawPathForDisplay.length > 5000) {
+          obj.rawPathForDisplay = obj.rawPathForDisplay.slice(-5000);
+        }
+      }
+    }
+    
+    console.log(`✅ Loaded history for ${Object.keys(allTracks).length} aircraft`);
+  } catch (error) {
+    console.error('Error loading all history:', error);
+  }
+}
 // 軌跡
 function showAircraftTrack(id) {
   const obj = aircrafts.get(id);
@@ -900,15 +975,46 @@ function updateAircraft(id, data, trackPoint = null) {
     }
   } else {
     const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
-    marker.on('click', () => {
+    marker.on('click', async () => {
       clearAllAircraftTracks();
       focusedAircraftId = id;
+      
+      // 先顯示現有軌跡
       showAircraftTrack(id);
       showAircraftPanel(data, id);
+      
+      // 然後載入完整歷史資料
+      const history = await loadHistoryFromBackend(id);
+      if (history && history.tracks && history.tracks.length > 0) {
+        const obj = aircrafts.get(id);
+        if (obj) {
+          // 清空現有資料
+          obj.rawTrack = [];
+          obj.rawPathForDisplay = [];
+          
+          // 加入歷史資料
+          history.tracks.forEach(t => {
+            obj.rawTrack.push({
+              lat: t.lat,
+              lon: t.lon,
+              alt: t.alt || 0,
+              speed: t.speed || 0,
+              ts: t.ts
+            });
+            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
+          });
+          
+          // 重新顯示完整軌跡
+          showAircraftTrack(id);
+          showAircraftPanel(data, id);
+          console.log(`✅ Loaded ${history.tracks.length} history points for ${id}`);
+        }
+      }
+      
       map.setView([data.lat, data.lon], map.getZoom(), {
-    animate: true,
-    duration: 0.5
-  });
+        animate: true,
+        duration: 0.5
+      });
     });
     aircrafts.set(id, {
       marker,
@@ -1180,6 +1286,11 @@ function connectWS() {
       }
       else if (m.type === 'aircraft_snapshot') {
         m.payload.forEach(a => updateAircraft(a.id, a));
+        // 載入所有飛機的歷史軌跡
+        setTimeout(() => {
+          loadAllHistoryFromBackend();
+          console.log('📡 Loading history from backend...');
+        }, 1000);
       }
       // 處理批次更新
 else if (m.type === 'aircraft_batch_update') {
