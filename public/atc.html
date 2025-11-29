@@ -377,30 +377,49 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 let flightChartObj;
 
 // 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
-function simplifyTrackData(track, maxPoints = 200) {
+// 資料抽稀函數 - 改進版
+function simplifyTrackData(track, maxPoints = 300) {
   if (track.length <= maxPoints) return track;
   
-  // 計算每個點的重要性（基於高度和速度變化）
-  const importance = track.map((point, i) => {
-    if (i === 0 || i === track.length - 1) return Infinity; // 保留首尾
-    
-    const prev = track[i - 1];
-    const next = track[i + 1];
-    
-    const altChange = Math.abs(point.alt - prev.alt) + Math.abs(next.alt - point.alt);
-    const speedChange = Math.abs(point.speed - prev.speed) + Math.abs(next.speed - point.speed);
-    
-    return altChange + speedChange * 0.1; // 高度變化權重更高
-  });
+  // 計算時間跨度
+  const firstTs = track[0]?.ts;
+  const lastTs = track[track.length - 1]?.ts;
   
-  // 選擇最重要的點
-  const indexed = track.map((point, i) => ({ point, importance: importance[i], index: i }));
-  indexed.sort((a, b) => b.importance - a.importance);
+  if (!firstTs || !lastTs) {
+    // 如果沒有時間戳記，使用舊方法
+    const step = Math.ceil(track.length / maxPoints);
+    const simplified = [];
+    for (let i = 0; i < track.length; i += step) {
+      simplified.push(track[i]);
+    }
+    if (simplified[simplified.length - 1] !== track[track.length - 1]) {
+      simplified.push(track[track.length - 1]);
+    }
+    return simplified;
+  }
   
-  const selected = indexed.slice(0, maxPoints);
-  selected.sort((a, b) => a.index - b.index);
+  const timeSpan = lastTs - firstTs;
+  const targetInterval = timeSpan / maxPoints;
   
-  return selected.map(item => item.point);
+  const simplified = [track[0]]; // 保留第一個點
+  let lastTime = firstTs;
+  
+  for (let i = 1; i < track.length - 1; i++) {
+    const point = track[i];
+    const timeDiff = point.ts - lastTime;
+    const altChange = Math.abs(point.alt - track[i-1].alt);
+    const speedChange = Math.abs(point.speed - track[i-1].speed);
+    
+    // 時間間隔足夠，或高度/速度變化大就保留
+    if (timeDiff >= targetInterval || altChange > 500 || speedChange > 50) {
+      simplified.push(point);
+      lastTime = point.ts;
+    }
+  }
+  
+  simplified.push(track[track.length - 1]); // 保留最後一個點
+  
+  return simplified;
 }
 
 function showFlightChart(track) {
@@ -827,11 +846,11 @@ async function loadAllHistoryFromBackend() {
         obj.rawTrack.sort((a, b) => a.ts - b.ts);
         
         // 限制總數量
-        if (obj.rawTrack.length > 5000) {
-          obj.rawTrack = obj.rawTrack.slice(-5000);
+        if (obj.rawTrack.length > 10000) {
+          obj.rawTrack = obj.rawTrack.slice(-10000);
         }
-        if (obj.rawPathForDisplay.length > 5000) {
-          obj.rawPathForDisplay = obj.rawPathForDisplay.slice(-5000);
+        if (obj.rawPathForDisplay.length > 10000) {
+          obj.rawPathForDisplay = obj.rawPathForDisplay.slice(-10000);
         }
       }
     }

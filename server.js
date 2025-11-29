@@ -85,14 +85,30 @@ const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
 // ============ 工具函數 (必須先定義) ============
 function simplifyTrack(track, maxPoints = 1000) {
   if (track.length <= maxPoints) return track;
-  const step = Math.ceil(track.length / maxPoints);
-  const simplified = [];
-  for (let i = 0; i < track.length; i += step) {
-    simplified.push(track[i]);
+  
+  // 使用時間間隔簡化，而不是單純的步進
+  const timeSpan = track[track.length - 1].ts - track[0].ts;
+  const targetInterval = timeSpan / maxPoints;
+  
+  const simplified = [track[0]]; // 保留第一個點
+  let lastTime = track[0].ts;
+  
+  for (let i = 1; i < track.length - 1; i++) {
+    const point = track[i];
+    
+    // 如果時間間隔足夠，或是高度/速度變化明顯，就保留這個點
+    const timeDiff = point.ts - lastTime;
+    const altChange = i > 0 ? Math.abs(point.alt - track[i-1].alt) : 0;
+    const speedChange = i > 0 ? Math.abs(point.speed - track[i-1].speed) : 0;
+    
+    if (timeDiff >= targetInterval || altChange > 500 || speedChange > 50) {
+      simplified.push(point);
+      lastTime = point.ts;
+    }
   }
-  if (simplified[simplified.length - 1] !== track[track.length - 1]) {
-    simplified.push(track[track.length - 1]);
-  }
+  
+  simplified.push(track[track.length - 1]); // 保留最後一個點
+  
   return simplified;
 }
 
@@ -502,7 +518,7 @@ app.get('/api/tracks/all', async (req, res) => {
     
     // 對每個飛機的軌跡進行簡化（避免資料過大）
     Object.keys(grouped).forEach(aircraftId => {
-      grouped[aircraftId] = simplifyTrack(grouped[aircraftId], 500);
+      grouped[aircraftId] = simplifyTrack(grouped[aircraftId], 2000);
     });
     
     res.json(grouped);
