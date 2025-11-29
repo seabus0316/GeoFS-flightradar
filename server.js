@@ -516,10 +516,11 @@ app.get('/api/tracks/all', async (req, res) => {
       });
     });
     
-    // 對每個飛機的軌跡進行簡化（避免資料過大）
+    /* 對每個飛機的軌跡進行簡化（避免資料過大）
     Object.keys(grouped).forEach(aircraftId => {
       grouped[aircraftId] = simplifyTrack(grouped[aircraftId], 2000);
     });
+    */
     
     res.json(grouped);
   } catch (err) {
