@@ -115,14 +115,14 @@ function simplifyTrack(track, maxPoints = 1000) {
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
-    const cutoff = Date.now() - RETENTION_MS;
+    //const cutoff = Date.now() - RETENTION_MS;
     await FlightPoint.deleteMany({ aircraftId: pt.aircraftId, ts: { $lt: cutoff } });
   } catch (err) {
     console.error('saveFlightPoint error', err);
   }
 }
 
-async function loadHistoryForAircraft(aircraftId, limit = 1000) {
+async function loadHistoryForAircraft(aircraftId, limit = 10000) {
   try {
     const docs = await FlightPoint.find({ aircraftId })
       .sort({ ts: 1 })
@@ -131,7 +131,7 @@ async function loadHistoryForAircraft(aircraftId, limit = 1000) {
     const fullTrack = docs.map(d => ({
       lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts
     }));
-    return simplifyTrack(fullTrack, 500);
+    return simplifyTrack(fullTrack, 2000);
   } catch (err) {
     console.error('loadHistoryForAircraft error', err);
     return [];
@@ -453,6 +453,7 @@ app.delete('/clear/:aircraftId', async (req, res) => {
   }
 });
 // 新增：單一飛機的歷史軌跡 API
+// 單一飛機的歷史軌跡 API
 app.get('/api/tracks/:aircraftId', async (req, res) => {
   try {
     const { aircraftId } = req.params;
@@ -463,7 +464,7 @@ app.get('/api/tracks/:aircraftId', async (req, res) => {
       ts: { $gte: startTime }
     })
     .sort({ ts: 1 })
-    .limit(5000)
+    .limit(20000)  // ← 改成 20000
     .lean();
     
     const tracks = docs.map(d => ({
