@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time + Squawk)
 // @namespace    http://tampermonkey.net/
-// @version      1.7
+// @version      1.9
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
