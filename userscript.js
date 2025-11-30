@@ -124,14 +124,15 @@
   }
 
   // --- 組裝 payload ---
-  function buildPayload(snap) {
+function buildPayload(snap) {
   checkTakeoff();
   let flightPlan = [];
   try {
     if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
       flightPlan = geofs.flightPlan.export();
-    }console.log('[ATC-Reporter] FlightPlan:', flightPlan);
+    }
   } catch (e) {}
+  
   return {
     id: getPlayerCallsign(),
     callsign: getPlayerCallsign(),
@@ -147,7 +148,8 @@
     arrival: flightInfo.arrival,
     takeoffTime: takeoffTimeUTC,
     squawk: flightInfo.squawk,
-    flightPlan: flightPlan  // <--- 新增這一行
+    flightPlan: flightPlan,
+    nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null  // ← 加這行
   };
 }
 

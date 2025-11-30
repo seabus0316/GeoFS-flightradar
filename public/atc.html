@@ -8,6 +8,20 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
   <style>
+    /* 在現有的 CSS 中加入這段 */
+@keyframes rotate-waypoint {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.next-waypoint-marker {
+  animation: rotate-waypoint 2s linear infinite;
+  filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.8));
+}
     /* Photo Map Markers */
 .plane-marker {
   font-size: 24px;
@@ -744,12 +758,18 @@ const canvasRenderer = L.canvas();
 
 const aircrafts = new Map();
 const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
+const NEXT_WAYPOINT_IMG = "https://i.ibb.co/4ZTy2Gds/watpoint.png"; 
 let focusedAircraftId = null;
 let flightPlanMarkers = [];
+let nextWaypointMarker = null;
 
 function clearFlightPlanMarkers() {
   flightPlanMarkers.forEach(m => map.removeLayer(m));
   flightPlanMarkers = [];
+    if (nextWaypointMarker) {
+    map.removeLayer(nextWaypointMarker);
+    nextWaypointMarker = null;
+  }
 }
 
 function makeDivIcon(data){
@@ -1047,9 +1067,51 @@ function updateAircraft(id, data, trackPoint = null) {
     });
     aircraftMeta.get(id).lastRender = now;
   }
-  if (id === focusedAircraftId) {
-    showAircraftPanel(data, id);
+if (id === focusedAircraftId) {
+  showAircraftPanel(data, id);
+  
+  // 清除舊的下一個航點標記
+  if (nextWaypointMarker) {
+    map.removeLayer(nextWaypointMarker);
+    nextWaypointMarker = null;
   }
+  
+  // 顯示下一個航點標記（使用 CSS 動畫）
+  if (data.nextWaypoint && data.flightPlan && Array.isArray(data.flightPlan)) {
+    const nextWp = data.flightPlan.find(wp => 
+      (wp.ident || wp.name) === data.nextWaypoint
+    );
+    
+    if (nextWp && !isNaN(Number(nextWp.lat)) && !isNaN(Number(nextWp.lon))) {
+      // 使用 divIcon 以便套用 CSS 動畫
+      const nextWpIcon = L.divIcon({
+        html: `<img src="${NEXT_WAYPOINT_IMG}" class="next-waypoint-marker" style="width: 32px; height: 32px;">`,
+        className: '',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+      });
+      
+      nextWaypointMarker = L.marker(
+        [Number(nextWp.lat), Number(nextWp.lon)], 
+        { 
+          icon: nextWpIcon,
+          pane: 'waypointPane',
+          zIndexOffset: 1000
+        }
+      ).addTo(map);
+      
+      nextWaypointMarker.bindTooltip(
+        `🎯 NEXT: ${data.nextWaypoint}`, 
+        {
+          permanent: true,
+          direction: 'top',
+          className: 'waypoint-tooltip',
+          offset: [0, -16]
+        }
+      );
+    }
+  }
+}
 }
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
@@ -1075,22 +1137,30 @@ function showAircraftPanel(data, id) {
   if (plan && Array.isArray(plan) && plan.length) {
     const latlngs = [];
     plan.forEach((wp, i) => {
-      const lat = Number(wp.lat),
-          lon = Number(wp.lon);
-      if (isNaN(lat) || isNaN(lon)) return;
-      const label = wp.ident || wp.name || ('WP' + (i + 1));
-      const waypointIcon = L.icon({
-        iconUrl: 'https://i.ibb.co/VWH3qBpX/2.png',
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        tooltipAnchor: [0, -12]
-      });
+  const lat = Number(wp.lat),
+      lon = Number(wp.lon);
+  if (isNaN(lat) || isNaN(lon)) return;
+  const label = wp.ident || wp.name || ('WP' + (i + 1));
+  
+  // 判斷是否為下一個航點
+  const isNextWaypoint = data.nextWaypoint && 
+                         (wp.ident === data.nextWaypoint || wp.name === data.nextWaypoint);
+  
+  // 使用 divIcon 以便套用 CSS 動畫
+  const waypointIcon = L.divIcon({
+    html: `<img src="${isNextWaypoint ? NEXT_WAYPOINT_IMG : 'https://i.ibb.co/VWH3qBpX/2.png'}" 
+                class="${isNextWaypoint ? 'next-waypoint-marker' : ''}" 
+                style="width: ${isNextWaypoint ? 32 : 24}px; height: ${isNextWaypoint ? 32 : 24}px;">`,
+    className: '',
+    iconSize: [isNextWaypoint ? 32 : 24, isNextWaypoint ? 32 : 24],
+    iconAnchor: [isNextWaypoint ? 16 : 12, isNextWaypoint ? 16 : 12]
+  });
       // 加入 pane 屬性
       const m = L.marker([lat, lon], {
         icon: waypointIcon,
         pane: 'waypointPane'
-      }).addTo(map).bindTooltip(label, {
-        permanent: false,
+      }).addTo(map).bindTooltip(isNextWaypoint ? `NEXT: ${label}` : label, {
+        permanent: isNextWaypoint,
         direction: 'top',
         className: 'waypoint-tooltip',
         offset: [0, -12]
