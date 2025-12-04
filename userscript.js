@@ -1,5 +1,5 @@
 // ==UserScript==
-// @name         GeoFS ATC Reporter (Enhanced + Flight Info + Takeoff Time + Squawk)
+// @name         GeoFS-Flightradar-receiver
 // @namespace    http://tampermonkey.net/
 // @version      1.9
 // @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
@@ -26,7 +26,24 @@
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
-
+    // ======= Update check (English) =======
+  const CURRENT_VERSION = '1.9.1';
+  const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
+  const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
+(function checkUpdate() {
+  fetch(VERSION_JSON_URL)
+    .then(r => r.json())
+    .then(data => {
+      if (data.version && data.version !== CURRENT_VERSION) {
+        showModal(
+          `🚩 GeoFS METAR System new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
+          null,
+          UPDATE_URL
+        );
+      }
+    })
+    .catch(() => {});
+})();
   // --- WebSocket 管理 ---
   let ws;
   function connect() {
