@@ -1124,8 +1124,10 @@ function removeAircraft(id) {
 }
 
 // Panel
-function showAircraftPanel(data, id) {
+async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
+  
+  // 處理 flight plan
   let plan = data.flightPlan;
   if (typeof plan === 'string') {
     try {
@@ -1134,28 +1136,26 @@ function showAircraftPanel(data, id) {
       plan = null;
     }
   }
+  
+  // 顯示 waypoints
   if (plan && Array.isArray(plan) && plan.length) {
     const latlngs = [];
     plan.forEach((wp, i) => {
-  const lat = Number(wp.lat),
-      lon = Number(wp.lon);
-  if (isNaN(lat) || isNaN(lon)) return;
-  const label = wp.ident || wp.name || ('WP' + (i + 1));
-  
-  // 判斷是否為下一個航點
-  const isNextWaypoint = data.nextWaypoint && 
-                         (wp.ident === data.nextWaypoint || wp.name === data.nextWaypoint);
-  
-  // 使用 divIcon 以便套用 CSS 動畫
-  const waypointIcon = L.divIcon({
-    html: `<img src="${isNextWaypoint ? NEXT_WAYPOINT_IMG : 'https://i.ibb.co/VWH3qBpX/2.png'}" 
-                class="${isNextWaypoint ? 'next-waypoint-marker' : ''}" 
-                style="width: ${isNextWaypoint ? 32 : 24}px; height: ${isNextWaypoint ? 32 : 24}px;">`,
-    className: '',
-    iconSize: [isNextWaypoint ? 32 : 24, isNextWaypoint ? 32 : 24],
-    iconAnchor: [isNextWaypoint ? 16 : 12, isNextWaypoint ? 16 : 12]
-  });
-      // 加入 pane 屬性
+      const lat = Number(wp.lat), lon = Number(wp.lon);
+      if (isNaN(lat) || isNaN(lon)) return;
+      const label = wp.ident || wp.name || ('WP' + (i + 1));
+      const isNextWaypoint = data.nextWaypoint && 
+                             (wp.ident === data.nextWaypoint || wp.name === data.nextWaypoint);
+      
+      const waypointIcon = L.divIcon({
+        html: `<img src="${isNextWaypoint ? NEXT_WAYPOINT_IMG : 'https://i.ibb.co/VWH3qBpX/2.png'}" 
+                    class="${isNextWaypoint ? 'next-waypoint-marker' : ''}" 
+                    style="width: ${isNextWaypoint ? 32 : 24}px; height: ${isNextWaypoint ? 32 : 24}px;">`,
+        className: '',
+        iconSize: [isNextWaypoint ? 32 : 24, isNextWaypoint ? 32 : 24],
+        iconAnchor: [isNextWaypoint ? 16 : 12, isNextWaypoint ? 16 : 12]
+      });
+      
       const m = L.marker([lat, lon], {
         icon: waypointIcon,
         pane: 'waypointPane'
@@ -1168,8 +1168,8 @@ function showAircraftPanel(data, id) {
       flightPlanMarkers.push(m);
       latlngs.push([lat, lon]);
     });
+    
     if (latlngs.length > 1) {
-      // 加入 pane 屬性
       const route = L.polyline(latlngs, {
         color: '#CEA5D5',
         weight: 4,
@@ -1180,17 +1180,16 @@ function showAircraftPanel(data, id) {
       flightPlanMarkers.push(route);
     }
   }
-  
-  let waypointsHtml = '';
-  if (plan && Array.isArray(plan) && plan.length) {
-    waypointsHtml = `<div style="margin-top:6px;"><strong>未來航點:</strong>
-      <ol style="margin:4px 0 0 16px;padding:0;font-size:12px;">${
-        plan.map((wp, i) =>
-          `<li>${escapeHtml(wp.ident || wp.name || ('WP'+(i+1)))} (${Number(wp.lat).toFixed(3)}, ${Number(wp.lon).toFixed(3)})${
-            wp.alt ? ' @'+Math.round(Number(wp.alt))+'ft' : ''
-          }</li>`
-        ).join('')
-      }</ol></div>`;
+
+  // 載入用戶照片
+  let userPhotos = [];
+  if (data.userId) {
+    try {
+      const response = await fetch(`/api/photos/user/${data.userId}`);
+      userPhotos = await response.json();
+    } catch (err) {
+      console.error('Failed to load user photos:', err);
+    }
   }
 
   let p = document.getElementById('aircraftPanel');
@@ -1198,88 +1197,216 @@ function showAircraftPanel(data, id) {
     p = document.createElement('div');
     p.id = 'aircraftPanel';
     Object.assign(p.style, {
-      position: 'absolute', top: '10px', right: '10px', width: '320px',
-      background: '#1a1d29',
-      color: '#fff',
-      borderRadius: '12px', padding: '0',
-      boxShadow: '0 8px 32px rgba(0,0,0,0.6)',
-      fontSize: '13px', zIndex: 9999,
-      fontFamily: 'Inter, "Noto Sans TC", Arial, sans-serif',
-      overflow: 'hidden'
+      position: 'absolute',
+      top: '10px',
+      right: '10px',
+      width: '420px',
+      background: '#f5f5f5',
+      borderRadius: '8px',
+      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      fontSize: '13px',
+      zIndex: 9999,
+      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+      overflow: 'hidden',
+      maxHeight: '90vh',
+      overflowY: 'auto'
     });
     document.body.appendChild(p);
   }
-  const c = getAltitudeColor(data.alt);
+
+  const depShort = (data.departure || '').substring(0, 4) || '—';
+  const arrShort = (data.arrival || '').substring(0, 4) || '—';
   const isEmergency = data.squawk === '7700';
-  const emergencyBadge = isEmergency ? '<div style="background:#d32f2f;padding:8px;margin:-16px -16px 12px;font-weight:600;text-align:center;font-size:12px;letter-spacing:0.5px;">⚠️ EMERGENCY SQUAWK 7700</div>' : '';
-  const depShort = (data.departure||'').substring(0, 4);
-  const arrShort = (data.arrival||'').substring(0, 4);
+
+  // 照片輪播 HTML
+  let photosHtml = '';
+  if (userPhotos.length > 0) {
+    photosHtml = `
+      <div style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
+        <img id="panelPhoto" src="${userPhotos[0].thumb}" style="width:100%;height:100%;object-fit:cover;">
+        <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;
+                    padding:4px 8px;border-radius:4px;font-size:11px;">
+          © <span id="photoCredit">${escapeHtml(userPhotos[0].photographer || 'Anonymous')}</span>
+        </div>
+        ${userPhotos.length > 1 ? `
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;">
+            ${userPhotos.map((_, i) => `
+              <button class="photo-dot" data-index="${i}" style="width:8px;height:8px;border-radius:50%;border:none;
+                      background:${i === 0 ? '#ffd500' : 'rgba(255,255,255,0.5)'};cursor:pointer;padding:0;"></button>
+            `).join('')}
+          </div>
+        ` : ''}
+      </div>
+    `;
+  } else {
+    // 預設飛機圖（如果沒有用戶照片）
+    photosHtml = `
+      <div style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
+        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:48px;">
+          ✈️
+        </div>
+      </div>
+    `;
+  }
 
   p.innerHTML = `
-    <div style="background:linear-gradient(135deg, #2d3748 0%, #1a1d29 100%);padding:16px;border-bottom:1px solid #2d3748;">
-      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:12px;">
-        <h3 style="margin:0;font-size:24px;font-weight:700;color:#ffd93d;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0;">${escapeHtml(data.callsign || 'UNKNOWN')}</h3>
-<button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" style="background:transparent;border:none;color:#8b92a7;font-size:24px;cursor:pointer;padding:0;width:28px;height:28px;display:flex;align-items:center;justify-content:center;border-radius:4px;transition:all 0.2s;flex-shrink:0;" onmouseover="this.style.background='#2d3748';this.style.color='#fff';" onmouseout="this.style.background='transparent';this.style.color='#8b92a7';">×</button>
+    <!-- Top Header -->
+    <div style="background:#1a1a1a;padding:16px;display:flex;justify-content:space-between;align-items:center;position:relative;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:24px;font-weight:700;color:#ffd500;">${escapeHtml(data.callsign || 'UNKNOWN')}</span>
+        <span style="background:#444;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;">
+          ${escapeHtml(data.flightNo || 'N/A')}
+        </span>
+        <span style="background:#0066cc;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;">
+          ${escapeHtml(data.type || '??')}
+        </span>
       </div>
-      <div style="font-size:14px;color:#8b92a7;">${escapeHtml(data.flightNo || 'N/A')} · ${escapeHtml(data.type || 'Unknown Type')}</div>
+      
+      <div style="display:flex;gap:8px;align-items:center;">
+        <button style="background:transparent;border:none;color:#ffd500;cursor:pointer;padding:4px;font-size:20px;">★</button>
+        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" 
+                style="background:transparent;border:none;color:#fff;cursor:pointer;padding:4px;font-size:20px;">×</button>
+      </div>
+      
+      <div style="position:absolute;top:8px;right:60px;font-size:10px;color:#ffd500;font-weight:700;letter-spacing:0.5px;">
+        flightradar<span style="color:#fff;">24</span>
+      </div>
     </div>
-    ${emergencyBadge}
-    <div style="padding:16px;">
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;gap:8px;align-items:center;margin-bottom:16px;padding:12px;background:#0f1419;border-radius:8px;">
+
+    <div style="font-size:13px;color:#fff;background:#1a1a1a;padding-bottom:12px;padding-left:16px;">
+      ${escapeHtml(data.airline || 'Unknown Airline')}
+    </div>
+
+    ${isEmergency ? '<div style="background:#d32f2f;color:#fff;padding:12px;text-align:center;font-weight:600;font-size:14px;">⚠️ EMERGENCY SQUAWK 7700</div>' : ''}
+
+    <!-- Hero Image -->
+    ${photosHtml}
+
+    <!-- Route Block -->
+    <div style="background:#fff;padding:24px 16px;border-bottom:1px solid #e0e0e0;">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;margin-bottom:16px;">
         <div style="text-align:center;">
-          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">FROM</div>
-          <div style="font-size:18px;font-weight:700;color:#fff;">${escapeHtml(depShort || '—')}</div>
+          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(depShort)}</div>
+          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.departure || '—')}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +04:00</div>
         </div>
-        <div style="color:#8b92a7;font-size:20px;">✈</div>
+        <div style="font-size:32px;color:#ffd500;">✈</div>
         <div style="text-align:center;">
-          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">TO</div>
-          <div style="font-size:18px;font-weight:700;color:#fff;">${escapeHtml(arrShort || '—')}</div>
+          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
+          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +00:00</div>
         </div>
       </div>
-      
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px;">
-        <div style="background:#0f1419;padding:12px;border-radius:8px;border-left:3px solid #4a9eff;">
-          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">ALTITUDE</div>
-          <div style="font-size:20px;font-weight:700;color:#fff;">${Math.round(data.alt || 0)}</div>
-          <div style="font-size:11px;color:#8b92a7;">feet</div>
-        </div>
-        <div style="background:#0f1419;padding:12px;border-radius:8px;border-left:3px solid #ffd93d;">
-          <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">SPEED</div>
-          <div style="font-size:20px;font-weight:700;color:#fff;">${formatSpeed(data.speed)}</div>
-          <div style="font-size:11px;color:#8b92a7;">knots</div>
-        </div>
-      </div>
-      
-      <div style="background:#0f1419;padding:12px;border-radius:8px;margin-bottom:12px;">
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+
+      ${data.takeoffTime ? `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
           <div>
-            <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">SQUAWK</div>
-            <div style="font-size:16px;font-weight:600;color:${isEmergency ? '#ff4444' : '#fff'};">${escapeHtml(data.squawk || '—')}</div>
-          </div>
-          <div>
-            <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">HEADING</div>
-            <div style="font-size:16px;font-weight:600;color:#fff;">${Math.round(data.heading || 0)}°</div>
+            <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">TAKEOFF TIME</div>
+            <div style="font-size:16px;font-weight:600;color:#000;">${escapeHtml(data.takeoffTime.substring(11, 19))} UTC</div>
           </div>
         </div>
+      ` : ''}
+    </div>
+
+    <!-- Expandable Toggle -->
+    <button id="expandBtn" style="width:100%;background:#fff;border:none;border-bottom:1px solid #e0e0e0;
+            padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
+            color:#0066cc;font-size:13px;font-weight:600;">
+      <span style="font-size:20px;">✈</span>
+      More ${escapeHtml(data.flightNo || data.callsign)} information
+      <span id="expandIcon">▼</span>
+    </button>
+
+    <!-- Expanded Content -->
+    <div id="expandedContent" style="display:none;background:#fff;padding:20px 16px;">
+      <div style="margin-bottom:24px;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#666;font-size:12px;
+                    text-transform:uppercase;font-weight:600;">
+          <span style="font-size:16px;">✈</span>
+          AIRCRAFT TYPE (${escapeHtml(data.type || '??')})
+        </div>
+        <div style="font-size:18px;font-weight:600;color:#000;">
+          ${escapeHtml(data.type || 'Unknown Aircraft')}
+        </div>
       </div>
-      
-      ${data.takeoffTime ? `<div style="background:#0f1419;padding:12px;border-radius:8px;">
-        <div style="font-size:11px;color:#8b92a7;margin-bottom:4px;">TAKEOFF TIME (UTC)</div>
-        <div style="font-size:14px;font-weight:600;color:#fff;">${escapeHtml(data.takeoffTime)}</div>
-      </div>` : ''}
-    </div>`;
-    // 顯示飛行軌跡圖表
+
+      ${data.userId ? `
+        <div style="margin-bottom:24px;">
+          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:600;margin-bottom:8px;">
+            user ID
+          </div>
+          <div style="font-size:16px;color:#000;">${escapeHtml(data.userId)}</div>
+        </div>
+      ` : ''}
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+        <div>
+          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">ALTITUDE</div>
+          <div style="font-size:18px;font-weight:600;color:#000;">${Math.round(data.alt || 0).toLocaleString()} ft</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">SPEED</div>
+          <div style="font-size:18px;font-weight:600;color:#000;">${formatSpeed(data.speed)} kt</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">HEADING</div>
+          <div style="font-size:18px;font-weight:600;color:#000;">${Math.round(data.heading || 0)}°</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">SQUAWK</div>
+          <div style="font-size:18px;font-weight:600;color:${isEmergency ? '#ff4444' : '#000'};">
+            ${escapeHtml(data.squawk || '—')}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+
+  // 照片輪播功能
+  if (userPhotos.length > 1) {
+    const dots = p.querySelectorAll('.photo-dot');
+    const photoImg = p.querySelector('#panelPhoto');
+    const photoCredit = p.querySelector('#photoCredit');
+    
+    dots.forEach(dot => {
+      dot.addEventListener('click', () => {
+        const index = parseInt(dot.getAttribute('data-index'));
+        photoImg.src = userPhotos[index].thumb;
+        photoCredit.textContent = escapeHtml(userPhotos[index].photographer || 'Anonymous');
+        
+        dots.forEach(d => d.style.background = 'rgba(255,255,255,0.5)');
+        dot.style.background = '#ffd500';
+      });
+    });
+  }
+
+  // 展開/收合功能
+  const expandBtn = p.querySelector('#expandBtn');
+  const expandedContent = p.querySelector('#expandedContent');
+  const expandIcon = p.querySelector('#expandIcon');
+  
+  expandBtn.addEventListener('click', () => {
+    if (expandedContent.style.display === 'none') {
+      expandedContent.style.display = 'block';
+      expandIcon.textContent = '▲';
+    } else {
+      expandedContent.style.display = 'none';
+      expandIcon.textContent = '▼';
+    }
+  });
+
+  // 顯示飛行軌跡圖表
   let trackArr = [];
   if (aircrafts.has(id)) {
     const obj = aircrafts.get(id);
     if (obj.rawTrack && obj.rawTrack.length > 2) {
-      trackArr = obj.rawTrack; // 不切片，全部都顯示
+      trackArr = obj.rawTrack;
     } else if (obj.rawPathForDisplay && obj.rawPathForDisplay.length > 2) {
       trackArr = obj.rawPathForDisplay.map(tp => ({
         alt: tp[2],
         speed: tp[3]
       }));
-}
+    }
   }
   if (trackArr.length > 2) {
     showFlightChart(trackArr);

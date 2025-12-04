@@ -61,6 +61,7 @@ const photoSchema = new mongoose.Schema({
   caption: String,
   tags: [String],
   lat: Number,
+  userId: String,
   lon: Number,
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
@@ -75,6 +76,7 @@ const flightPointSchema = new mongoose.Schema({
   lat: Number,
   lon: Number,
   alt: Number,
+  userId: String,
   speed: Number,
   heading: Number,
   ts: { type: Number, index: true }
@@ -204,6 +206,7 @@ io.on("connection", (socket) => {
       heading: +p.heading || 0,
       speed: +p.speed || 0,
       flightNo: p.flightNo || "",
+      userId: p.userId || null,
       departure: p.departure || "",
       arrival: p.arrival || "",
       takeoffTime: p.takeoffTime || "",
@@ -303,6 +306,7 @@ wss.on('connection', (ws, req) => {
           alt: +p.alt || 0,
           heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
           speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
+          userId: p.userId || null,
           flightNo: p.flightNo || '',
           departure: p.departure || '',
           arrival: p.arrival || '',
@@ -441,7 +445,20 @@ app.get('/api/photos', async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
-
+app.get('/api/photos/user/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const photos = await Photo.find({ 
+      userId: userId, 
+      status: 'approved' 
+    })
+    .sort({ createdAt: -1 })
+    .limit(10);
+    res.json(photos);
+  } catch (err) {
+    res.status(500).json({ error: 'server error' });
+  }
+});
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
     const { aircraftId } = req.params;
@@ -575,6 +592,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
       lat: lat ? Number(lat) : null,
       lon: lon ? Number(lon) : null,
+      userId: userId || null,  // ← 新增
       status: 'pending'
     });
 

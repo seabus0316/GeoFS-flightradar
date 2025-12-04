@@ -132,7 +132,7 @@ function buildPayload(snap) {
       flightPlan = geofs.flightPlan.export();
     }
   } catch (e) {}
-  
+
   return {
     id: getPlayerCallsign(),
     callsign: getPlayerCallsign(),
