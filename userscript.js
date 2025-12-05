@@ -1,8 +1,8 @@
 // ==UserScript==
 // @name         GeoFS-Flightradar-receiver
 // @namespace    http://tampermonkey.net/
-// @version      1.9
-// @description  傳送玩家位置/航班資訊到 ATC Server；ALT=AGL；UI可輸入Dep/Arr/FlightNo/Squawk；按W收合；自動偵測Takeoff UTC
+// @version      1.9.2
+// @description  for this update, just checking if the version thing works
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
 // @updateURL   https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/user.js
@@ -27,7 +27,7 @@
   let wasOnGround = true;
   let takeoffTimeUTC = '';
     // ======= Update check (English) =======
-  const CURRENT_VERSION = '1.9.1';
+  const CURRENT_VERSION = '1.9.2';
   const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
   const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
 (function checkUpdate() {
