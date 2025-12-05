@@ -36,7 +36,7 @@
     .then(data => {
       if (data.version && data.version !== CURRENT_VERSION) {
         showModal(
-          `🚩 GeoFS METAR System new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
+          `🚩 GeoFS flightradar receiver new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
           null,
           UPDATE_URL
         );
