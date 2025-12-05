@@ -1126,7 +1126,13 @@ function removeAircraft(id) {
 // Panel
 async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
-  
+  // 保存展開狀態
+  let wasExpanded = false;
+  const oldPanel = document.getElementById('aircraftPanel');
+  if (oldPanel) {
+    const oldContent = oldPanel.querySelector('#expandedContent');
+    wasExpanded = oldContent && oldContent.style.display === 'block';
+  }
   // 處理 flight plan
   let plan = data.flightPlan;
   if (typeof plan === 'string') {
@@ -1385,17 +1391,21 @@ async function showAircraftPanel(data, id) {
   const expandedContent = p.querySelector('#expandedContent');
   const expandIcon = p.querySelector('#expandIcon');
   
-  let isExpanded = false;
+  // 恢復之前的展開狀態
+  if (wasExpanded) {
+    expandedContent.style.display = 'block';
+    expandIcon.textContent = '▲';
+  }
   
   expandBtn.addEventListener('click', (e) => {
     e.stopPropagation();
-    isExpanded = !isExpanded;
+    const isExpanded = expandedContent.style.display === 'block';
     if (isExpanded) {
-      expandedContent.style.display = 'block';
-      expandIcon.textContent = '▲';
-    } else {
       expandedContent.style.display = 'none';
       expandIcon.textContent = '▼';
+    } else {
+      expandedContent.style.display = 'block';
+      expandIcon.textContent = '▲';
     }
   });
 
