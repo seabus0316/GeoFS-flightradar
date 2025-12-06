@@ -804,8 +804,6 @@ function removeAircraft(id) {
 async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
   
-  // Debug: 檢查 userId
-  console.log('🔍 Aircraft data userId:', data.userId);
   
   // 保存展開狀態
   let wasExpanded = false;
@@ -1179,7 +1177,8 @@ async function loadPhotoMarkers() {
       
       photoMarkers.push(marker);
     });
-    
+  // Debug: 檢查 userId
+  console.log('🔍 Aircraft data userId:', data.userId);
     console.log(`Loaded ${photoMarkers.length} photo markers`);
   } catch (error) {
     console.error('Failed to load photo markers:', error);
