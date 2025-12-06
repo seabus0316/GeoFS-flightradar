@@ -117,7 +117,7 @@ function simplifyTrack(track, maxPoints = 1000) {
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
-    //const cutoff = Date.now() - RETENTION_MS;
+    const cutoff = Date.now() - RETENTION_MS;
     await FlightPoint.deleteMany({ aircraftId: pt.aircraftId, ts: { $lt: cutoff } });
   } catch (err) {
     console.error('saveFlightPoint error', err);
