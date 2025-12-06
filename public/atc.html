@@ -880,9 +880,8 @@ async function showAircraftPanel(data, id) {
     } catch (err) {
       console.error('Failed to load user photos:', err);
     }
-  } else {
-    console.log('⚠️ No userId in aircraft data');
-  }
+  } 
+  // 建立或更新 Panel
 
   let p = document.getElementById('aircraftPanel');
   if (!p) {
