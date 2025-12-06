@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoFS-Flightradar-receiver
 // @namespace    http://tampermonkey.net/
-// @version      1.9.2
+// @version      1.9.3
 // @description  for this update, just checking if the version thing works
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
@@ -27,7 +27,7 @@
   let wasOnGround = true;
   let takeoffTimeUTC = '';
     // ======= Update check (English) =======
-  const CURRENT_VERSION = '1.9.2';
+  const CURRENT_VERSION = '1.9.3';
   const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
   const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
 (function checkUpdate() {
@@ -149,7 +149,7 @@ function buildPayload(snap) {
       flightPlan = geofs.flightPlan.export();
     }
   } catch (e) {}
-
+ const userId = geofs?.userRecord?.id || null;
   return {
     id: getPlayerCallsign(),
     callsign: getPlayerCallsign(),
@@ -166,7 +166,8 @@ function buildPayload(snap) {
     takeoffTime: takeoffTimeUTC,
     squawk: flightInfo.squawk,
     flightPlan: flightPlan,
-    nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null  // ← 加這行
+    nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null,  // ← 加這行
+    userId: userId  // ← 添加這行
   };
 }
 
