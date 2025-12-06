@@ -518,6 +518,8 @@ app.get('/api/tracks/:aircraftId', async (req, res) => {
       ts: d.ts
     }));
     
+    const simplified = simplifyTrack(tracks, 3000);
+
     res.json({ tracks });
   } catch (err) {
     console.error('Error fetching tracks:', err);
