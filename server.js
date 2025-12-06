@@ -244,6 +244,34 @@ io.on("connection", (socket) => {
   });
 });
 
+// ✅ 新增這個函數
+function sendInChunks(ws, aircraftId, tracks, chunkSize = 200) {
+  if (tracks.length === 0) return;
+  
+  const totalChunks = Math.ceil(tracks.length / chunkSize);
+  
+  for (let i = 0; i < totalChunks; i++) {
+    const start = i * chunkSize;
+    const end = Math.min(start + chunkSize, tracks.length);
+    const chunk = tracks.slice(start, end);
+    
+    ws.send(JSON.stringify({
+      type: 'aircraft_track_history',
+      payload: { 
+        aircraftId, 
+        tracks: chunk,
+        chunkInfo: {
+          current: i + 1,
+          total: totalChunks,
+          isLast: i === totalChunks - 1
+        }
+      }
+    }));
+  }
+  
+  console.log(`[ATC] Sent ${tracks.length} history points in ${totalChunks} chunks for ${aircraftId}`);
+}
+
 // ============ WebSocket 設定 ============
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
@@ -270,20 +298,18 @@ wss.on('connection', (ws, req) => {
         ws.role = msg.role || 'unknown';
 
         if (ws.role === 'atc') {
-          atcClients.add(ws);
-          const payload = Array.from(aircrafts.values()).map(x => x.payload);
-          ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
+  atcClients.add(ws);
+  const payload = Array.from(aircrafts.values()).map(x => x.payload);
+  ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
 
-          for (const [aircraftId] of aircrafts) {
-            const tracks = await loadHistoryForAircraft(aircraftId, 1000);
-            if (tracks && tracks.length > 0) {
-              ws.send(JSON.stringify({
-                type: 'aircraft_track_history',
-                payload: { aircraftId, tracks }
-              }));
-            }
-          }
-        } else if (ws.role === 'player') {
+  // ✅ 使用分批發送
+  for (const [aircraftId] of aircrafts) {
+    const tracks = await loadHistoryForAircraft(aircraftId, 10000);
+    if (tracks && tracks.length > 0) {
+      sendInChunks(ws, aircraftId, tracks, 200); // ✅ 新的
+    }
+  }
+}else if (ws.role === 'player') {
           playerClients.add(ws);
           ws.aircraftId = null;
         }
