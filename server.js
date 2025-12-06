@@ -583,7 +583,9 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
 
     fs.unlinkSync(file.path);
 
-    const { photographer = 'anon', caption = '', tags = '', lat, lon } = req.body;
+    // ← 修改這裡：添加 userId 到解構中
+    const { photographer = 'anon', caption = '', tags = '', lat, lon, userId } = req.body;
+    
     const photo = await Photo.create({
       file: imgbbData.data.url,
       thumb: imgbbData.data.url,
@@ -592,7 +594,7 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
       lat: lat ? Number(lat) : null,
       lon: lon ? Number(lon) : null,
-      userId: userId || null,  // ← 新增
+      userId: userId || null,  // ← 現在這個變數已經定義了
       status: 'pending'
     });
 
