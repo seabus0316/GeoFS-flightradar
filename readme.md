@@ -6,7 +6,7 @@ Just like the FlightRadar24 in real world
 [![License](https://img.shields.io/badge/License-MIT%20License-green.svg)](https://opensource.org/license/MIT)
 
 # How to use?
-Install the user.js and It will send your position info to the atc screen
+Install the receiver.user.js and It will load the latest script. The script can send your position info to the atc screen
 press"W" to hide the ui
 
 ATC Screen url: https://geofs-flightradar.duckdns.org/
