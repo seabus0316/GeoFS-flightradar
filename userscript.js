@@ -1,3 +1,15 @@
+// ==UserScript==
+// @name         GeoFS-flightradar receiver
+// @namespace    http://tampermonkey.net/
+// @version      1.9.4
+// @description  Always loads the latest GeoFS flightradar script from GitHub (I kust found that I can use this, thanks to xyzmani) — combined with new modal/update + callsign UI
+// @author       SeaBus (edited by Nico Kaiser)
+// @match        http://*/geofs.php*
+// @match        https://*/geofs.php*
+// @require      https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/userscript.js?nocache=1
+// @grant        none
+// ==/UserScript==
+
 (function () {
   'use strict';
 
@@ -6,7 +18,7 @@
   const SEND_INTERVAL_MS = 500;
   /*************/
 
-    // ===== 新增 Modal 函數 =====
+  // ===== 新增 Modal 函數 (from NEW) =====
   function showModal(msg, duration = null, updateBtnUrl = null) {
     if (document.getElementById("geofs-atc-modal")) return;
     let overlay = document.createElement("div");
@@ -49,7 +61,7 @@
       color:#b2cfff;border:1.5px solid #4eaaff;border-radius:7px;font-weight:bold;cursor:pointer;
       box-shadow:0 1px 8px #3d6aff30;transition:background .18s;
     `;
-    okBtn.onclick = () => { document.body.removeChild(overlay); };
+    okBtn.onclick = () => { if (document.body.contains(overlay)) document.body.removeChild(overlay); };
     box.appendChild(okBtn);
     overlay.appendChild(box);
     document.body.appendChild(overlay);
@@ -79,29 +91,33 @@
     console.log('[ATC-Reporter]', ...args);
   }
 
-  // --- 全域變數 ---
+  // --- NEW: manual Callsign variable + flightInfo ---
+  let mainCallsign = "UNKNOWN";   // default
   let flightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
-    // ======= Update check (English) =======
+
+  // ===== Update check (uses showModal) =====
   const CURRENT_VERSION = '1.9.4';
   const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
   const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
-(function checkUpdate() {
-  fetch(VERSION_JSON_URL)
-    .then(r => r.json())
-    .then(data => {
-      if (data.version && data.version !== CURRENT_VERSION) {
-        showModal(
-          `🚩 GeoFS flightradar receiver new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
-          null,
-          UPDATE_URL
-        );
-      }
-    })
-    .catch(() => {});
-})();
+
+  (function checkUpdate() {
+    fetch(VERSION_JSON_URL)
+      .then(r => r.json())
+      .then(data => {
+        if (data.version && data.version !== CURRENT_VERSION) {
+          showModal(
+            `🚩 GeoFS flightradar receiver new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
+            null,
+            UPDATE_URL
+          );
+        }
+      })
+      .catch(() => {});
+  })();
+
   // --- WebSocket 管理 ---
   let ws;
   function connect() {
@@ -134,13 +150,16 @@
     }
   }
 
-  // --- 工具函式 ---
+  // ==== helpers ====
   function getAircraftName() {
     return geofs?.aircraft?.instance?.aircraftRecord?.name || 'Unknown';
   }
+
+  // ---- callsign function (prefer UI mainCallsign, fallback to geofs user callsign) ----
   function getPlayerCallsign() {
-    return geofs?.userRecord?.callsign || 'Unknown';
+    return (mainCallsign && mainCallsign.trim().length > 0) ? mainCallsign.trim() : (geofs?.userRecord?.callsign || "UNKNOWN");
   }
+
   // --- AGL 計算 ---
   function calculateAGL() {
     try {
@@ -173,7 +192,7 @@
     wasOnGround = onGround;
   }
 
-  // --- 擷取飛行狀態 ---
+  // --- 擷取飛行狀態 (uses lla like NEW) ---
   function readSnapshot() {
     try {
       const inst = geofs?.aircraft?.instance;
@@ -198,36 +217,42 @@
     }
   }
 
-  // --- 組裝 payload ---
-function buildPayload(snap) {
-  checkTakeoff();
-  let flightPlan = [];
-  try {
-    if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
-      flightPlan = geofs.flightPlan.export();
-    }
-  } catch (e) {}
- const userId = geofs?.userRecord?.id || null;
-  return {
-    id: getPlayerCallsign(),
-    callsign: getPlayerCallsign(),
-    type: getAircraftName(),
-    lat: snap.lat,
-    lon: snap.lon,
-    alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
-    altMSL: Math.round(snap.altMSL || 0),
-    heading: Math.round(snap.heading || 0),
-    speed: Math.round(snap.speed || 0),
-    flightNo: flightInfo.flightNo,
-    departure: flightInfo.departure,
-    arrival: flightInfo.arrival,
-    takeoffTime: takeoffTimeUTC,
-    squawk: flightInfo.squawk,
-    flightPlan: flightPlan,
-    nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null,  // ← 加這行
-    userId: userId  // ← 添加這行
-  };
-}
+  // --- 組裝 payload (NEW fields nextWaypoint, userId added) ---
+  function buildPayload(snap) {
+    checkTakeoff();
+    let flightPlan = [];
+    try {
+      if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
+        flightPlan = geofs.flightPlan.export();
+      }
+    } catch (e) {}
+    const userId = geofs?.userRecord?.id || null;
+
+    // create a combined display name: CALLSIGN (GEOFSNAME) for possible map display
+    const geoName = (geofs?.userRecord?.callsign || geofs?.userRecord?.name || 'FOO');
+    const displayName = `${getPlayerCallsign()} (${geoName})`;
+
+    return {
+      id: getPlayerCallsign(),
+      callsign: getPlayerCallsign(),
+      displayName: displayName, // combined CALLSIGN (FOO)
+      type: getAircraftName(),
+      lat: snap.lat,
+      lon: snap.lon,
+      alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
+      altMSL: Math.round(snap.altMSL || 0),
+      heading: Math.round(snap.heading || 0),
+      speed: Math.round(snap.speed || 0),
+      flightNo: flightInfo.flightNo,
+      departure: flightInfo.departure,
+      arrival: flightInfo.arrival,
+      takeoffTime: takeoffTimeUTC,
+      squawk: flightInfo.squawk,
+      flightPlan: flightPlan,
+      nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null,
+      userId: userId
+    };
+  }
 
   // --- 定期傳送 ---
   setInterval(() => {
@@ -238,7 +263,7 @@ function buildPayload(snap) {
     safeSend({ type: 'position_update', payload });
   }, SEND_INTERVAL_MS);
 
-  // --- Toast 提示 ---
+  // --- Toast 提示 (simpler) ---
   function showToast(msg) {
     const toast = document.createElement('div');
     toast.textContent = msg;
@@ -261,7 +286,7 @@ function buildPayload(snap) {
     }, 2000);
   }
 
-  // --- UI 注入 ---
+  // --- UI 注入 (combines ALT UI + CS field) ---
   function injectFlightUI() {
     flightUI = document.createElement('div');
     flightUI.id = 'flightInfoUI';
@@ -276,21 +301,30 @@ function buildPayload(snap) {
     flightUI.style.zIndex = 999999;
 
     flightUI.innerHTML = `
-      <div>Dep: <input id="depInput" style="width:60px"></div>
-      <div>Arr: <input id="arrInput" style="width:60px"></div>
-      <div>Flt#: <input id="fltInput" style="width:60px"></div>
-      <div>SQK: <input id="sqkInput" style="width:60px" maxlength="4"></div>
+      <div>CS:  <input id="csInput"  style="width:60px" placeholder="KLM"></div>
+      <div>Dep: <input id="depInput" style="width:60px" placeholder="EGLL"></div>
+      <div>Arr: <input id="arrInput" style="width:60px" placeholder="EDDF"></div>
+      <div>Flt#: <input id="fltInput" style="width:60px" placeholder="KL123"></div>
+      <div>SQK: <input id="sqkInput" style="width:60px" maxlength="4" placeholder="7000"></div>
       <button id="saveBtn">Save</button>
     `;
 
     document.body.appendChild(flightUI);
 
     // 讓輸入框自動轉大寫
-    ['depInput','arrInput','fltInput','sqkInput'].forEach(id => {
+    ['csInput','depInput','arrInput','fltInput','sqkInput'].forEach(id => {
       const el = document.getElementById(id);
+      if (!el) return;
       el.addEventListener('input', () => {
         el.value = el.value.toUpperCase();
       });
+    });
+
+    // Callsign update (instant)
+    const csEl = document.getElementById('csInput');
+    csEl && csEl.addEventListener('input', () => {
+      mainCallsign = csEl.value.trim().toUpperCase();
+      showToast("Callsign = " + mainCallsign);
     });
 
     document.getElementById('saveBtn').onclick = () => {
@@ -299,6 +333,12 @@ function buildPayload(snap) {
       flightInfo.flightNo = document.getElementById('fltInput').value.trim();
       flightInfo.squawk = document.getElementById('sqkInput').value.trim();
       showToast('Flight info saved!');
+
+      // immediate send so server picks up changes even at 0 speed
+      const snap = readSnapshot();
+      if (snap && ws && ws.readyState === 1) {
+        safeSend({ type: 'position_update', payload: buildPayload(snap) });
+      }
     };
   }
   injectFlightUI();
@@ -324,7 +364,7 @@ function buildPayload(snap) {
   // --- 防止 input 觸發 GeoFS hotkey ---
   document.addEventListener("keydown", (e) => {
     const target = e.target;
-    if (target.tagName === "INPUT" || target.tagName === "TEXTAREA") {
+    if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
       e.stopPropagation();
     }
   }, true);
