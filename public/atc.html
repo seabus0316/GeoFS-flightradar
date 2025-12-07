@@ -907,18 +907,38 @@ async function showAircraftPanel(data, id) {
   const arrShort = (data.arrival || '').substring(0, 4) || '—';
   const isEmergency = data.squawk === '7700';
 
-  // 照片輪播 HTML
+// 照片輪播 HTML
   let photosHtml = '';
   if (userPhotos.length > 0) {
     photosHtml = `
-      <div style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
+      <div id="photoContainer" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;">
         <img id="panelPhoto" src="${userPhotos[0].thumb}" style="width:100%;height:100%;object-fit:cover;">
-        <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;
-                    padding:4px 8px;border-radius:4px;font-size:11px;">
-          © <span id="photoCredit">${userPhotos[0].photographer || 'Anonymous'}</span>
-        </div>
+        
         ${userPhotos.length > 1 ? `
-          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;">
+          <!-- 左箭頭 -->
+          <button id="photoPrev" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);
+                  background:rgba(0,0,0,0.6);color:#fff;border:none;width:40px;height:40px;
+                  border-radius:50%;cursor:pointer;font-size:20px;display:none;
+                  transition:background 0.3s;z-index:10;">
+            ‹
+          </button>
+          
+          <!-- 右箭頭 -->
+          <button id="photoNext" style="position:absolute;right:10px;top:50%;transform:translateY(-50%);
+                  background:rgba(0,0,0,0.6);color:#fff;border:none;width:40px;height:40px;
+                  border-radius:50%;cursor:pointer;font-size:20px;display:none;
+                  transition:background 0.3s;z-index:10;">
+            ›
+          </button>
+        ` : ''}
+        
+        <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;
+                    padding:4px 8px;border-radius:4px;font-size:11px;z-index:5;">
+          © <span id="photoCredit">${escapeHtml(userPhotos[0].photographer || 'Anonymous')}</span>
+        </div>
+        
+        ${userPhotos.length > 1 ? `
+          <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;">
             ${userPhotos.map((_, i) => `
               <button class="photo-dot" data-index="${i}" style="width:8px;height:8px;border-radius:50%;border:none;
                       background:${i === 0 ? '#ffd500' : 'rgba(255,255,255,0.5)'};cursor:pointer;padding:0;"></button>
@@ -1051,22 +1071,105 @@ async function showAircraftPanel(data, id) {
     </div>
   `;
 
-  // 照片輪播功能
+// 照片輪播功能 - 完整版
   if (userPhotos.length > 1) {
+    const container = p.querySelector('#photoContainer');
     const dots = p.querySelectorAll('.photo-dot');
     const photoImg = p.querySelector('#panelPhoto');
     const photoCredit = p.querySelector('#photoCredit');
+    const prevBtn = p.querySelector('#photoPrev');
+    const nextBtn = p.querySelector('#photoNext');
     
+    // 保存當前照片索引
+    if (!window.aircraftPhotoIndex) window.aircraftPhotoIndex = {};
+    if (!window.aircraftPhotoIndex[id]) window.aircraftPhotoIndex[id] = 0;
+    
+    let currentIndex = window.aircraftPhotoIndex[id];
+    
+    // 更新照片顯示
+    function updatePhoto(index) {
+      photoImg.src = userPhotos[index].thumb;
+      photoCredit.textContent = escapeHtml(userPhotos[index].photographer || 'Anonymous');
+      dots.forEach((d, i) => {
+        d.style.background = i === index ? '#ffd500' : 'rgba(255,255,255,0.5)';
+      });
+      window.aircraftPhotoIndex[id] = index;
+    }
+    
+    // 恢復上次的照片
+    updatePhoto(currentIndex);
+    
+    // 滑鼠懸停顯示箭頭
+    container.addEventListener('mouseenter', () => {
+      if (prevBtn) prevBtn.style.display = 'block';
+      if (nextBtn) nextBtn.style.display = 'block';
+    });
+    
+    container.addEventListener('mouseleave', () => {
+      if (prevBtn) prevBtn.style.display = 'none';
+      if (nextBtn) nextBtn.style.display = 'none';
+    });
+    
+    // 箭頭 hover 效果
+    if (prevBtn) {
+      prevBtn.addEventListener('mouseenter', () => prevBtn.style.background = 'rgba(0,0,0,0.9)');
+      prevBtn.addEventListener('mouseleave', () => prevBtn.style.background = 'rgba(0,0,0,0.6)');
+    }
+    if (nextBtn) {
+      nextBtn.addEventListener('mouseenter', () => nextBtn.style.background = 'rgba(0,0,0,0.9)');
+      nextBtn.addEventListener('mouseleave', () => nextBtn.style.background = 'rgba(0,0,0,0.6)');
+    }
+    
+    // 切換到上一張
+    if (prevBtn) {
+      prevBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentIndex = (currentIndex - 1 + userPhotos.length) % userPhotos.length;
+        updatePhoto(currentIndex);
+        restartAutoSlide();
+      });
+    }
+    
+    // 切換到下一張
+    if (nextBtn) {
+      nextBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentIndex = (currentIndex + 1) % userPhotos.length;
+        updatePhoto(currentIndex);
+        restartAutoSlide();
+      });
+    }
+    
+    // 點擊圓點切換
     dots.forEach(dot => {
       dot.addEventListener('click', () => {
         const index = parseInt(dot.getAttribute('data-index'));
-        photoImg.src = userPhotos[index].thumb;
-        photoCredit.textContent = userPhotos[index].photographer || 'Anonymous'; // ← 修正這裡
-        
-        dots.forEach(d => d.style.background = 'rgba(255,255,255,0.5)');
-        dot.style.background = '#ffd500';
+        currentIndex = index;
+        updatePhoto(index);
+        restartAutoSlide();
       });
     });
+    
+    // 重啟自動輪播
+    function restartAutoSlide() {
+      if (window.aircraftPhotoTimer && window.aircraftPhotoTimer[id]) {
+        clearInterval(window.aircraftPhotoTimer[id]);
+      }
+      startAutoSlide();
+    }
+    
+    // 自動輪播 (每5秒)
+    function startAutoSlide() {
+      if (!window.aircraftPhotoTimer) window.aircraftPhotoTimer = {};
+      if (window.aircraftPhotoTimer[id]) clearInterval(window.aircraftPhotoTimer[id]);
+      
+      window.aircraftPhotoTimer[id] = setInterval(() => {
+        currentIndex = (currentIndex + 1) % userPhotos.length;
+        updatePhoto(currentIndex);
+      }, 5000);
+    }
+    
+    startAutoSlide();
   }
 
   // 展開/收合功能
