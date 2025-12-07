@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoFS-Flightradar-receiver
 // @namespace    http://tampermonkey.net/
-// @version      1.9.3
+// @version      1.9.4
 // @description  for this update, just checking if the version thing works
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
@@ -17,6 +17,75 @@
   const SEND_INTERVAL_MS = 500;
   /*************/
 
+    // ===== 新增 Modal 函數 =====
+  function showModal(msg, duration = null, updateBtnUrl = null) {
+    if (document.getElementById("geofs-atc-modal")) return;
+    let overlay = document.createElement("div");
+    overlay.id = "geofs-atc-modal";
+    overlay.style.cssText = `
+      position:fixed;top:0;left:0;width:100vw;height:100vh;z-index:99999;
+      background:rgba(24,32,48,0.45);display:flex;align-items:center;justify-content:center;
+    `;
+    let box = document.createElement("div");
+    box.style.cssText = `
+      background:linear-gradient(135deg,#232942 80%,#151a25 100%);
+      color:#dbeaff;padding:30px 34px;border-radius:18px;box-shadow:0 6px 32px #000b;
+      min-width:280px;max-width:90vw;display:flex;flex-direction:column;align-items:center;gap:14px;
+      border:2.5px solid #3d6aff;font-size:1.15rem;letter-spacing:0.3px;
+      text-align:center;animation:popIn .21s;
+    `;
+    let content = document.createElement("div");
+    content.innerHTML = msg;
+    box.appendChild(content);
+
+    if (updateBtnUrl) {
+      let updateBtn = document.createElement("a");
+      updateBtn.textContent = "Update";
+      updateBtn.href = updateBtnUrl;
+      updateBtn.target = "_blank";
+      updateBtn.style.cssText = `
+        margin-top:6px;padding:8px 38px;font-size:1.05rem;background:#1e3f6e;
+        color:#fff;border:1.5px solid #4eaaff;border-radius:7px;font-weight:bold;cursor:pointer;
+        box-shadow:0 1px 8px #4eaaff30;transition:background .18s;display:inline-block;text-decoration:none;
+      `;
+      updateBtn.onmouseover = function(){this.style.background="#1552a1";}
+      updateBtn.onmouseout = function(){this.style.background="#1e3f6e";}
+      box.appendChild(updateBtn);
+    }
+
+    let okBtn = document.createElement("button");
+    okBtn.textContent = "OK";
+    okBtn.style.cssText = `
+      margin-top:16px;padding:8px 38px;font-size:1.05rem;background:#222b3c;
+      color:#b2cfff;border:1.5px solid #4eaaff;border-radius:7px;font-weight:bold;cursor:pointer;
+      box-shadow:0 1px 8px #3d6aff30;transition:background .18s;
+    `;
+    okBtn.onclick = () => { document.body.removeChild(overlay); };
+    box.appendChild(okBtn);
+    overlay.appendChild(box);
+    document.body.appendChild(overlay);
+
+    if (duration) setTimeout(() => {
+      if (document.body.contains(overlay)) document.body.removeChild(overlay);
+    }, duration);
+
+    overlay.tabIndex = -1; overlay.focus();
+    overlay.onkeydown = (e) => {
+      if (e.key === "Enter" || e.key === "Escape") {
+        if (document.body.contains(overlay)) document.body.removeChild(overlay);
+      }
+    };
+
+    if (!document.getElementById("geofs-atc-modal-anim")) {
+      const style = document.createElement('style');
+      style.id = "geofs-atc-modal-anim";
+      style.textContent = `
+        @keyframes popIn { from { transform:scale(0.85);opacity:0; } to { transform:scale(1);opacity:1; } }
+      `;
+      document.head.appendChild(style);
+    }
+  }
+
   function log(...args) {
     console.log('[ATC-Reporter]', ...args);
   }
@@ -27,7 +96,7 @@
   let wasOnGround = true;
   let takeoffTimeUTC = '';
     // ======= Update check (English) =======
-  const CURRENT_VERSION = '1.9.3';
+  const CURRENT_VERSION = '1.9.4';
   const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
   const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
 (function checkUpdate() {
