@@ -1,15 +1,3 @@
-// ==UserScript==
-// @name         GeoFS-Flightradar-receiver
-// @namespace    http://tampermonkey.net/
-// @version      1.9.4
-// @description  for this update, just checking if the version thing works
-// @match http://*/geofs.php*
-// @match https://*/geofs.php*
-// @updateURL    https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/userscript.js
-// @downloadURL  https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/userscript.js
-// @grant        none
-// ==/UserScript==
-
 (function () {
   'use strict';
 
