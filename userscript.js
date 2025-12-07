@@ -5,7 +5,8 @@
 // @description  for this update, just checking if the version thing works
 // @match http://*/geofs.php*
 // @match https://*/geofs.php*
-// @updateURL   https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/user.js
+// @updateURL    https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/userscript.js
+// @downloadURL  https://github.com/seabus0316/GeoFS-flightradar/raw/refs/heads/main/userscript.js
 // @grant        none
 // ==/UserScript==
 
