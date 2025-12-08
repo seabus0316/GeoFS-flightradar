@@ -98,6 +98,7 @@
     }
   }
 
+  // ⭐⭐⭐⭐⭐ NEW VERSION CHECK (ONLY VERSION NUMBER)
   (function checkUpdate() {
     fetch(VERSION_JSON_URL)
       .then(r => r.json())
