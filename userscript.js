@@ -1,10 +1,21 @@
+// ==UserScript==
+// @name         GeoFS-flightradar receiver
+// @namespace    http://tampermonkey.net/
+// @version      1.9.8
+// @description  Always loads the latest GeoFS flightradar script (edited by Nico Kaiser)
+// @author       SeaBus
+// @match        http://*/geofs.php*
+// @match        https://*/geofs.php*
+// @grant        none
+// ==/UserScript==
+
 (function () {
   "use strict";
 
   /*** CONFIG ***/
   const WS_URL = "wss://geofs-flightradar.duckdns.org/ws";
   const SEND_INTERVAL_MS = 500;
-  let mainCallsign = "Unknown"; // Set your text you want at start (e.g. your Name)
+  let mainCallsign = "Unknown"; // Write e.g. your name (it will print at start of page)
 
   // ---- Versioning ----
   const CURRENT_VERSION = GM_info.script.version;
