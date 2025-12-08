@@ -1,14 +1,3 @@
-// ==UserScript==
-// @name         GeoFS-flightradar receiver
-// @namespace    http://tampermonkey.net/
-// @version      1.9.5
-// @description  Data Input for https://geofs-flightradar.duckdns.org/. Always loads the latest GeoFS flightradar script
-// @author       SeaBus and NicoKaiser
-// @match        http://*/geofs.php*
-// @match        https://*/geofs.php*
-// @grant        none
-// ==/UserScript==
-
 (function () {
   "use strict";
 
