@@ -1,16 +1,24 @@
+// ==UserScript==
+// @name         GeoFS-flightradar receiver
+// @namespace    http://tampermonkey.net/
+// @version      1.2.00
+// @description  Always loads the latest GeoFS flightradar script (edited by Nico Kaiser)
+// @author       SeaBus
+// @match        http://*/geofs.php*
+// @match        https://*/geofs.php*
+// @grant        none
+// ==/UserScript==
+
 (function () {
   "use strict";
 
   /*** CONFIG ***/
   const WS_URL = "wss://geofs-flightradar.duckdns.org/ws";
   const SEND_INTERVAL_MS = 500;
-  let mainCallsign = "Unknown"; // Set your text you want at start (e.g. your Name)
+  let mainCallsign = "Unknown"; // Write e.g. your name (it will print at start of page)
 
   // ---- Versioning ----
   const CURRENT_VERSION = GM_info.script.version;
-  const VERSION_JSON_URL =
-    "https://raw.githubusercontent.com/SeaBusYT/GeoFS-LivePosition/main/meta.json?cacheBust=" +
-    Date.now();
   const UPDATE_URL =
     "https://github.com/SeaBusYT/GeoFS-LivePosition/raw/main/geofs-flightradar.user.js";
 
@@ -78,10 +86,17 @@
 
   // ========== UPDATE CHECK ==========
   (function checkUpdate() {
+    const VERSION_JSON_URL = "https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json?cacheBust=" + Date.now();
+
     fetch(VERSION_JSON_URL)
       .then((r) => r.json())
       .then((data) => {
         const updateVersion = data.version || null;
+
+        console.log(
+          "Current version: " + CURRENT_VERSION + 
+          " | New version: " + (updateVersion || "unknown")
+        );
 
         if (updateVersion && CURRENT_VERSION !== updateVersion) {
           showModal(
@@ -114,17 +129,13 @@
 
     ws.addEventListener("error", () => {
       console.log("[ATC-Reporter] WS error");
-      try {
-        ws.close();
-      } catch {}
+      try { ws.close(); } catch {}
     });
   }
   connect();
 
   function safeSend(obj) {
-    if (ws && ws.readyState === 1) {
-      ws.send(JSON.stringify(obj));
-    }
+    if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
   }
 
   // ========== Helpers ==========
@@ -162,10 +173,7 @@
     if (!inst) return null;
 
     const lla = inst.llaLocation || [];
-    const lat = lla[0],
-      lon = lla[1],
-      altM = lla[2];
-
+    const lat = lla[0], lon = lla[1], altM = lla[2];
     if (typeof lat !== "number" || typeof lon !== "number") return null;
 
     const altMSL = altM * 3.28084;
@@ -173,27 +181,16 @@
     const heading = geofs?.animation?.values?.heading360 || 0;
     const speed = geofs?.animation?.values?.kias || 0;
 
-    return {
-      lat,
-      lon,
-      altMSL,
-      altAGL,
-      heading,
-      speed,
-    };
+    return { lat, lon, altMSL, altAGL, heading, speed };
   }
 
   function buildPayload(s) {
     checkTakeoff();
 
     let flightPlan = [];
-    try {
-      if (geofs.flightPlan?.export) flightPlan = geofs.flightPlan.export();
-    } catch {}
+    try { if (geofs.flightPlan?.export) flightPlan = geofs.flightPlan.export(); } catch {}
 
-    // Foo fallback
     const ingame = geofs?.userRecord?.callsign || "Foo";
-
     const callsign = (mainCallsign || "Foo") + " (" + ingame + ")";
 
     return {
@@ -219,14 +216,9 @@
 
   // ========== SEND LOOP ==========
   setInterval(() => {
-    if (!ws || ws.readyState !== 1) return;
     const snap = readSnapshot();
-    if (!snap) return;
-
-    safeSend({
-      type: "position_update",
-      payload: buildPayload(snap),
-    });
+    if (!ws || ws.readyState !== 1 || !snap) return;
+    safeSend({ type: "position_update", payload: buildPayload(snap) });
   }, SEND_INTERVAL_MS);
 
   // ========== Toast ==========
@@ -240,10 +232,7 @@
     `;
     document.body.appendChild(t);
     requestAnimationFrame(() => (t.style.opacity = "1"));
-    setTimeout(() => {
-      t.style.opacity = "0";
-      setTimeout(() => t.remove(), 300);
-    }, 1800);
+    setTimeout(() => { t.style.opacity = "0"; setTimeout(() => t.remove(), 300); }, 1800);
   }
 
   // ========== Flight UI ==========
@@ -262,13 +251,10 @@
       <div>SQK: <input id="sqkInput" maxlength="4" style="width:60px"></div>
       <button id="saveBtn">Save</button>
     `;
-
     document.body.appendChild(flightUI);
 
     ["csInput", "depInput", "arrInput", "fltInput", "sqkInput"].forEach((id) => {
-      document.getElementById(id).addEventListener("input", (e) => {
-        e.target.value = e.target.value.toUpperCase();
-      });
+      document.getElementById(id).addEventListener("input", (e) => e.target.value = e.target.value.toUpperCase());
     });
 
     document.getElementById("csInput").addEventListener("input", () => {
@@ -289,20 +275,14 @@
   // Toggle UI (W)
   document.addEventListener("keydown", (e) => {
     if (e.key.toLowerCase() === "w") {
-      flightUI.style.display =
-        flightUI.style.display === "none" ? "block" : "none";
-      showToast(
-        flightUI.style.display === "none" ? "UI Hidden" : "UI Shown"
-      );
+      flightUI.style.display = flightUI.style.display === "none" ? "block" : "none";
+      showToast(flightUI.style.display === "none" ? "UI Hidden" : "UI Shown");
     }
   });
 
   // Prevent keybinds in input
-  document.addEventListener(
-    "keydown",
-    (e) => {
-      if (e.target.tagName === "INPUT") e.stopPropagation();
-    },
-    true
-  );
+  document.addEventListener("keydown", (e) => {
+    if (e.target.tagName === "INPUT") e.stopPropagation();
+  }, true);
+
 })();
