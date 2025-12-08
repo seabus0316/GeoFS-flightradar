@@ -1,14 +1,4 @@
-// ==UserScript==
-// @name         GeoFS-flightradar receiver
-// @namespace    http://tampermonkey.net/
-// @version      2.0.00
-// @description  Always loads the latest GeoFS flightradar script from GitHub (edited by Nico Kaiser)
-// @author       SeaBus
-// @match        http://*/geofs.php*
-// @match        https://*/geofs.php*
-// @grant        none
-// ==/UserScript==
-
+//remove header
 (function () {
   'use strict';
 
