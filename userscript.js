@@ -1,16 +1,5 @@
-// Header not in use (make a new File and put it in there)
-
-// ==UserScript==
-// @name         GeoFS-flightradar receiver
-// @namespace    http://tampermonkey.net/
-// @version      2.0.00
-// @description  GeoFS flightradar receiver with automatic version-check
-// @author       SeaBus
-// @match        http://*/geofs.php*
-// @match        https://*/geofs.php*
-// @grant        none
-// ==/UserScript==
-
+// but we dont even need it because users don't have to install this version
+//users might install the receiver.user.js and that loads the latest version of this
 (function () {
   "use strict";
 
