@@ -84,24 +84,6 @@
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
-    // ======= Update check (English) =======
-  const CURRENT_VERSION = '1.9.4';
-  const VERSION_JSON_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/version.json';
-  const UPDATE_URL = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/main/userscript.js';
-(function checkUpdate() {
-  fetch(VERSION_JSON_URL)
-    .then(r => r.json())
-    .then(data => {
-      if (data.version && data.version !== CURRENT_VERSION) {
-        showModal(
-          `🚩 GeoFS flightradar receiver new version available (${data.version})!<br>Please reinstall the latest user.js from GitHub.`,
-          null,
-          UPDATE_URL
-        );
-      }
-    })
-    .catch(() => {});
-})();
   // --- WebSocket 管理 ---
   let ws;
   function connect() {
