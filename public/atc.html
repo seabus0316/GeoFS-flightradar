@@ -1579,10 +1579,24 @@ async function fetchMETAR(icao) {
 
 function showMetarWidget(metar, icao) {
   let widget = document.getElementById('metarWidget');
+  let toggleBtn = document.getElementById('metarToggle');
+  
+  // 創建 Toggle Button
+  if (!toggleBtn) {
+    toggleBtn = document.createElement('button');
+    toggleBtn.id = 'metarToggle';
+    toggleBtn.innerHTML = '🌤️ METAR';
+    toggleBtn.onclick = function() {
+      widget.classList.toggle('open');
+    };
+    document.body.appendChild(toggleBtn);
+  }
+  
+  // 創建 Widget
   if (!widget) {
     widget = document.createElement('div');
     widget.id = 'metarWidget';
-    widget.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.9);color:white;padding:10px;border-radius:8px;font:12px monospace;z-index:9999;min-width:220px;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+    widget.className = 'metar-widget';
     document.body.appendChild(widget);
   }
 
@@ -1763,7 +1777,7 @@ function showMetarWidget(metar, icao) {
   widget.innerHTML = '';
   widget.appendChild(title);
   widget.appendChild(searchDiv);
-  widget.appendChild(clockContainer);  // 時鐘放在這裡
+  widget.appendChild(clockContainer);
   widget.appendChild(iconRow);
 }
 // 初始化 METAR

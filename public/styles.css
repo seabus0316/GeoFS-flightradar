@@ -319,3 +319,48 @@
       color: #ff6600;
       text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
     }
+    /* METAR Toggle Button */
+#metarToggle {
+  position: fixed;
+  left: 0;
+  top: 60%;
+  transform: translateY(-50%);
+  background: rgba(22, 27, 34, 0.95);
+  color: #fff;
+  border: none;
+  padding: 20px 10px;
+  cursor: pointer;
+  z-index: 99998;
+  border-radius: 0 6px 6px 0;
+  font-size: 18px;
+  box-shadow: 2px 0 8px rgba(0,0,0,0.4);
+  writing-mode: vertical-rl;
+  text-orientation: mixed;
+}
+
+#metarToggle:hover {
+  background: rgba(88, 101, 242, 0.95);
+}
+
+/* METAR Widget 側邊欄樣式 */
+.metar-widget {
+  position: fixed;
+  left: -280px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 260px;
+  background: rgba(0, 0, 0, 0.9);
+  box-shadow: 2px 0 10px rgba(0,0,0,0.5);
+  transition: left 0.3s ease;
+  z-index: 99997;
+  padding: 10px;
+  border-radius: 0 8px 8px 0;
+  color: white;
+  font: 12px monospace;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.metar-widget.open {
+  left: 0;
+}
