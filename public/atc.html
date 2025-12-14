@@ -591,6 +591,42 @@ function clearAllAircraftTracks() {
   }
 }
 
+// 飛行狀態預測函數
+function predictFlightStatus(data, prev) {
+  const alt = data.alt || 0;
+  const speed = formatSpeed(data.speed);
+  
+  // 計算高度變化率
+  let altChange = 0;
+  if (prev && prev.alt !== undefined) {
+    altChange = data.alt - prev.alt;
+  }
+  
+  // 起飛階段：低空且正在爬升
+  if (alt < 10000 && altChange > 100 && speed > 100) {
+    return { status: 'takeoff', emoji: '🛫', text: 'Taking Off' };
+  }
+  
+  // 降落階段：正在下降且速度適中
+  if (altChange < -100 && alt < 15000 && speed > 100) {
+    return { status: 'landing', emoji: '🛬', text: 'Landing' };
+  }
+  
+  // 巡航階段：高空且高度穩定
+  if (alt > 10000 && Math.abs(altChange) < 200) {
+    return { status: 'cruise', emoji: '✈️', text: 'Cruising' };
+  }
+  
+  // 地面：極低空且速度很慢
+  if (alt < 100 && speed < 50) {
+    return { status: 'ground', emoji: '🅿️', text: 'On Ground' };
+  }
+  
+  // 預設為巡航
+  return { status: 'cruise', emoji: '✈️', text: 'In Flight' };
+}
+
+
 // 更新飛機
 const aircraftMeta = new Map();
 function ensureMeta(id) {
@@ -606,6 +642,10 @@ function updateAircraft(id, data, trackPoint = null) {
   if (aircrafts.has(id)) {
     prev = aircrafts.get(id).data;
   }
+
+  // 預測飛行狀態
+  const flightStatus = predictFlightStatus(data, prev);
+  data.flightStatus = flightStatus;
 
   // 判斷是否暫停
   let paused = false;
@@ -1000,7 +1040,7 @@ async function showAircraftPanel(data, id) {
           <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.departure || '—')}</div>
           <div style="font-size:11px;color:#999;margin-top:2px;">UTC +04:00</div>
         </div>
-        <div style="font-size:32px;color:#ffd500;">✈</div>
+        <div style="font-size:48px;">${data.flightStatus.emoji}</div>
         <div style="text-align:center;">
           <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
           <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
