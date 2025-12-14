@@ -1582,21 +1582,21 @@ function showMetarWidget(metar, icao) {
   if (!widget) {
     widget = document.createElement('div');
     widget.id = 'metarWidget';
-    widget.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.85);color:white;padding:12px;border-radius:8px;font:12px monospace;z-index:9999;min-width:280px;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+    widget.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.9);color:white;padding:10px;border-radius:8px;font:12px monospace;z-index:9999;min-width:220px;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
     document.body.appendChild(widget);
   }
 
   const title = document.createElement("div");
-  title.style.cssText = "font-weight:bold;margin-bottom:8px;font-size:14px;";
+  title.style.cssText = "font-weight:bold;margin-bottom:8px;font-size:13px;";
   title.textContent = `METAR @ ${icao}`;
 
   const searchDiv = document.createElement("div");
-  searchDiv.style.cssText = "margin:6px 0;display:flex;gap:4px;";
+  searchDiv.style.cssText = "margin:6px 0 8px 0;display:flex;gap:4px;";
   
   const searchInput = document.createElement("input");
   searchInput.type = "text";
-  searchInput.placeholder = "ICAO (e.g. RCTP)";
-  searchInput.style.cssText = 'font-size:12px;padding:4px;flex:1;border-radius:3px;border:1px solid #888;background:#232323;color:white;';
+  searchInput.placeholder = "Enter ICAO manually";
+  searchInput.style.cssText = 'font-size:11px;padding:4px 6px;flex:1;border-radius:4px;border:1px solid #555;background:#1a1a1a;color:white;';
   searchInput.maxLength = 4;
   searchInput.value = icao;
   searchInput.addEventListener("input", function() {
@@ -1611,8 +1611,14 @@ function showMetarWidget(metar, icao) {
 
   const searchBtn = document.createElement("button");
   searchBtn.textContent = "Search";
-  searchBtn.style.cssText = "font-size:12px;padding:4px 8px;cursor:pointer;";
+  searchBtn.style.cssText = "font-size:11px;padding:4px 10px;cursor:pointer;background:#333;color:white;border:1px solid #555;border-radius:4px;";
   searchBtn.onclick = manualSearch;
+
+  const refreshBtn = document.createElement("button");
+  refreshBtn.innerHTML = "&#x27F3;";
+  refreshBtn.title = "Refresh";
+  refreshBtn.style.cssText = "font-size:16px;padding:2px 8px;cursor:pointer;background:#333;color:white;border:1px solid #555;border-radius:4px;margin-left:4px;";
+  refreshBtn.onclick = () => manualSearch();
 
   async function manualSearch() {
     const inputVal = searchInput.value.trim().toUpperCase();
@@ -1636,11 +1642,12 @@ function showMetarWidget(metar, icao) {
 
   function addIcon(name, text) {
     const d = document.createElement("div");
-    d.style.cssText = "display:flex;align-items:center;margin-bottom:3px;";
+    d.style.cssText = "display:flex;align-items:center;margin-bottom:4px;";
     const i = document.createElement("img");
     i.src = ICON_MAP[name];
-    i.style.cssText = "width:20px;margin-right:6px;";
+    i.style.cssText = "width:18px;height:18px;margin-right:8px;";
     const t = document.createElement("span");
+    t.style.fontSize = "12px";
     t.textContent = text;
     d.appendChild(i);
     d.appendChild(t);
@@ -1659,20 +1666,21 @@ function showMetarWidget(metar, icao) {
       const dir = w[1] === "VRB" ? 0 : parseInt(w[1]);
       const spd = w[3];
       const d = document.createElement("div");
-      d.style.cssText = "display:flex;align-items:center;margin-bottom:3px;";
+      d.style.cssText = "display:flex;align-items:center;margin-bottom:4px;";
       const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-      svg.setAttribute("width", "20");
-      svg.setAttribute("height", "20");
-      svg.style.cssText = "background:white;border-radius:50%;margin-right:6px;";
-      svg.innerHTML = `<polygon points="10,2 8,10 10,8 12,10" fill="red"/>`;
+      svg.setAttribute("width", "18");
+      svg.setAttribute("height", "18");
+      svg.style.cssText = "background:white;border-radius:50%;margin-right:8px;";
+      svg.innerHTML = `<polygon points="9,2 7,9 9,7.5 11,9" fill="red"/>`;
       svg.style.transform = `rotate(${dir}deg)`;
       const t = document.createElement("span");
+      t.style.fontSize = "12px";
       t.textContent = `${w[1]}° ${spd}kt`;
       d.appendChild(svg);
       d.appendChild(t);
       iconRow.appendChild(d);
     }
-    if (vis) addIcon("visibility", `${parseInt(vis[1]) / 1000} km`);
+    if (vis) addIcon("visibility", `${(parseInt(vis[1]) / 1000).toFixed(3)} km`);
     if (cloudMatches.length) {
       cloudMatches.forEach(cloud => {
         addIcon(`cloud-${cloud[1].toLowerCase()}`, `${cloud[1]} @ ${parseInt(cloud[2]) * 100}ft`);
@@ -1692,14 +1700,6 @@ function showMetarWidget(metar, icao) {
   widget.appendChild(searchDiv);
   widget.appendChild(iconRow);
 }
-
-fetchMETAR("RCTP").then(metar => {
-  if (metar) showMetarWidget(metar, "RCTP");
-  else showMetarWidget(null, "RCTP");
-});
-
-const oldUtcTime = document.getElementById('utcTime');
-if (oldUtcTime) oldUtcTime.remove();
 </script>
 </body>
 </html>
