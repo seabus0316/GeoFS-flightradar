@@ -1527,6 +1527,179 @@ function initializeClocks() {
 setInterval(updateUTCTime, 1000);
 updateUTCTime();
 initializeClocks();
+// ========== METAR System Integration ==========
+const ICON_MAP = {
+  "cloud-ovc": "https://i.ibb.co/KnY57pG/cloud-ovc.png",
+  "cloud-bkn": "https://i.ibb.co/Tx4r0N48/cloud-bkn.png",
+  "cloud-sct": "https://i.ibb.co/S4znY40y/cloud-sct.png",
+  "cloud-few": "https://i.ibb.co/VYfNTq34/cloud-few.png",
+  "visibility": "https://i.ibb.co/3mPWNyw7/visibility.png",
+  "pressure": "https://i.ibb.co/1tMJ2svB/pressure.png",
+  "temperature": "https://i.ibb.co/N0TX606/temperature.png",
+  "fog": "https://i.ibb.co/B2605gZ8/fog.png",
+  "wind": "https://i.ibb.co/rfFL0X8v/wind.png"
+};
+
+function isValidMetarResponse(text) {
+  if (!text || !text.trim()) return false;
+  try {
+    const parsed = JSON.parse(text);
+    if (parsed.type === "FeatureCollection" && parsed.features && Array.isArray(parsed.features) && parsed.features.length === 0) {
+      return false;
+    }
+  } catch (e) {}
+  return true;
+}
+
+async function fetchMETAR(icao) {
+  try {
+    const vatsimRes = await fetch(`https://weather.geo-fs.com/?icao=${icao}`);
+    if (vatsimRes.ok) {
+      const text = await vatsimRes.text();
+      if (isValidMetarResponse(text)) {
+        return text.trim();
+      }
+    }
+  } catch (e) {
+    console.warn("VATSIM METAR fetch failed, trying AVWX:", e);
+  }
+  try {
+    const avwxRes = await fetch(`https://geofs-metar-cors-8pch.onrender.com/metar?icao=${icao}`);
+    if (avwxRes.ok) {
+      const json = await avwxRes.json();
+      if (json && json.raw && json.raw.trim()) {
+        return json.raw.trim();
+      }
+    }
+  } catch (e) {
+    console.error("AVWX METAR fetch failed:", e);
+  }
+  return null;
+}
+
+function showMetarWidget(metar, icao) {
+  let widget = document.getElementById('metarWidget');
+  if (!widget) {
+    widget = document.createElement('div');
+    widget.id = 'metarWidget';
+    widget.style.cssText = 'position:fixed;bottom:20px;right:20px;background:rgba(0,0,0,0.85);color:white;padding:12px;border-radius:8px;font:12px monospace;z-index:9999;min-width:280px;box-shadow:0 2px 8px rgba(0,0,0,0.5);';
+    document.body.appendChild(widget);
+  }
+
+  const title = document.createElement("div");
+  title.style.cssText = "font-weight:bold;margin-bottom:8px;font-size:14px;";
+  title.textContent = `METAR @ ${icao}`;
+
+  const searchDiv = document.createElement("div");
+  searchDiv.style.cssText = "margin:6px 0;display:flex;gap:4px;";
+  
+  const searchInput = document.createElement("input");
+  searchInput.type = "text";
+  searchInput.placeholder = "ICAO (e.g. RCTP)";
+  searchInput.style.cssText = 'font-size:12px;padding:4px;flex:1;border-radius:3px;border:1px solid #888;background:#232323;color:white;';
+  searchInput.maxLength = 4;
+  searchInput.value = icao;
+  searchInput.addEventListener("input", function() {
+    this.value = this.value.replace(/[^a-zA-Z0-9]/g, "").toUpperCase();
+  });
+  searchInput.addEventListener("keydown", function(e) {
+    if (e.key === "Enter") {
+      manualSearch();
+      e.preventDefault();
+    }
+  });
+
+  const searchBtn = document.createElement("button");
+  searchBtn.textContent = "Search";
+  searchBtn.style.cssText = "font-size:12px;padding:4px 8px;cursor:pointer;";
+  searchBtn.onclick = manualSearch;
+
+  async function manualSearch() {
+    const inputVal = searchInput.value.trim().toUpperCase();
+    if (!inputVal || inputVal.length !== 4) {
+      alert("Please enter a valid 4-letter ICAO code");
+      return;
+    }
+    const metar = await fetchMETAR(inputVal);
+    if (metar) {
+      showMetarWidget(metar, inputVal);
+    } else {
+      alert(`No METAR available for ${inputVal}`);
+    }
+  }
+
+  searchDiv.appendChild(searchInput);
+  searchDiv.appendChild(searchBtn);
+
+  const iconRow = document.createElement("div");
+  iconRow.style.marginTop = "8px";
+
+  function addIcon(name, text) {
+    const d = document.createElement("div");
+    d.style.cssText = "display:flex;align-items:center;margin-bottom:3px;";
+    const i = document.createElement("img");
+    i.src = ICON_MAP[name];
+    i.style.cssText = "width:20px;margin-right:6px;";
+    const t = document.createElement("span");
+    t.textContent = text;
+    d.appendChild(i);
+    d.appendChild(t);
+    iconRow.appendChild(d);
+  }
+
+  if (metar) {
+    const w = metar.match(/((\d{3}|VRB))(\d{2})KT/);
+    const vis = metar.match(/ (\d{4}) /);
+    const cloudMatches = [...metar.matchAll(/(FEW|SCT|BKN|OVC)(\d{3})/g)];
+    const temp = metar.match(/ (M?\d{2})\/(M?\d{2}) /);
+    const qnh = metar.match(/Q(\d{4})/);
+    const fog = /FG|BR/.test(metar);
+
+    if (w) {
+      const dir = w[1] === "VRB" ? 0 : parseInt(w[1]);
+      const spd = w[3];
+      const d = document.createElement("div");
+      d.style.cssText = "display:flex;align-items:center;margin-bottom:3px;";
+      const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+      svg.setAttribute("width", "20");
+      svg.setAttribute("height", "20");
+      svg.style.cssText = "background:white;border-radius:50%;margin-right:6px;";
+      svg.innerHTML = `<polygon points="10,2 8,10 10,8 12,10" fill="red"/>`;
+      svg.style.transform = `rotate(${dir}deg)`;
+      const t = document.createElement("span");
+      t.textContent = `${w[1]}° ${spd}kt`;
+      d.appendChild(svg);
+      d.appendChild(t);
+      iconRow.appendChild(d);
+    }
+    if (vis) addIcon("visibility", `${parseInt(vis[1]) / 1000} km`);
+    if (cloudMatches.length) {
+      cloudMatches.forEach(cloud => {
+        addIcon(`cloud-${cloud[1].toLowerCase()}`, `${cloud[1]} @ ${parseInt(cloud[2]) * 100}ft`);
+      });
+    }
+    if (temp) {
+      const t1 = temp[1].replace("M", "-");
+      const t2 = temp[2].replace("M", "-");
+      addIcon("temperature", `${t1}°C / ${t2}°C`);
+    }
+    if (qnh) addIcon("pressure", `Q${qnh[1]}`);
+    if (fog) addIcon("fog", "Fog/Mist");
+  }
+
+  widget.innerHTML = '';
+  widget.appendChild(title);
+  widget.appendChild(searchDiv);
+  widget.appendChild(iconRow);
+}
+
+fetchMETAR("RCTP").then(metar => {
+  if (metar) showMetarWidget(metar, "RCTP");
+  else showMetarWidget(null, "RCTP");
+});
+
+const oldUtcTime = document.getElementById('utcTime');
+if (oldUtcTime) oldUtcTime.remove();
 </script>
 </body>
 </html>
