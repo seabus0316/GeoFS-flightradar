@@ -98,7 +98,6 @@
       transition: var(--transition);
     }
     
-    /* Prevent description box from being resized individually */
     textarea {
       resize: none;
       flex-grow: 1;
@@ -144,6 +143,11 @@
       transform: translateY(-2px);
     }
     
+    button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    
     #msg {
       margin-top: 20px;
       font-weight: bold;
@@ -152,6 +156,7 @@
       border-radius: var(--border-radius);
       width: 100%;
       transition: var(--transition);
+      word-wrap: break-word;
     }
     
     .success {
@@ -218,10 +223,10 @@
         <input type="text" id="tags" name="tags" placeholder="A321,EVA Air,RCSS">
       </div>
       
-<div class="form-group">
-  <label for="userId">User ID (optional):</label>
-  <input type="text" id="userId" name="userId" placeholder="Your GeoFS User ID">
-</div>
+      <div class="form-group">
+        <label for="userId">User ID (optional):</label>
+        <input type="text" id="userId" name="userId" placeholder="Your GeoFS User ID">
+      </div>
 
       <div class="form-group">
         <label>Coordinates (optional):</label>
@@ -231,7 +236,7 @@
         </div>
       </div>
 
-      <button type="submit">Upload Photo</button>
+      <button type="submit" id="submitBtn">Upload Photo</button>
     </form>
 
     <div id="msg"></div>
@@ -240,32 +245,57 @@
   <script>
     const form = document.getElementById('uploadForm');
     const msg = document.getElementById('msg');
+    const submitBtn = document.getElementById('submitBtn');
 
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      
+      // 禁用按鈕防止重複提交
+      submitBtn.disabled = true;
       msg.textContent = '⏳ Uploading...';
       msg.className = 'info';
       
       const fd = new FormData(form);
 
       try {
+        console.log('開始上傳...');
         const res = await fetch('/api/upload', {
           method: 'POST',
           body: fd
         });
-        const data = await res.json();
+        
+        console.log('Response status:', res.status);
+        console.log('Response ok:', res.ok);
+        
+        let data;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+          data = await res.json();
+        } else {
+          const text = await res.text();
+          console.error('Non-JSON response:', text);
+          throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
+        }
+        
+        console.log('Response data:', data);
+        
         if (res.ok) {
           msg.textContent = '✅ Upload successful! Your photo will be displayed after admin approval.';
           msg.className = 'success';
           form.reset();
         } else {
-          msg.textContent = '❌ Upload failed: ' + (data.error || res.statusText);
+          const errorMsg = data.error || res.statusText || 'Unknown error';
+          const details = data.details ? '\n\nDetails: ' + data.details : '';
+          msg.textContent = '❌ Upload failed: ' + errorMsg + details;
           msg.className = 'error';
+          console.error('Upload failed:', data);
         }
       } catch (err) {
-        console.error(err);
-        msg.textContent = '⚠️ An error occurred, please try again later.';
+        console.error('Upload error:', err);
+        msg.textContent = '⚠️ Error: ' + err.message + '\n\nCheck console for details (F12)';
         msg.className = 'error';
+      } finally {
+        submitBtn.disabled = false;
       }
     });
   </script>
