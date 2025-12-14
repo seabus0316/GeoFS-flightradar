@@ -1614,12 +1614,6 @@ function showMetarWidget(metar, icao) {
   searchBtn.style.cssText = "font-size:11px;padding:4px 10px;cursor:pointer;background:#333;color:white;border:1px solid #555;border-radius:4px;";
   searchBtn.onclick = manualSearch;
 
-  const refreshBtn = document.createElement("button");
-  refreshBtn.innerHTML = "&#x27F3;";
-  refreshBtn.title = "Refresh";
-  refreshBtn.style.cssText = "font-size:16px;padding:2px 8px;cursor:pointer;background:#333;color:white;border:1px solid #555;border-radius:4px;margin-left:4px;";
-  refreshBtn.onclick = () => manualSearch();
-
   async function manualSearch() {
     const inputVal = searchInput.value.trim().toUpperCase();
     if (!inputVal || inputVal.length !== 4) {
@@ -1636,6 +1630,77 @@ function showMetarWidget(metar, icao) {
 
   searchDiv.appendChild(searchInput);
   searchDiv.appendChild(searchBtn);
+
+  // 創建時鐘容器
+  const clockContainer = document.createElement("div");
+  clockContainer.style.cssText = "display:flex;justify-content:space-around;margin:8px 0;padding:8px 0;border-top:1px solid #333;border-bottom:1px solid #333;";
+  
+  function createClock(label, timeZone) {
+    const container = document.createElement("div");
+    container.style.cssText = "text-align:center;";
+    
+    const labelDiv = document.createElement("div");
+    labelDiv.textContent = label;
+    labelDiv.style.cssText = "font-size:10px;margin-bottom:4px;color:#aaa;";
+    
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("width", "50");
+    svg.setAttribute("height", "50");
+    svg.setAttribute("viewBox", "0 0 40 40");
+    
+    let hourNow = 12;
+    try {
+      const tStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", timeZone });
+      hourNow = parseInt(tStr, 10);
+    } catch {}
+    
+    const isDay = hourNow >= 6 && hourNow < 18;
+    const clockFaceURL = isDay ? "https://clock-day.short.gy/0Fxzwe" : "https://clock-day.short.gy/2ZpDoNight";
+    const pointerColor = isDay ? "black" : "white";
+    
+    const uniqueId = `clock-${label}-${Date.now()}`;
+    svg.innerHTML = `
+      <defs>
+        <clipPath id="clockClip-${uniqueId}">
+          <circle cx="20" cy="20" r="18"/>
+        </clipPath>
+      </defs>
+      <image href="${clockFaceURL}" x="0" y="0" width="40" height="40" clip-path="url(#clockClip-${uniqueId})"/>
+      <line id="${uniqueId}-hour" x1="20" y1="20" x2="20" y2="11" stroke="${pointerColor}" stroke-width="2"/>
+      <line id="${uniqueId}-minute" x1="20" y1="20" x2="20" y2="7" stroke="${pointerColor}" stroke-width="1"/>
+    `;
+    
+    container.appendChild(labelDiv);
+    container.appendChild(svg);
+    
+    function updateClock() {
+      try {
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString("en-US", {
+          hour12: false, hour: "2-digit", minute: "2-digit", timeZone
+        });
+        const [h, m] = timeStr.split(":").map(Number);
+        const hourHand = svg.querySelector(`#${uniqueId}-hour`);
+        const minuteHand = svg.querySelector(`#${uniqueId}-minute`);
+        if (hourHand && minuteHand) {
+          hourHand.setAttribute("transform", `rotate(${(h % 12) * 30 + m * 0.5} 20 20)`);
+          minuteHand.setAttribute("transform", `rotate(${m * 6} 20 20)`);
+        }
+      } catch (e) {}
+    }
+    
+    updateClock();
+    setInterval(updateClock, 1000);
+    
+    return container;
+  }
+  
+  const utcClock = createClock("UTC", "UTC");
+  const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const localClock = createClock("Asia/Taipei", localTz);
+  
+  clockContainer.appendChild(utcClock);
+  clockContainer.appendChild(localClock);
 
   const iconRow = document.createElement("div");
   iconRow.style.marginTop = "8px";
@@ -1698,12 +1763,18 @@ function showMetarWidget(metar, icao) {
   widget.innerHTML = '';
   widget.appendChild(title);
   widget.appendChild(searchDiv);
+  widget.appendChild(clockContainer);  // 時鐘放在這裡
   widget.appendChild(iconRow);
 }
+// 初始化 METAR
 fetchMETAR("RCTP").then(metar => {
   if (metar) showMetarWidget(metar, "RCTP");
   else showMetarWidget(null, "RCTP");
 });
+
+// 移除右下角的 UTC Time Box
+const oldUtcTime = document.getElementById('utcTime');
+if (oldUtcTime) oldUtcTime.remove();
 </script>
 </body>
 </html>
