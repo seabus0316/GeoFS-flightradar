@@ -65,7 +65,12 @@
 <script>
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
 // Chart.js 仿 Flightradar24 風格
-
+const FLIGHT_STATUS_IMAGES = {
+     'takeoff': 'https://i.ibb.co/VpzRv10F/departure.png',
+     'cruise': 'https://i.ibb.co/XfK5QYtt/airplane-1.png',
+     'landing': 'https://i.ibb.co/bg2LGTTR/landing.png',
+     'ground': 'https://i.ibb.co/pjbB8zzn/airplane.png'
+   };
 let flightChartObj;
 
 // 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
@@ -593,6 +598,7 @@ function clearAllAircraftTracks() {
 
 // 飛行狀態預測函數
 // 飛行狀態預測函數
+// 飛行狀態預測函數
 function predictFlightStatus(data, prev) {
   const alt = data.alt || 0;
   const speed = formatSpeed(data.speed);
@@ -605,28 +611,27 @@ function predictFlightStatus(data, prev) {
   
   // 起飛階段：低空且正在爬升
   if (alt < 10000 && altChange > 100 && speed > 100) {
-    return { status: 'takeoff', rotation: -45, text: 'Taking Off', color: '#4CAF50' };
+    return { status: 'takeoff', text: 'Taking Off', color: '#4CAF50', image: FLIGHT_STATUS_IMAGES.takeoff };
   }
   
   // 降落階段：正在下降且速度適中
   if (altChange < -100 && alt < 15000 && speed > 100) {
-    return { status: 'landing', rotation: 45, text: 'Landing', color: '#FF9800' };
+    return { status: 'landing', text: 'Landing', color: '#FF9800', image: FLIGHT_STATUS_IMAGES.landing };
   }
   
   // 巡航階段：高空且高度穩定
   if (alt > 10000 && Math.abs(altChange) < 200) {
-    return { status: 'cruise', rotation: 0, text: 'Cruising', color: '#2196F3' };
+    return { status: 'cruise', text: 'Cruising', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
   }
   
   // 地面：極低空且速度很慢
   if (alt < 100 && speed < 50) {
-    return { status: 'ground', rotation: 0, text: 'On Ground', color: '#9E9E9E' };
+    return { status: 'ground', text: 'On Ground', color: '#9E9E9E', image: FLIGHT_STATUS_IMAGES.ground };
   }
   
   // 預設為巡航
-  return { status: 'cruise', rotation: 0, text: 'In Flight', color: '#2196F3' };
+  return { status: 'cruise', text: 'In Flight', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
 }
-
 // 更新飛機
 const aircraftMeta = new Map();
 function ensureMeta(id) {
@@ -845,6 +850,12 @@ function removeAircraft(id) {
 async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
   
+    // 🔥 在這裡添加：確保 flightStatus 存在
+  if (!data.flightStatus) {
+    const obj = aircrafts.get(id);
+    const prev = obj && obj.data ? obj.data : null;
+    data.flightStatus = predictFlightStatus(data, prev);
+  }
   
   // 保存展開狀態
   let wasExpanded = false;
@@ -1040,7 +1051,15 @@ async function showAircraftPanel(data, id) {
           <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.departure || '—')}</div>
           <div style="font-size:11px;color:#999;margin-top:2px;">UTC +04:00</div>
         </div>
-        <div style="font-size:48px;color:${data.flightStatus.color};transform:rotate(${data.flightStatus.rotation}deg);transition:transform 0.5s ease,color 0.5s ease;">✈</div>
+        <!-- 飛行狀態圖片 -->
+<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+  <img src="${data.flightStatus?.image || FLIGHT_STATUS_IMAGES.cruise}" 
+       alt="${data.flightStatus?.text || 'In Flight'}" 
+       style="width:64px;height:64px;object-fit:contain;">
+  <div style="font-size:12px;font-weight:600;color:${data.flightStatus?.color || '#2196F3'};">
+    ${data.flightStatus?.text || 'In Flight'}
+  </div>
+</div>
         <div style="text-align:center;">
           <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
           <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
