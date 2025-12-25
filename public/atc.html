@@ -68,9 +68,11 @@ const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.
 // Chart.js 仿 Flightradar24 風格
 const FLIGHT_STATUS_IMAGES = {
      'takeoff': 'https://i.ibb.co/VpzRv10F/departure.png',
-     'cruise': 'https://i.ibb.co/XfK5QYtt/airplane-1.png',
+     'cruise': 'https://i.ibb.co/ywrJMZN/plane.png',
      'landing': 'https://i.ibb.co/bg2LGTTR/landing.png',
-     'ground': 'https://i.ibb.co/pjbB8zzn/airplane.png'
+     'descending': 'https://i.ibb.co/bg2LGTTR/landing.png', 
+     'unknown': 'https://i.ibb.co/Rpc7Jk13/refresh-cw-off.png', 
+     'ground': 'https://i.ibb.co/wZn8KNYD/plane.png'
    };
 let flightChartObj;
 
@@ -597,41 +599,51 @@ function clearAllAircraftTracks() {
   }
 }
 
-// 飛行狀態預測函數
-// 飛行狀態預測函數
-// 飛行狀態預測函數
+// 飛行狀態預測函數 - 新邏輯
 function predictFlightStatus(data, prev) {
-  const alt = data.alt || 0;
+  const altAGL = data.alt || 0; // 假設 alt 已經是 AGL (Above Ground Level)
   const speed = formatSpeed(data.speed);
   
-  // 計算高度變化率
-  let altChange = 0;
-  if (prev && prev.alt !== undefined) {
-    altChange = data.alt - prev.alt;
+  // 計算垂直速度 (vspeed) - 單位: ft/min
+  let vspeed = 0;
+  if (prev && prev.alt !== undefined && prev.ts && data.ts) {
+    const timeDiff = (data.ts - prev.ts) / 60000; // 轉換為分鐘
+    if (timeDiff > 0) {
+      vspeed = (data.alt - prev.alt) / timeDiff;
+    }
   }
   
-  // 起飛階段：低空且正在爬升
-  if (alt < 10000 && altChange > 100 && speed > 100) {
-    return { status: 'takeoff', text: 'Taking Off', color: '#4CAF50', image: FLIGHT_STATUS_IMAGES.takeoff };
-  }
+  // 判斷飛行階段
+  const isOnGround = altAGL < 100;
+  const isClimbing = vspeed > 200;
+  const isDescending = vspeed < -200;
+  const hasFlightPlan = data.flightPlan && data.flightPlan.length > 0;
   
-  // 降落階段：正在下降且速度適中
-  if (altChange < -100 && alt < 15000 && speed > 100) {
-    return { status: 'landing', text: 'Landing', color: '#FF9800', image: FLIGHT_STATUS_IMAGES.landing };
-  }
-  
-  // 巡航階段：高空且高度穩定
-  if (alt > 10000 && Math.abs(altChange) < 200) {
-    return { status: 'cruise', text: 'Cruising', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
-  }
-  
-  // 地面：極低空且速度很慢
-  if (alt < 100 && speed < 50) {
+  // 地面
+  if (isOnGround) {
     return { status: 'ground', text: 'On Ground', color: '#9E9E9E', image: FLIGHT_STATUS_IMAGES.ground };
   }
   
-  // 預設為巡航
-  return { status: 'cruise', text: 'In Flight', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
+  // 爬升
+  if (isClimbing) {
+    return { status: 'climbing', text: 'Climbing', color: '#4CAF50', image: FLIGHT_STATUS_IMAGES.takeoff };
+  }
+  
+  // 下降/降落
+  if (isDescending) {
+    if (hasFlightPlan && altAGL < 5000) {
+      return { status: 'landing', text: 'Landing', color: '#FF9800', image: FLIGHT_STATUS_IMAGES.landing };
+    }
+    return { status: 'descending', text: 'Descending', color: '#FFA726', image: FLIGHT_STATUS_IMAGES.landing };
+  }
+  
+  // 巡航
+  if (altAGL > 5000) {
+    return { status: 'cruising', text: 'Cruising', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
+  }
+  
+  // 未知狀態
+  return { status: 'unknown', text: 'In Flight', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
 }
 // 更新飛機
 const aircraftMeta = new Map();
