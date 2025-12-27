@@ -11,6 +11,19 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <body>
+<!-- Search Box -->
+<div id="searchBox" style="position: fixed; top: 20px; left: 50px; z-index: 10000; width: 240px;">
+  <div style="position: relative;">
+    <input type="text" id="searchInput" placeholder="🔍 Search flight or airport..." 
+           style="width: 100%; padding: 12px 45px 12px 16px; font-size: 14px; border: none; border-radius: 8px; 
+                  background: rgba(255, 255, 255, 0.95); box-shadow: 0 2px 12px rgba(0,0,0,0.2); 
+                  outline: none; font-family: 'Inter', sans-serif;">
+    <button id="clearSearch" style="position: absolute; right: 12px; top: 50%; transform: translateY(-50%); 
+                                     background: none; border: none; font-size: 18px; color: #999; cursor: pointer; display: none;">✕</button>
+  </div>
+  <div id="searchResults" style="display: none; margin-top: 6px; background: white; border-radius: 8px; 
+                                 box-shadow: 0 2px 12px rgba(0,0,0,0.2); max-height: 400px; overflow-y: auto;"></div>
+</div>
   <!-- Photo Map Toggle Button -->
 <button id="photoMapToggle" onclick="togglePhotoMap()">📍 Photo Map</button>
   <!-- 側邊照片面板 -->
@@ -1820,6 +1833,328 @@ fetchMETAR("RCTP").then(metar => {
 // 移除右下角的 UTC Time Box
 const oldUtcTime = document.getElementById('utcTime');
 if (oldUtcTime) oldUtcTime.remove();
+// ========== Search Box System ==========
+const searchInput = document.getElementById('searchInput');
+const searchResults = document.getElementById('searchResults');
+const clearSearchBtn = document.getElementById('clearSearch');
+
+let searchTimeout;
+let airportCache = new Map();
+
+searchInput.addEventListener('input', function() {
+  const query = this.value.trim();
+  clearSearchBtn.style.display = query ? 'block' : 'none';
+  
+  if (!query) {
+    searchResults.style.display = 'none';
+    return;
+  }
+  
+  clearTimeout(searchTimeout);
+  searchTimeout = setTimeout(() => performSearch(query), 300);
+});
+
+clearSearchBtn.addEventListener('click', function() {
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  searchResults.style.display = 'none';
+  searchInput.focus();
+});
+
+searchInput.addEventListener('keydown', function(e) {
+  if (e.key === 'Escape') {
+    this.value = '';
+    clearSearchBtn.style.display = 'none';
+    searchResults.style.display = 'none';
+  }
+});
+
+async function performSearch(query) {
+  const upperQuery = query.toUpperCase();
+  const results = [];
+  
+  // 搜尋航班 (callsign)
+  for (const [id, aircraft] of aircrafts.entries()) {
+    const data = aircraft.data;
+    if (data.callsign && data.callsign.toUpperCase().includes(upperQuery)) {
+      results.push({
+        type: 'flight',
+        id: id,
+        data: data,
+        score: data.callsign.toUpperCase().startsWith(upperQuery) ? 2 : 1
+      });
+    }
+  }
+  
+  // 搜尋機場
+  const airports = await searchAirports(upperQuery);
+  airports.forEach(apt => {
+    results.push({
+      type: 'airport',
+      data: apt,
+      score: apt.ident === upperQuery ? 3 : (apt.ident.startsWith(upperQuery) ? 2 : 1)
+    });
+  });
+  
+  // 排序
+  results.sort((a, b) => b.score - a.score);
+  
+  displaySearchResults(results.slice(0, 10));
+}
+
+async function searchAirports(query) {
+  // 先檢查 cache
+  if (airportCache.has(query)) {
+    return airportCache.get(query);
+  }
+  
+  try {
+    const upperQuery = query.toUpperCase();
+    
+    // 使用 GitHub 的機場資料庫
+    const response = await fetch('https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json');
+    
+    if (!response.ok) throw new Error('Failed to fetch airports database');
+    
+    const airports = await response.json();
+    
+    // 搜尋匹配的機場
+    const results = [];
+    
+    for (const icao in airports) {
+      const apt = airports[icao];
+      const icaoCode = icao.toUpperCase();
+      const name = (apt.name || '').toUpperCase();
+      const iata = (apt.iata || '').toUpperCase();
+      
+      // 檢查是否匹配
+      if (icaoCode.includes(upperQuery) || 
+          name.includes(upperQuery) || 
+          iata.includes(upperQuery)) {
+        
+        results.push({
+          ident: icao,
+          name: apt.name,
+          latitude_deg: apt.lat,
+          longitude_deg: apt.lon,
+          municipality: apt.city,
+          iso_country: apt.country,
+          iata: apt.iata
+        });
+        
+        // 限制結果數量
+        if (results.length >= 10) break;
+      }
+    }
+    
+    // 排序:完全匹配優先
+    results.sort((a, b) => {
+      const aExact = a.ident === upperQuery || a.iata === upperQuery;
+      const bExact = b.ident === upperQuery || b.iata === upperQuery;
+      if (aExact && !bExact) return -1;
+      if (!aExact && bExact) return 1;
+      
+      const aStarts = a.ident.startsWith(upperQuery) || (a.iata && a.iata.startsWith(upperQuery));
+      const bStarts = b.ident.startsWith(upperQuery) || (b.iata && b.iata.startsWith(upperQuery));
+      if (aStarts && !bStarts) return -1;
+      if (!aStarts && bStarts) return 1;
+      
+      return 0;
+    });
+    
+    airportCache.set(query, results);
+    return results;
+    
+  } catch (error) {
+    console.error('Airport search failed:', error);
+    return [];
+  }
+}
+
+function displaySearchResults(results) {
+  if (results.length === 0) {
+    searchResults.innerHTML = `
+      <div style="padding: 20px; text-align: center; color: #999;">
+        No results found
+      </div>
+    `;
+    searchResults.style.display = 'block';
+    return;
+  }
+  
+  searchResults.innerHTML = results.map(result => {
+    if (result.type === 'flight') {
+      const data = result.data;
+      const color = getAltitudeColor(data.alt);
+      return `
+        <div class="search-result-item" onclick="selectFlight('${result.id}')" 
+             style="padding: 12px 16px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 24px;">✈️</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 15px; color: #000;">
+                ${escapeHtml(data.callsign || 'UNKNOWN')}
+              </div>
+              <div style="font-size: 13px; color: #666; margin-top: 2px;">
+                ${escapeHtml(data.type || '??')} • 
+                <span style="color: ${color}; font-weight: 600;">${Math.round(data.alt || 0)}ft</span> • 
+                ${formatSpeed(data.speed)}kt
+              </div>
+              ${data.departure && data.arrival ? `
+                <div style="font-size: 12px; color: #999; margin-top: 2px;">
+                  ${escapeHtml(data.departure.substring(0, 4))} → ${escapeHtml(data.arrival.substring(0, 4))}
+                </div>
+              ` : ''}
+            </div>
+          </div>
+        </div>
+      `;
+    } else {
+      const apt = result.data;
+      return `
+        <div class="search-result-item" onclick="selectAirport(${apt.latitude_deg}, ${apt.longitude_deg}, '${escapeHtml(apt.ident)}', '${escapeHtml(apt.name).replace(/'/g, "\\'")}')"
+             style="padding: 12px 16px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="font-size: 24px;">🛫</div>
+            <div style="flex: 1;">
+              <div style="font-weight: 600; font-size: 15px; color: #000;">
+                ${escapeHtml(apt.ident)}
+              </div>
+              <div style="font-size: 13px; color: #666; margin-top: 2px;">
+                ${escapeHtml(apt.name)}
+              </div>
+              <div style="font-size: 12px; color: #999; margin-top: 2px;">
+                ${apt.municipality ? escapeHtml(apt.municipality) + ', ' : ''}${escapeHtml(apt.iso_country || '')}
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
+  }).join('');
+  
+  searchResults.style.display = 'block';
+  
+  // 添加 hover 效果
+  document.querySelectorAll('.search-result-item').forEach(item => {
+    item.addEventListener('mouseenter', function() {
+      this.style.background = '#f5f5f5';
+    });
+    item.addEventListener('mouseleave', function() {
+      this.style.background = 'white';
+    });
+  });
+}
+
+function selectFlight(aircraftId) {
+  if (!aircrafts.has(aircraftId)) return;
+  
+  const aircraft = aircrafts.get(aircraftId);
+  const data = aircraft.data;
+  
+  // 關閉搜尋結果
+  searchResults.style.display = 'none';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  
+  // 聚焦飛機
+  clearAllAircraftTracks();
+  focusedAircraftId = aircraftId;
+  showAircraftTrack(aircraftId);
+  showAircraftPanel(data, aircraftId);
+  
+  // 平滑移動地圖
+  map.flyTo([data.lat, data.lon], 10, {
+    duration: 1.5,
+    easeLinearity: 0.5
+  });
+}
+
+async function selectAirport(lat, lon, icao, name) {
+  // 關閉搜尋結果
+  searchResults.style.display = 'none';
+  searchInput.value = '';
+  clearSearchBtn.style.display = 'none';
+  
+  // 平滑移動到機場
+  map.flyTo([lat, lon], 12, {
+    duration: 1.5,
+    easeLinearity: 0.5
+  });
+  
+  // 顯示機場 Marker 並加上 permanent tooltip
+  const airportMarker = L.marker([lat, lon], {
+    icon: L.divIcon({
+      html: '<div style="font-size: 32px;">🛫</div>',
+      className: 'airport-marker',
+      iconSize: [40, 40],
+      iconAnchor: [20, 20]
+    }),
+    zIndexOffset: 1000
+  }).addTo(map);
+  
+  // 添加 permanent tooltip 顯示機場位置和 ICAO
+  airportMarker.bindTooltip(`
+    <div style="text-align: center;">
+      <div style="font-weight: 700; font-size: 14px; color: #000;">${escapeHtml(icao)}</div>
+      <div style="font-size: 11px; color: #666; margin-top: 2px;">${escapeHtml(name)}</div>
+    </div>
+  `, {
+    permanent: true,
+    direction: 'top',
+    offset: [0, -20],
+    className: 'airport-tooltip'
+  }).openTooltip();
+  
+  // 10 秒後自動移除 marker 和 tooltip
+  setTimeout(() => {
+    map.removeLayer(airportMarker);
+  }, 10000);
+  
+  // 自動打開 METAR Widget 並查詢該機場天氣
+  const metar = await fetchMETAR(icao);
+  if (metar) {
+    showMetarWidget(metar, icao);
+    
+    // 確保 METAR widget 是打開的
+    const widget = document.getElementById('metarWidget');
+    if (widget) {
+      widget.classList.add('open');
+    }
+  } else {
+    // 即使沒有 METAR 數據，也打開 widget 顯示搜尋框
+    showMetarWidget(null, icao);
+    const widget = document.getElementById('metarWidget');
+    if (widget) {
+      widget.classList.add('open');
+    }
+    
+    // 顯示提示訊息
+    alert(`No METAR data available for ${icao}`);
+  }
+  
+  // 顯示機場資訊 popup (5秒後消失)
+  const popup = L.popup()
+    .setLatLng([lat, lon])
+    .setContent(`
+      <div style="padding: 12px;">
+        <div style="font-weight: 700; font-size: 16px; margin-bottom: 6px; color: #0066cc;">
+          ${escapeHtml(icao)}
+        </div>
+        <div style="font-size: 13px; color: #333; margin-bottom: 4px;">
+          ${escapeHtml(name)}
+        </div>
+        <div style="font-size: 11px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
+          📍 ${lat.toFixed(4)}°, ${lon.toFixed(4)}°
+        </div>
+      </div>
+    `)
+    .openOn(map);
+  
+  setTimeout(() => {
+    map.closePopup(popup);
+  }, 5000);
+}
 </script>
 </body>
 </html>

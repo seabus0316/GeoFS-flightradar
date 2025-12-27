@@ -6,7 +6,17 @@
     transform: rotate(360deg);
   }
 }
+.airport-tooltip {
+  background: rgba(255, 255, 255, 0.95) !important;
+  border: 2px solid #0066cc !important;
+  border-radius: 8px !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25) !important;
+  padding: 8px 12px !important;
+}
 
+.airport-tooltip::before {
+  border-top-color: #0066cc !important;
+}
 .next-waypoint-marker {
   animation: rotate-waypoint 2s linear infinite;
   filter: drop-shadow(0 0 8px rgba(255, 165, 0, 0.8));
