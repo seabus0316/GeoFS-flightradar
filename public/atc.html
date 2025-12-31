@@ -665,495 +665,168 @@ function ensureMeta(id) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
   }
 }
-// ========== 飞机平滑移动系统 ==========
-
-// 为每架飞机添加动画状态
-const aircraftAnimations = new Map();
-
-// 线性插值函数
-function lerp(start, end, t) {
-  return start + (end - start) * t;
-}
-
-// 角度插值（处理360度环绕）
-function lerpAngle(start, end, t) {
-  let diff = end - start;
-  if (diff > 180) diff -= 360;
-  if (diff < -180) diff += 360;
-  return start + diff * t;
-}
-
-// 初始化飞机动画状态
-function initAircraftAnimation(id, data) {
-  if (!aircraftAnimations.has(id)) {
-    aircraftAnimations.set(id, {
-      currentLat: data.lat,
-      currentLon: data.lon,
-      currentHeading: data.heading || 0,
-      targetLat: data.lat,
-      targetLon: data.lon,
-      targetHeading: data.heading || 0,
-      startTime: Date.now(),
-      duration: 0,
-      isAnimating: false
-    });
-  }
-}
-
-// 更新飞机目标位置（收到新数据时调用）
-function setAircraftTarget(id, newData) {
-  const anim = aircraftAnimations.get(id);
-  if (!anim) {
-    initAircraftAnimation(id, newData);
-    return;
-  }
-
-  // 保存当前位置作为起点
-  anim.currentLat = anim.targetLat;
-  anim.currentLon = anim.targetLon;
-  anim.currentHeading = anim.targetHeading;
-
-  // 设置新的目标
-  anim.targetLat = newData.lat;
-  anim.targetLon = newData.lon;
-  anim.targetHeading = newData.heading || 0;
-  
-  // 计算动画时长（根据距离）
-  const distance = calculateDistance(
-    anim.currentLat, anim.currentLon,
-    anim.targetLat, anim.targetLon
-  );
-  
-  // 动画时长：1-5秒，根据距离调整
-  anim.duration = Math.min(Math.max(distance * 100, 1000), 5000);
-  anim.startTime = Date.now();
-  anim.isAnimating = true;
-}
-
-// 动画更新循环
-function animateAircrafts() {
-  const now = Date.now();
-  
-  for (const [id, anim] of aircraftAnimations.entries()) {
-    if (!anim.isAnimating) continue;
-    
-    const aircraft = aircrafts.get(id);
-    if (!aircraft) continue;
-
-    // 计算动画进度 (0-1)
-    const elapsed = now - anim.startTime;
-    let progress = elapsed / anim.duration;
-    
-    if (progress >= 1) {
-      progress = 1;
-      anim.isAnimating = false;
-    }
-
-    // 使用缓动函数（easeOutCubic）让移动更自然
-    const eased = 1 - Math.pow(1 - progress, 3);
-
-    // 插值计算当前位置
-    const currentLat = lerp(anim.currentLat, anim.targetLat, eased);
-    const currentLon = lerp(anim.currentLon, anim.targetLon, eased);
-    const currentHeading = lerpAngle(anim.currentHeading, anim.targetHeading, eased);
-
-    // 更新marker位置
-    const marker = aircraft.marker;
-    marker.setLatLng([currentLat, currentLon]);
-
-    // 更新图标旋转
-    const el = marker.getElement && marker.getElement();
-    if (el) {
-      const img = el.querySelector('img');
-      if (img) {
-        img.style.transform = `rotate(${currentHeading}deg)`;
-        img.style.transition = 'none'; // 禁用CSS transition，使用JS动画
-      }
-    }
-  }
-
-  requestAnimationFrame(animateAircrafts);
-}
-
-// 启动动画循环
-animateAircrafts();
-
-// ========== 修改原有的 updateAircraft 函数 ==========
 
 function updateAircraft(id, data, trackPoint = null) {
-  ensureMeta(id);
-
-  let prev = null;
-  if (aircrafts.has(id)) {
-    prev = aircrafts.get(id).data;
-  }
-
-  const flightStatus = predictFlightStatus(data, prev);
-  data.flightStatus = flightStatus;
-
-  let paused = false;
-  if (prev) {
-    paused =
-      prev.alt === data.alt &&
-      prev.speed === data.speed &&
-      prev.heading === data.heading &&
-      prev.lat === data.lat &&
-      prev.lon === data.lon;
-  }
-
-  const latlng = [data.lat, data.lon];
-  const color = getAltitudeColor(data.alt);
-  const isEmergency = data.squawk === '7700';
-  const labelClass = isEmergency ? 'label emergency' : 'label';
+  // 1. 取得或建立飛機物件
+  let isNew = false;
   const now = Date.now();
+  
+  if (!aircrafts.has(id)) {
+    isNew = true;
+    // 新飛機：直接建立 Marker
+    const marker = L.marker([data.lat, data.lon], {icon: makeDivIcon(data)}).addTo(map);
+    
+    // 點擊事件
+    marker.on('click', async () => {
+      clearAllAircraftTracks();
+      focusedAircraftId = id;
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+      
+      const history = await loadHistoryFromBackend(id);
+      if (history && history.tracks) {
+        const obj = aircrafts.get(id);
+        if (obj) {
+          obj.rawTrack = [];
+          obj.rawPathForDisplay = [];
+          history.tracks.forEach(t => {
+            obj.rawTrack.push({lat: t.lat, lon: t.lon, alt: t.alt||0, speed: t.speed||0, ts: t.ts});
+            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt||0, t.speed||0]);
+          });
+          showAircraftTrack(id);
+        }
+      }
+      map.setView([data.lat, data.lon], map.getZoom(), {animate: true});
+    });
 
-  if (aircrafts.has(id)) {
-    const obj = aircrafts.get(id);
-    obj.lastSeen = now;
-    obj.data = data;
-    obj.paused = paused;
+    aircrafts.set(id, {
+      marker,
+      displayPath: [],
+      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:now, alt:data.alt, speed:data.speed}] : [],
+      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
+      segments: [],
+      lastSeen: now,
+      data: data,
+      paused: false,
+      lastPacketTs: now // 用於計算動畫時間
+    });
+  }
 
-    const el = obj.marker.getElement && obj.marker.getElement();
-    if (el) el.style.opacity = paused ? "0.3" : "1";
+  // 2. 處理資料更新
+  const obj = aircrafts.get(id);
+  const prevData = obj.data;
 
-    if (paused) return;
+  // 預測狀態 (爬升/巡航/降落)
+  data.flightStatus = predictFlightStatus(data, prevData);
+  
+  // 檢查是否暫停 (數值完全沒變)
+  const isPaused = prevData && 
+                   prevData.lat === data.lat && 
+                   prevData.lon === data.lon && 
+                   prevData.alt === data.alt;
+                   
+  obj.paused = isPaused;
+  const el = obj.marker.getElement();
+  if (el) el.style.opacity = isPaused ? "0.5" : "1";
 
-    // 🔥 关键：使用平滑动画而不是直接setLatLng
-    initAircraftAnimation(id, data);
-    setAircraftTarget(id, data);
+  // 更新儲存的資料
+  obj.data = data;
+  obj.lastSeen = now;
 
-    // 记录轨迹数据
-    if (trackPoint) {
-      if (!obj.rawTrack) obj.rawTrack = [];
-      obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed});
-      if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
-    }
+  // 3. 設定平滑動畫目標 (核心修改部分)
+  if (!isNew && !isPaused) {
+    // 計算兩次封包的時間差，作為這次移動的動畫時間
+    // 如果時間差太久(>5秒)或太短(<0.2秒)，使用預設值 1000ms
+    let duration = now - obj.lastPacketTs;
+    if (duration > 5000 || duration < 200) duration = 1000; 
+    
+    // 取得當前 Marker 實際顯示的位置 (作為動畫起點)
+    const currentLatLng = obj.marker.getLatLng();
+    
+    obj.anim = {
+      startLat: currentLatLng.lat,
+      startLon: currentLatLng.lng,
+      endLat: data.lat,
+      endLon: data.lon,
+      startHeading: prevData.heading || 0,
+      endHeading: data.heading || 0,
+      startTime: now,
+      duration: duration
+    };
+  }
+  
+  obj.lastPacketTs = now; // 更新時間戳記
+
+  // 4. 記錄軌跡資料 (邏輯不變)
+  if (!obj.paused && trackPoint) {
+    if (!obj.rawTrack) obj.rawTrack = [];
+    obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed});
+    if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
+    
     if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
     obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
-
-    // 更新标签内容（不影响位置动画）
-    const meta = aircraftMeta.get(id);
-    const elapsed = now - meta.lastRender;
-    
-    if (elapsed >= 1000) {
-      const m = obj.marker;
-      const el = m.getElement && m.getElement();
-      if (el) {
-        const label = el.querySelector('.label');
-        if (label) {
-          const depShort = (data.departure||'').substring(0, 4);
-          const arrShort = (data.arrival||'').substring(0, 4);
-          const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-          
-          label.className = labelClass;
-          label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
-            <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
-            <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
-            ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
-          label.style.borderLeft = `3px solid ${color}`;
-        }
-      }
-      meta.lastRender = now;
-    }
-
-    document.getElementById('connCount').textContent = aircrafts.size;
-    if (id === focusedAircraftId) {
-      showAircraftTrack(id);
-    }
-  } else {
-    // 新飞机
-    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
-    
-    // 初始化动画状态
-    initAircraftAnimation(id, data);
-    
-    marker.on('click', async () => {
-      clearAllAircraftTracks();
-      focusedAircraftId = id;
-      showAircraftTrack(id);
-      showAircraftPanel(data, id);
-      
-      const history = await loadHistoryFromBackend(id);
-      if (history && history.tracks && history.tracks.length > 0) {
-        const obj = aircrafts.get(id);
-        if (obj) {
-          obj.rawTrack = [];
-          obj.rawPathForDisplay = [];
-          
-          history.tracks.forEach(t => {
-            obj.rawTrack.push({
-              lat: t.lat,
-              lon: t.lon,
-              alt: t.alt || 0,
-              speed: t.speed || 0,
-              ts: t.ts
-            });
-            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
-          });
-          
-          showAircraftTrack(id);
-          showAircraftPanel(data, id);
-        }
-      }
-      
-      map.setView([data.lat, data.lon], map.getZoom(), {
-        animate: true,
-        duration: 0.5
-      });
-    });
-    
-    aircrafts.set(id, {
-      marker,
-      displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
-      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:now, alt:data.alt, speed: data.speed}] : [],
-      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
-      segments: [],
-      lastSeen: now,
-      data,
-      paused: false
-    });
-    aircraftMeta.get(id).lastRender = now;
   }
 
-  if (id === focusedAircraftId) {
-    showAircraftPanel(data, id);
-    
-    if (nextWaypointMarker) {
-      map.removeLayer(nextWaypointMarker);
-      nextWaypointMarker = null;
-    }
-    
-    if (data.nextWaypoint && data.flightPlan && Array.isArray(data.flightPlan)) {
-      const nextWp = data.flightPlan.find(wp => 
-        (wp.ident || wp.name) === data.nextWaypoint
-      );
+  // 5. 更新標籤文字 (不移動位置，只更新文字與顏色)
+  if (el) {
+    const label = el.querySelector('.label');
+    if (label) {
+      const color = getAltitudeColor(data.alt);
+      const isEmergency = data.squawk === '7700';
+      const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+      const depShort = (data.departure||'').substring(0, 4);
+      const arrShort = (data.arrival||'').substring(0, 4);
       
-      if (nextWp && !isNaN(Number(nextWp.lat)) && !isNaN(Number(nextWp.lon))) {
-        const nextWpIcon = L.divIcon({
-          html: `<img src="${NEXT_WAYPOINT_IMG}" class="next-waypoint-marker" style="width: 32px; height: 32px;">`,
-          className: '',
-          iconSize: [32, 32],
-          iconAnchor: [16, 16]
-        });
-        
-        nextWaypointMarker = L.marker(
-          [Number(nextWp.lat), Number(nextWp.lon)], 
-          { 
-            icon: nextWpIcon,
-            pane: 'waypointPane',
-            zIndexOffset: 1000
-          }
-        ).addTo(map);
-        
-        nextWaypointMarker.bindTooltip(
-          `🎯 NEXT: ${data.nextWaypoint}`, 
-          {
-            permanent: true,
-            direction: 'top',
-            className: 'waypoint-tooltip',
-            offset: [0, -16]
-          }
-        );
-      }
+      label.className = isEmergency ? 'label emergency' : 'label';
+      label.style.borderLeft = `3px solid ${color}`;
+      label.innerHTML = `
+        <strong>${escapeHtml(data.callsign||'UNK')}</strong>
+        <div style="font-size:11px;">
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
+        </div>
+        <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+      `;
     }
+  }
+
+  // 更新連線數
+  const connCountEl = document.getElementById('connCount');
+  if(connCountEl) connCountEl.textContent = aircrafts.size;
+
+  // 如果是焦點飛機，更新軌跡與面板
+  if (id === focusedAircraftId) {
+    // 這裡我們稍微節流一下軌跡重繪，避免太頻繁
+    if (!obj.lastTrackUpdate || now - obj.lastTrackUpdate > 1000) {
+        showAircraftTrack(id);
+        obj.lastTrackUpdate = now;
+    }
+    showAircraftPanel(data, id);
+    updateNextWaypointMarker(data); // 抽出更新 Waypoint 的邏輯
   }
 }
-function updateAircraft(id, data, trackPoint = null) {
-  ensureMeta(id);
 
-  // 取得前一次資料
-  let prev = null;
-  if (aircrafts.has(id)) {
-    prev = aircrafts.get(id).data;
-  }
-
-  // 預測飛行狀態
-  const flightStatus = predictFlightStatus(data, prev);
-  data.flightStatus = flightStatus;
-
-  // 判斷是否暫停
-  let paused = false;
-  if (prev) {
-    paused =
-      prev.alt === data.alt &&
-      prev.speed === data.speed &&
-      prev.heading === data.heading &&
-      prev.lat === data.lat &&
-      prev.lon === data.lon;
-  }
-
-  // 設定 paused 狀態
-  if (aircrafts.has(id)) {
-    aircrafts.get(id).paused = paused;
-    const obj = aircrafts.get(id);
-    const el = obj.marker.getElement && obj.marker.getElement();
-    if (el) el.style.opacity = paused ? "0.3" : "1";
-    if (paused) return; // 直接 return，不記錄資料、不更新
-  }
-
-  // 只有沒 paused 時才 push 新資料到 rawTrack 跟 rawPathForDisplay
-  const latlng = [data.lat, data.lon];
-  const color = getAltitudeColor(data.alt);
-  const isEmergency = data.squawk === '7700';
-  const labelClass = isEmergency ? 'label emergency' : 'label';
-  const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-  const now = Date.now();
-  map.createPane('waypointPane');
-  map.getPane('waypointPane').style.zIndex = 401;
-  ensureMeta(id);
-  if (aircrafts.has(id)) {
-    const obj = aircrafts.get(id);
-    obj.lastSeen = now;
-    obj.data = data;
-    if (!obj.paused) { // 只有沒 paused 才記錄資料
-      if (trackPoint) {
-        if (!obj.rawTrack) obj.rawTrack = [];
-        obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed});
-        if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
-      }
-      if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
-      obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
-    }
-    const meta = aircraftMeta.get(id);
-    const elapsed = now - meta.lastRender;
-    let shouldRender = false;
-    if (elapsed >= 1000) shouldRender = true;
-    else if (obj.displayPath && obj.displayPath.length > 0) {
-      const prevPath = obj.displayPath[obj.displayPath.length-1];
-      const d = calculateDistance(prevPath[0], prevPath[1], latlng[0], latlng[1]);
-      if (d > 1) shouldRender = true;
-    } else shouldRender = true;
-    if (shouldRender && !meta.pending) {
-      meta.pending = () => {
-        const m = obj.marker;
-        m.setLatLng(latlng);
-        const el = m.getElement && m.getElement();
-        if (el) {
-          const img = el.querySelector('img');
-          if (img) img.style.transform = `rotate(${data.heading || 0}deg)`;
-          const label = el.querySelector('.label');
-          if (label) {
-            const depShort = (data.departure||'').substring(0, 4);
-            const arrShort = (data.arrival||'').substring(0, 4);
-            label.className = labelClass;
-            label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
-              <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
-              <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
-              ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
-            label.style.borderLeft = `3px solid ${color}`;
-          }
-        } else {
-          m.setIcon(makeDivIcon(data));
-        }
-        meta.lastRender = Date.now();
-        meta.pending = null;
-        document.getElementById('connCount').textContent = aircrafts.size;
-        if (id === focusedAircraftId) {
-          showAircraftTrack(id);
-        }
-      };
-      requestAnimationFrame(meta.pending);
-    }
-  } else {
-    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
-    marker.on('click', async () => {
-      clearAllAircraftTracks();
-      focusedAircraftId = id;
-      
-      // 先顯示現有軌跡
-      showAircraftTrack(id);
-      showAircraftPanel(data, id);
-      
-      // 然後載入完整歷史資料
-      const history = await loadHistoryFromBackend(id);
-      if (history && history.tracks && history.tracks.length > 0) {
-        const obj = aircrafts.get(id);
-        if (obj) {
-          // 清空現有資料
-          obj.rawTrack = [];
-          obj.rawPathForDisplay = [];
-          
-          // 加入歷史資料
-          history.tracks.forEach(t => {
-            obj.rawTrack.push({
-              lat: t.lat,
-              lon: t.lon,
-              alt: t.alt || 0,
-              speed: t.speed || 0,
-              ts: t.ts
-            });
-            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
-          });
-          
-          // 重新顯示完整軌跡
-          showAircraftTrack(id);
-          showAircraftPanel(data, id);
-          console.log(`✅ Loaded ${history.tracks.length} history points for ${id}`);
-        }
-      }
-      
-      map.setView([data.lat, data.lon], map.getZoom(), {
-        animate: true,
-        duration: 0.5
-      });
-    });
-    aircrafts.set(id, {
-      marker,
-      displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
-      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:now, alt:data.alt, speed: data.speed}] : [],
-      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
-      segments: [],
-      lastSeen: now,
-      data,
-      paused: false
-    });
-    aircraftMeta.get(id).lastRender = now;
-  }
-if (id === focusedAircraftId) {
-  showAircraftPanel(data, id);
-  
-  // 清除舊的下一個航點標記
+// 輔助函數：更新 Next Waypoint Marker (從原 updateAircraft 抽出)
+function updateNextWaypointMarker(data) {
   if (nextWaypointMarker) {
     map.removeLayer(nextWaypointMarker);
     nextWaypointMarker = null;
   }
-  
-  // 顯示下一個航點標記（使用 CSS 動畫）
   if (data.nextWaypoint && data.flightPlan && Array.isArray(data.flightPlan)) {
-    const nextWp = data.flightPlan.find(wp => 
-      (wp.ident || wp.name) === data.nextWaypoint
-    );
-    
+    const nextWp = data.flightPlan.find(wp => (wp.ident || wp.name) === data.nextWaypoint);
     if (nextWp && !isNaN(Number(nextWp.lat)) && !isNaN(Number(nextWp.lon))) {
-      // 使用 divIcon 以便套用 CSS 動畫
       const nextWpIcon = L.divIcon({
         html: `<img src="${NEXT_WAYPOINT_IMG}" class="next-waypoint-marker" style="width: 32px; height: 32px;">`,
-        className: '',
-        iconSize: [32, 32],
-        iconAnchor: [16, 16]
+        className: '', iconSize: [32, 32], iconAnchor: [16, 16]
       });
-      
-      nextWaypointMarker = L.marker(
-        [Number(nextWp.lat), Number(nextWp.lon)], 
-        { 
-          icon: nextWpIcon,
-          pane: 'waypointPane',
-          zIndexOffset: 1000
-        }
-      ).addTo(map);
-      
-      nextWaypointMarker.bindTooltip(
-        `🎯 NEXT: ${data.nextWaypoint}`, 
-        {
-          permanent: true,
-          direction: 'top',
-          className: 'waypoint-tooltip',
-          offset: [0, -16]
-        }
-      );
+      nextWaypointMarker = L.marker([Number(nextWp.lat), Number(nextWp.lon)], { 
+        icon: nextWpIcon, pane: 'waypointPane', zIndexOffset: 1000
+      }).addTo(map);
+      nextWaypointMarker.bindTooltip(`🎯 NEXT: ${data.nextWaypoint}`, {
+        permanent: true, direction: 'top', className: 'waypoint-tooltip', offset: [0, -16]
+      });
     }
   }
-}
 }
 function removeAircraft(id) {
   if (aircrafts.has(id)) {
@@ -1770,6 +1443,55 @@ else if (m.type === 'aircraft_track_history') {
   ws.addEventListener('error', () => ws.close());
 }
 connectWS();
+
+// ========== 平滑移動動畫系統 ==========
+
+// 計算最短旋轉角度 (處理 359° -> 1° 的過渡)
+function getShortestAngleDiff(start, end) {
+  let diff = (end - start + 180) % 360 - 180;
+  return diff < -180 ? diff + 360 : diff;
+}
+
+// 動畫迴圈
+function animateAircrafts() {
+  const now = Date.now();
+  
+  aircrafts.forEach((obj, id) => {
+    // 如果沒有動畫目標，或已經暫停，就跳過
+    if (!obj.anim || obj.paused) return;
+    
+    const elapsed = now - obj.anim.startTime;
+    let progress = elapsed / obj.anim.duration;
+    
+    // 限制進度在 0 到 1 之間 (如果網路延遲，飛機會停在目標點等待)
+    if (progress > 1) progress = 1;
+    
+    // 計算當前位置 (線性插值)
+    const currentLat = obj.anim.startLat + (obj.anim.endLat - obj.anim.startLat) * progress;
+    const currentLon = obj.anim.startLon + (obj.anim.endLon - obj.anim.startLon) * progress;
+    
+    // 計算當前航向 (平滑旋轉)
+    const headingDiff = getShortestAngleDiff(obj.anim.startHeading, obj.anim.endHeading);
+    const currentHeading = obj.anim.startHeading + (headingDiff * progress);
+    
+    // 更新 Leaflet Marker 位置
+    obj.marker.setLatLng([currentLat, currentLon]);
+    
+    // 更新飛機圖示旋轉
+    const el = obj.marker.getElement();
+    if (el) {
+      const img = el.querySelector('img');
+      if (img) {
+        img.style.transform = `rotate(${currentHeading}deg)`;
+      }
+    }
+  });
+  
+  requestAnimationFrame(animateAircrafts);
+}
+
+// 啟動動畫迴圈
+requestAnimationFrame(animateAircrafts);
 
 function updateUTCTime() {
   const now = new Date();
