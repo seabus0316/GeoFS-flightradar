@@ -665,6 +665,299 @@ function ensureMeta(id) {
     aircraftMeta.set(id, { lastRender: 0, pending: null });
   }
 }
+// ========== 飞机平滑移动系统 ==========
+
+// 为每架飞机添加动画状态
+const aircraftAnimations = new Map();
+
+// 线性插值函数
+function lerp(start, end, t) {
+  return start + (end - start) * t;
+}
+
+// 角度插值（处理360度环绕）
+function lerpAngle(start, end, t) {
+  let diff = end - start;
+  if (diff > 180) diff -= 360;
+  if (diff < -180) diff += 360;
+  return start + diff * t;
+}
+
+// 初始化飞机动画状态
+function initAircraftAnimation(id, data) {
+  if (!aircraftAnimations.has(id)) {
+    aircraftAnimations.set(id, {
+      currentLat: data.lat,
+      currentLon: data.lon,
+      currentHeading: data.heading || 0,
+      targetLat: data.lat,
+      targetLon: data.lon,
+      targetHeading: data.heading || 0,
+      startTime: Date.now(),
+      duration: 0,
+      isAnimating: false
+    });
+  }
+}
+
+// 更新飞机目标位置（收到新数据时调用）
+function setAircraftTarget(id, newData) {
+  const anim = aircraftAnimations.get(id);
+  if (!anim) {
+    initAircraftAnimation(id, newData);
+    return;
+  }
+
+  // 保存当前位置作为起点
+  anim.currentLat = anim.targetLat;
+  anim.currentLon = anim.targetLon;
+  anim.currentHeading = anim.targetHeading;
+
+  // 设置新的目标
+  anim.targetLat = newData.lat;
+  anim.targetLon = newData.lon;
+  anim.targetHeading = newData.heading || 0;
+  
+  // 计算动画时长（根据距离）
+  const distance = calculateDistance(
+    anim.currentLat, anim.currentLon,
+    anim.targetLat, anim.targetLon
+  );
+  
+  // 动画时长：1-5秒，根据距离调整
+  anim.duration = Math.min(Math.max(distance * 100, 1000), 5000);
+  anim.startTime = Date.now();
+  anim.isAnimating = true;
+}
+
+// 动画更新循环
+function animateAircrafts() {
+  const now = Date.now();
+  
+  for (const [id, anim] of aircraftAnimations.entries()) {
+    if (!anim.isAnimating) continue;
+    
+    const aircraft = aircrafts.get(id);
+    if (!aircraft) continue;
+
+    // 计算动画进度 (0-1)
+    const elapsed = now - anim.startTime;
+    let progress = elapsed / anim.duration;
+    
+    if (progress >= 1) {
+      progress = 1;
+      anim.isAnimating = false;
+    }
+
+    // 使用缓动函数（easeOutCubic）让移动更自然
+    const eased = 1 - Math.pow(1 - progress, 3);
+
+    // 插值计算当前位置
+    const currentLat = lerp(anim.currentLat, anim.targetLat, eased);
+    const currentLon = lerp(anim.currentLon, anim.targetLon, eased);
+    const currentHeading = lerpAngle(anim.currentHeading, anim.targetHeading, eased);
+
+    // 更新marker位置
+    const marker = aircraft.marker;
+    marker.setLatLng([currentLat, currentLon]);
+
+    // 更新图标旋转
+    const el = marker.getElement && marker.getElement();
+    if (el) {
+      const img = el.querySelector('img');
+      if (img) {
+        img.style.transform = `rotate(${currentHeading}deg)`;
+        img.style.transition = 'none'; // 禁用CSS transition，使用JS动画
+      }
+    }
+  }
+
+  requestAnimationFrame(animateAircrafts);
+}
+
+// 启动动画循环
+animateAircrafts();
+
+// ========== 修改原有的 updateAircraft 函数 ==========
+
+function updateAircraft(id, data, trackPoint = null) {
+  ensureMeta(id);
+
+  let prev = null;
+  if (aircrafts.has(id)) {
+    prev = aircrafts.get(id).data;
+  }
+
+  const flightStatus = predictFlightStatus(data, prev);
+  data.flightStatus = flightStatus;
+
+  let paused = false;
+  if (prev) {
+    paused =
+      prev.alt === data.alt &&
+      prev.speed === data.speed &&
+      prev.heading === data.heading &&
+      prev.lat === data.lat &&
+      prev.lon === data.lon;
+  }
+
+  const latlng = [data.lat, data.lon];
+  const color = getAltitudeColor(data.alt);
+  const isEmergency = data.squawk === '7700';
+  const labelClass = isEmergency ? 'label emergency' : 'label';
+  const now = Date.now();
+
+  if (aircrafts.has(id)) {
+    const obj = aircrafts.get(id);
+    obj.lastSeen = now;
+    obj.data = data;
+    obj.paused = paused;
+
+    const el = obj.marker.getElement && obj.marker.getElement();
+    if (el) el.style.opacity = paused ? "0.3" : "1";
+
+    if (paused) return;
+
+    // 🔥 关键：使用平滑动画而不是直接setLatLng
+    initAircraftAnimation(id, data);
+    setAircraftTarget(id, data);
+
+    // 记录轨迹数据
+    if (trackPoint) {
+      if (!obj.rawTrack) obj.rawTrack = [];
+      obj.rawTrack.push({lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed});
+      if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
+    }
+    if (!obj.rawPathForDisplay) obj.rawPathForDisplay = [];
+    obj.rawPathForDisplay.push([data.lat, data.lon, data.alt, data.speed]);
+
+    // 更新标签内容（不影响位置动画）
+    const meta = aircraftMeta.get(id);
+    const elapsed = now - meta.lastRender;
+    
+    if (elapsed >= 1000) {
+      const m = obj.marker;
+      const el = m.getElement && m.getElement();
+      if (el) {
+        const label = el.querySelector('.label');
+        if (label) {
+          const depShort = (data.departure||'').substring(0, 4);
+          const arrShort = (data.arrival||'').substring(0, 4);
+          const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
+          
+          label.className = labelClass;
+          label.innerHTML = `<strong>${escapeHtml(data.callsign||'UNK')}</strong>
+            <div style="font-size:11px;">${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt</div>
+            <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+            ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}`;
+          label.style.borderLeft = `3px solid ${color}`;
+        }
+      }
+      meta.lastRender = now;
+    }
+
+    document.getElementById('connCount').textContent = aircrafts.size;
+    if (id === focusedAircraftId) {
+      showAircraftTrack(id);
+    }
+  } else {
+    // 新飞机
+    const marker = L.marker(latlng, {icon: makeDivIcon(data)}).addTo(map);
+    
+    // 初始化动画状态
+    initAircraftAnimation(id, data);
+    
+    marker.on('click', async () => {
+      clearAllAircraftTracks();
+      focusedAircraftId = id;
+      showAircraftTrack(id);
+      showAircraftPanel(data, id);
+      
+      const history = await loadHistoryFromBackend(id);
+      if (history && history.tracks && history.tracks.length > 0) {
+        const obj = aircrafts.get(id);
+        if (obj) {
+          obj.rawTrack = [];
+          obj.rawPathForDisplay = [];
+          
+          history.tracks.forEach(t => {
+            obj.rawTrack.push({
+              lat: t.lat,
+              lon: t.lon,
+              alt: t.alt || 0,
+              speed: t.speed || 0,
+              ts: t.ts
+            });
+            obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
+          });
+          
+          showAircraftTrack(id);
+          showAircraftPanel(data, id);
+        }
+      }
+      
+      map.setView([data.lat, data.lon], map.getZoom(), {
+        animate: true,
+        duration: 0.5
+      });
+    });
+    
+    aircrafts.set(id, {
+      marker,
+      displayPath: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
+      rawTrack: trackPoint ? [{lat:data.lat, lon:data.lon, ts:now, alt:data.alt, speed: data.speed}] : [],
+      rawPathForDisplay: trackPoint ? [[data.lat, data.lon, data.alt, data.speed]] : [],
+      segments: [],
+      lastSeen: now,
+      data,
+      paused: false
+    });
+    aircraftMeta.get(id).lastRender = now;
+  }
+
+  if (id === focusedAircraftId) {
+    showAircraftPanel(data, id);
+    
+    if (nextWaypointMarker) {
+      map.removeLayer(nextWaypointMarker);
+      nextWaypointMarker = null;
+    }
+    
+    if (data.nextWaypoint && data.flightPlan && Array.isArray(data.flightPlan)) {
+      const nextWp = data.flightPlan.find(wp => 
+        (wp.ident || wp.name) === data.nextWaypoint
+      );
+      
+      if (nextWp && !isNaN(Number(nextWp.lat)) && !isNaN(Number(nextWp.lon))) {
+        const nextWpIcon = L.divIcon({
+          html: `<img src="${NEXT_WAYPOINT_IMG}" class="next-waypoint-marker" style="width: 32px; height: 32px;">`,
+          className: '',
+          iconSize: [32, 32],
+          iconAnchor: [16, 16]
+        });
+        
+        nextWaypointMarker = L.marker(
+          [Number(nextWp.lat), Number(nextWp.lon)], 
+          { 
+            icon: nextWpIcon,
+            pane: 'waypointPane',
+            zIndexOffset: 1000
+          }
+        ).addTo(map);
+        
+        nextWaypointMarker.bindTooltip(
+          `🎯 NEXT: ${data.nextWaypoint}`, 
+          {
+            permanent: true,
+            direction: 'top',
+            className: 'waypoint-tooltip',
+            offset: [0, -16]
+          }
+        );
+      }
+    }
+  }
+}
 function updateAircraft(id, data, trackPoint = null) {
   ensureMeta(id);
 
