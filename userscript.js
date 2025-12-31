@@ -3,7 +3,7 @@
 
   /*** CONFIG ***/
   const WS_URL = 'wss://geofs-flightradar.duckdns.org/ws';
-  const SEND_INTERVAL_MS = 500;
+  const SEND_INTERVAL_MS = 1500;
   /*************/
 
     // ===== 新增 Modal 函數 =====
