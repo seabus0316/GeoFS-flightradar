@@ -1256,21 +1256,6 @@ async function showAircraftPanel(data, id) {
         return '';
       })()}
     </div>
-        <!-- 飛行狀態圖片 -->
-<div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-  <img src="${data.flightStatus?.image || FLIGHT_STATUS_IMAGES.cruise}" 
-       alt="${data.flightStatus?.text || 'In Flight'}" 
-       style="width:64px;height:64px;object-fit:contain;">
-  <div style="font-size:12px;font-weight:600;color:${data.flightStatus?.color || '#2196F3'};">
-    ${data.flightStatus?.text || 'In Flight'}
-  </div>
-</div>
-        <div style="text-align:center;">
-          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
-          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
-          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +00:00</div>
-        </div>
-      </div>
 
     <!-- Expandable Toggle -->
     <button id="expandBtn" style="width:100%;background:#fff;border:none;border-bottom:1px solid #e0e0e0;
