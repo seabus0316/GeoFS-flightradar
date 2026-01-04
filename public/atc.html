@@ -1186,14 +1186,35 @@ async function showAircraftPanel(data, id) {
     <!-- Hero Image -->
     ${photosHtml}
 
-<!-- Progress Bar Only -->
+    <!-- Route Block -->
     <div style="background:#fff;padding:24px 16px;border-bottom:1px solid #e0e0e0;">
+      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;margin-bottom:16px;">
+        <div style="text-align:center;">
+          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(depShort)}</div>
+          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.departure || '—')}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +04:00</div>
+        </div>
+        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
+          <img src="${data.flightStatus?.image || FLIGHT_STATUS_IMAGES.cruise}" 
+               alt="${data.flightStatus?.text || 'In Flight'}" 
+               style="width:64px;height:64px;object-fit:contain;">
+          <div style="font-size:12px;font-weight:600;color:${data.flightStatus?.color || '#2196F3'};">
+            ${data.flightStatus?.text || 'In Flight'}
+          </div>
+        </div>
+        <div style="text-align:center;">
+          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
+          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
+          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +00:00</div>
+        </div>
+      </div>
+
       ${(() => {
         const flightProgress = calculateFlightProgress(data, airportsData);
         if (flightProgress.depAirport && flightProgress.arrAirport && data.takeoffTime) {
           return `
             <!-- Flightradar24 Style Progress Bar -->
-            <div>
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;">
               <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
                 <div style="text-align:left;">
                   <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:2px;">ELAPSED</div>
@@ -1224,9 +1245,11 @@ async function showAircraftPanel(data, id) {
           `;
         } else if (data.takeoffTime) {
           return `
-            <div>
-              <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">TAKEOFF TIME</div>
-              <div style="font-size:16px;font-weight:700;color:#000;font-family:monospace;">${escapeHtml(data.takeoffTime.substring(11, 19))} UTC</div>
+            <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;">
+              <div>
+                <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">TAKEOFF TIME</div>
+                <div style="font-size:16px;font-weight:700;color:#000;font-family:monospace;">${escapeHtml(data.takeoffTime.substring(11, 19))} UTC</div>
+              </div>
             </div>
           `;
         }
@@ -1248,16 +1271,6 @@ async function showAircraftPanel(data, id) {
           <div style="font-size:11px;color:#999;margin-top:2px;">UTC +00:00</div>
         </div>
       </div>
-
-      ${data.takeoffTime ? `
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-top:20px;">
-          <div>
-            <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">TAKEOFF TIME</div>
-            <div style="font-size:16px;font-weight:600;color:#000;">${escapeHtml(data.takeoffTime.substring(11, 19))} UTC</div>
-          </div>
-        </div>
-      ` : ''}
-    </div>
 
     <!-- Expandable Toggle -->
     <button id="expandBtn" style="width:100%;background:#fff;border:none;border-bottom:1px solid #e0e0e0;
