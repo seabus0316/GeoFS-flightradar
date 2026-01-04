@@ -426,7 +426,24 @@ const openAIP = L.tileLayer(
     opacity: 0.8
   }
 );
+const OWM_API_KEY = 'f722a584c22e1ec243fb71d8f329ccd0'; // 請替換成你的 Key
 
+const owmAttrib = '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>';
+
+const owmClouds = L.tileLayer(`https://tile.openweathermap.org/map/clouds_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`, {
+  attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>',
+  opacity: 0.5 // 建議設置透明度，才能看到底圖
+});
+
+const owmPrecipitation = L.tileLayer(`https://tile.openweathermap.org/map/precipitation_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`, {
+  attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>',
+  opacity: 0.5
+});
+
+const owmWind = L.tileLayer(`https://tile.openweathermap.org/map/wind_new/{z}/{x}/{y}.png?appid=${OWM_API_KEY}`, {
+  attribution: '&copy; <a href="https://openweathermap.org">OpenWeatherMap</a>',
+  opacity: 0.5
+});
 const map = L.map('map', {
   worldCopyJump: false,
   maxZoom: 18,
@@ -451,7 +468,10 @@ L.control.layers(
     "Amap Satellite": amapSatellite
   },
   {
-    "OpenAIP": openAIP
+    "OpenAIP": openAIP,
+    "OWM Clouds": owmClouds,          // 新增
+    "OWM Precipitation": owmPrecipitation,   // 新增
+    "OWM Wind": owmWind
   }
 ).addTo(map);
 // Canvas renderer
