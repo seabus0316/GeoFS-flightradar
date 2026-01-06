@@ -20,12 +20,117 @@
     "logo": "https://images.kiwi.com/airlines/64/CI.png",
     "country": "Taiwan"
   },
-  "SJX": {
-    "name": "Starlux Airlines",
-    "icao": "SJX",
-    "iata": "JX",
-    "logo": "https://images.kiwi.com/airlines/64/JX.png",
-    "country": "Taiwan"
+  "UAL": {
+    "name": "United Airlines",
+    "icao": "UAL",
+    "iata": "UA",
+    "logo": "https://images.kiwi.com/airlines/64/UA.png",
+    "country": "United States"
+  },
+  "AAL": {
+    "name": "American Airlines",
+    "icao": "AAL",
+    "iata": "AA",
+    "logo": "https://images.kiwi.com/airlines/64/AA.png",
+    "country": "United States"
+  },
+  "DAL": {
+    "name": "Delta Air Lines",
+    "icao": "DAL",
+    "iata": "DL",
+    "logo": "https://images.kiwi.com/airlines/64/DL.png",
+    "country": "United States"
+  },
+  "ANA": {
+    "name": "All Nippon Airways",
+    "icao": "ANA",
+    "iata": "NH",
+    "logo": "https://images.kiwi.com/airlines/64/NH.png",
+    "country": "Japan"
+  },
+  "JAL": {
+    "name": "Japan Airlines",
+    "icao": "JAL",
+    "iata": "JL",
+    "logo": "https://images.kiwi.com/airlines/64/JL.png",
+    "country": "Japan"
+  },
+  "SIA": {
+    "name": "Singapore Airlines",
+    "icao": "SIA",
+    "iata": "SQ",
+    "logo": "https://images.kiwi.com/airlines/64/SQ.png",
+    "country": "Singapore"
+  },
+  "THA": {
+    "name": "Thai Airways",
+    "icao": "THA",
+    "iata": "TG",
+    "logo": "https://images.kiwi.com/airlines/64/TG.png",
+    "country": "Thailand"
+  },
+  "KAL": {
+    "name": "Korean Air",
+    "icao": "KAL",
+    "iata": "KE",
+    "logo": "https://images.kiwi.com/airlines/64/KE.png",
+    "country": "South Korea"
+  },
+  "AAR": {
+    "name": "Asiana Airlines",
+    "icao": "AAR",
+    "iata": "OZ",
+    "logo": "https://images.kiwi.com/airlines/64/OZ.png",
+    "country": "South Korea"
+  },
+  "BAW": {
+    "name": "British Airways",
+    "icao": "BAW",
+    "iata": "BA",
+    "logo": "https://images.kiwi.com/airlines/64/BA.png",
+    "country": "United Kingdom"
+  },
+  "AFR": {
+    "name": "Air France",
+    "icao": "AFR",
+    "iata": "AF",
+    "logo": "https://images.kiwi.com/airlines/64/AF.png",
+    "country": "France"
+  },
+  "DLH": {
+    "name": "Lufthansa",
+    "icao": "DLH",
+    "iata": "LH",
+    "logo": "https://images.kiwi.com/airlines/64/LH.png",
+    "country": "Germany"
+  },
+  "QFA": {
+    "name": "Qantas",
+    "icao": "QFA",
+    "iata": "QF",
+    "logo": "https://images.kiwi.com/airlines/64/QF.png",
+    "country": "Australia"
+  },
+  "UAE": {
+    "name": "Emirates",
+    "icao": "UAE",
+    "iata": "EK",
+    "logo": "https://images.kiwi.com/airlines/64/EK.png",
+    "country": "United Arab Emirates"
+  },
+  "QTR": {
+    "name": "Qatar Airways",
+    "icao": "QTR",
+    "iata": "QR",
+    "logo": "https://images.kiwi.com/airlines/64/QR.png",
+    "country": "Qatar"
+  },
+  "ETH": {
+    "name": "Ethiopian Airlines",
+    "icao": "ETH",
+    "iata": "ET",
+    "logo": "https://images.kiwi.com/airlines/64/ET.png",
+    "country": "Ethiopia"
   },
   "CCA": {
     "name": "Air China",
@@ -47,6 +152,146 @@
     "iata": "MU",
     "logo": "https://images.kiwi.com/airlines/64/MU.png",
     "country": "China"
+  },
+  "AXM": {
+    "name": "AirAsia",
+    "icao": "AXM",
+    "iata": "AK",
+    "logo": "https://images.kiwi.com/airlines/64/AK.png",
+    "country": "Malaysia"
+  },
+  "MAS": {
+    "name": "Malaysia Airlines",
+    "icao": "MAS",
+    "iata": "MH",
+    "logo": "https://images.kiwi.com/airlines/64/MH.png",
+    "country": "Malaysia"
+  },
+  "VJC": {
+    "name": "VietJet Air",
+    "icao": "VJC",
+    "iata": "VJ",
+    "logo": "https://images.kiwi.com/airlines/64/VJ.png",
+    "country": "Vietnam"
+  },
+  "HVN": {
+    "name": "Vietnam Airlines",
+    "icao": "HVN",
+    "iata": "VN",
+    "logo": "https://images.kiwi.com/airlines/64/VN.png",
+    "country": "Vietnam"
+  },
+  "PAL": {
+    "name": "Philippine Airlines",
+    "icao": "PAL",
+    "iata": "PR",
+    "logo": "https://images.kiwi.com/airlines/64/PR.png",
+    "country": "Philippines"
+  },
+  "SWA": {
+    "name": "Southwest Airlines",
+    "icao": "SWA",
+    "iata": "WN",
+    "logo": "https://images.kiwi.com/airlines/64/WN.png",
+    "country": "United States"
+  },
+  "RYR": {
+    "name": "Ryanair",
+    "icao": "RYR",
+    "iata": "FR",
+    "logo": "https://images.kiwi.com/airlines/64/FR.png",
+    "country": "Ireland"
+  },
+  "EZY": {
+    "name": "easyJet",
+    "icao": "EZY",
+    "iata": "U2",
+    "logo": "https://images.kiwi.com/airlines/64/U2.png",
+    "country": "United Kingdom"
+  },
+  "ACA": {
+    "name": "Air Canada",
+    "icao": "ACA",
+    "iata": "AC",
+    "logo": "https://images.kiwi.com/airlines/64/AC.png",
+    "country": "Canada"
+  },
+  "AZA": {
+    "name": "Alitalia",
+    "icao": "AZA",
+    "iata": "AZ",
+    "logo": "https://images.kiwi.com/airlines/64/AZ.png",
+    "country": "Italy"
+  },
+  "IBE": {
+    "name": "Iberia",
+    "icao": "IBE",
+    "iata": "IB",
+    "logo": "https://images.kiwi.com/airlines/64/IB.png",
+    "country": "Spain"
+  },
+  "KLM": {
+    "name": "KLM Royal Dutch Airlines",
+    "icao": "KLM",
+    "iata": "KL",
+    "logo": "https://images.kiwi.com/airlines/64/KL.png",
+    "country": "Netherlands"
+  },
+  "SAS": {
+    "name": "Scandinavian Airlines",
+    "icao": "SAS",
+    "iata": "SK",
+    "logo": "https://images.kiwi.com/airlines/64/SK.png",
+    "country": "Sweden"
+  },
+  "FIN": {
+    "name": "Finnair",
+    "icao": "FIN",
+    "iata": "AY",
+    "logo": "https://images.kiwi.com/airlines/64/AY.png",
+    "country": "Finland"
+  },
+  "TAM": {
+    "name": "LATAM Airlines",
+    "icao": "TAM",
+    "iata": "LA",
+    "logo": "https://images.kiwi.com/airlines/64/LA.png",
+    "country": "Brazil"
+  },
+  "ARG": {
+    "name": "Aerolineas Argentinas",
+    "icao": "ARG",
+    "iata": "AR",
+    "logo": "https://images.kiwi.com/airlines/64/AR.png",
+    "country": "Argentina"
+  },
+  "CMP": {
+    "name": "Copa Airlines",
+    "icao": "CMP",
+    "iata": "CM",
+    "logo": "https://images.kiwi.com/airlines/64/CM.png",
+    "country": "Panama"
+  },
+  "AMX": {
+    "name": "Aeromexico",
+    "icao": "AMX",
+    "iata": "AM",
+    "logo": "https://images.kiwi.com/airlines/64/AM.png",
+    "country": "Mexico"
+  },
+  "ROU": {
+    "name": "Air Canada Rouge",
+    "icao": "ROU",
+    "iata": "RV",
+    "logo": "https://images.kiwi.com/airlines/64/RV.png",
+    "country": "Canada"
+  },
+  "TSC": {
+    "name": "Air Transat",
+    "icao": "TSC",
+    "iata": "TS",
+    "logo": "https://images.kiwi.com/airlines/64/TS.png",
+    "country": "Canada"
   },
   "CHH": {
     "name": "Hainan Airlines",
@@ -76,117 +321,12 @@
     "logo": "https://images.kiwi.com/airlines/64/9C.png",
     "country": "China"
   },
-  "ANA": {
-    "name": "All Nippon Airways",
-    "icao": "ANA",
-    "iata": "NH",
-    "logo": "https://images.kiwi.com/airlines/64/NH.png",
-    "country": "Japan"
-  },
-  "JAL": {
-    "name": "Japan Airlines",
-    "icao": "JAL",
-    "iata": "JL",
-    "logo": "https://images.kiwi.com/airlines/64/JL.png",
-    "country": "Japan"
-  },
-  "SIA": {
-    "name": "Singapore Airlines",
-    "icao": "SIA",
-    "iata": "SQ",
-    "logo": "https://images.kiwi.com/airlines/64/SQ.png",
-    "country": "Singapore"
-  },
-  "TGW": {
-    "name": "Scoot",
-    "icao": "TGW",
-    "iata": "TR",
-    "logo": "https://images.kiwi.com/airlines/64/TR.png",
-    "country": "Singapore"
-  },
-  "KAL": {
-    "name": "Korean Air",
-    "icao": "KAL",
-    "iata": "KE",
-    "logo": "https://images.kiwi.com/airlines/64/KE.png",
-    "country": "South Korea"
-  },
-  "AAR": {
-    "name": "Asiana Airlines",
-    "icao": "AAR",
-    "iata": "OZ",
-    "logo": "https://images.kiwi.com/airlines/64/OZ.png",
-    "country": "South Korea"
-  },
-  "THA": {
-    "name": "Thai Airways",
-    "icao": "THA",
-    "iata": "TG",
-    "logo": "https://images.kiwi.com/airlines/64/TG.png",
-    "country": "Thailand"
-  },
-  "MAS": {
-    "name": "Malaysia Airlines",
-    "icao": "MAS",
-    "iata": "MH",
-    "logo": "https://images.kiwi.com/airlines/64/MH.png",
-    "country": "Malaysia"
-  },
-  "AXM": {
-    "name": "AirAsia",
-    "icao": "AXM",
-    "iata": "AK",
-    "logo": "https://images.kiwi.com/airlines/64/AK.png",
-    "country": "Malaysia"
-  },
-  "HVN": {
-    "name": "Vietnam Airlines",
-    "icao": "HVN",
-    "iata": "VN",
-    "logo": "https://images.kiwi.com/airlines/64/VN.png",
-    "country": "Vietnam"
-  },
-  "VJC": {
-    "name": "VietJet Air",
-    "icao": "VJC",
-    "iata": "VJ",
-    "logo": "https://images.kiwi.com/airlines/64/VJ.png",
-    "country": "Vietnam"
-  },
-  "PAL": {
-    "name": "Philippine Airlines",
-    "icao": "PAL",
-    "iata": "PR",
-    "logo": "https://images.kiwi.com/airlines/64/PR.png",
-    "country": "Philippines"
-  },
-  "GIA": {
-    "name": "Garuda Indonesia",
-    "icao": "GIA",
-    "iata": "GA",
-    "logo": "https://images.kiwi.com/airlines/64/GA.png",
-    "country": "Indonesia"
-  },
-  "UAE": {
-    "name": "Emirates",
-    "icao": "UAE",
-    "iata": "EK",
-    "logo": "https://images.kiwi.com/airlines/64/EK.png",
-    "country": "United Arab Emirates"
-  },
   "ETD": {
     "name": "Etihad Airways",
     "icao": "ETD",
     "iata": "EY",
     "logo": "https://images.kiwi.com/airlines/64/EY.png",
     "country": "United Arab Emirates"
-  },
-  "QTR": {
-    "name": "Qatar Airways",
-    "icao": "QTR",
-    "iata": "QR",
-    "logo": "https://images.kiwi.com/airlines/64/QR.png",
-    "country": "Qatar"
   },
   "THY": {
     "name": "Turkish Airlines",
@@ -195,41 +335,6 @@
     "logo": "https://images.kiwi.com/airlines/64/TK.png",
     "country": "Turkey"
   },
-  "BAW": {
-    "name": "British Airways",
-    "icao": "BAW",
-    "iata": "BA",
-    "logo": "https://images.kiwi.com/airlines/64/BA.png",
-    "country": "United Kingdom"
-  },
-  "EZY": {
-    "name": "easyJet",
-    "icao": "EZY",
-    "iata": "U2",
-    "logo": "https://images.kiwi.com/airlines/64/U2.png",
-    "country": "United Kingdom"
-  },
-  "DLH": {
-    "name": "Lufthansa",
-    "icao": "DLH",
-    "iata": "LH",
-    "logo": "https://images.kiwi.com/airlines/64/LH.png",
-    "country": "Germany"
-  },
-  "AFR": {
-    "name": "Air France",
-    "icao": "AFR",
-    "iata": "AF",
-    "logo": "https://images.kiwi.com/airlines/64/AF.png",
-    "country": "France"
-  },
-  "KLM": {
-    "name": "KLM Royal Dutch Airlines",
-    "icao": "KLM",
-    "iata": "KL",
-    "logo": "https://images.kiwi.com/airlines/64/KL.png",
-    "country": "Netherlands"
-  },
   "SWR": {
     "name": "Swiss International Air Lines",
     "icao": "SWR",
@@ -237,103 +342,19 @@
     "logo": "https://images.kiwi.com/airlines/64/LX.png",
     "country": "Switzerland"
   },
-  "IBE": {
-    "name": "Iberia",
-    "icao": "IBE",
-    "iata": "IB",
-    "logo": "https://images.kiwi.com/airlines/64/IB.png",
-    "country": "Spain"
+  "SJX": {
+    "name": "Starlux Airlines",
+    "icao": "SJX",
+    "iata": "JX",
+    "logo": "https://images.kiwi.com/airlines/64/JX.png",
+    "country": "Taiwan"
   },
-  "AZA": {
-    "name": "ITA Airways",
-    "icao": "ITY",
-    "iata": "AZ",
-    "logo": "https://images.kiwi.com/airlines/64/AZ.png",
-    "country": "Italy"
-  },
-  "SAS": {
-    "name": "Scandinavian Airlines",
-    "icao": "SAS",
-    "iata": "SK",
-    "logo": "https://images.kiwi.com/airlines/64/SK.png",
-    "country": "Sweden"
-  },
-  "FIN": {
-    "name": "Finnair",
-    "icao": "FIN",
-    "iata": "AY",
-    "logo": "https://images.kiwi.com/airlines/64/AY.png",
-    "country": "Finland"
-  },
-  "RYR": {
-    "name": "Ryanair",
-    "icao": "RYR",
-    "iata": "FR",
-    "logo": "https://images.kiwi.com/airlines/64/FR.png",
-    "country": "Ireland"
-  },
-  "UAL": {
-    "name": "United Airlines",
-    "icao": "UAL",
-    "iata": "UA",
-    "logo": "https://images.kiwi.com/airlines/64/UA.png",
-    "country": "United States"
-  },
-  "AAL": {
-    "name": "American Airlines",
-    "icao": "AAL",
-    "iata": "AA",
-    "logo": "https://images.kiwi.com/airlines/64/AA.png",
-    "country": "United States"
-  },
-  "DAL": {
-    "name": "Delta Air Lines",
-    "icao": "DAL",
-    "iata": "DL",
-    "logo": "https://images.kiwi.com/airlines/64/DL.png",
-    "country": "United States"
-  },
-  "SWA": {
-    "name": "Southwest Airlines",
-    "icao": "SWA",
-    "iata": "WN",
-    "logo": "https://images.kiwi.com/airlines/64/WN.png",
-    "country": "United States"
-  },
-  "ACA": {
-    "name": "Air Canada",
-    "icao": "ACA",
-    "iata": "AC",
-    "logo": "https://images.kiwi.com/airlines/64/AC.png",
-    "country": "Canada"
-  },
-  "AMX": {
-    "name": "Aeromexico",
-    "icao": "AMX",
-    "iata": "AM",
-    "logo": "https://images.kiwi.com/airlines/64/AM.png",
-    "country": "Mexico"
-  },
-  "TAM": {
-    "name": "LATAM Airlines",
-    "icao": "TAM",
-    "iata": "LA",
-    "logo": "https://images.kiwi.com/airlines/64/LA.png",
-    "country": "Brazil"
-  },
-  "ARG": {
-    "name": "Aerolineas Argentinas",
-    "icao": "ARG",
-    "iata": "AR",
-    "logo": "https://images.kiwi.com/airlines/64/AR.png",
-    "country": "Argentina"
-  },
-  "QFA": {
-    "name": "Qantas",
-    "icao": "QFA",
-    "iata": "QF",
-    "logo": "https://images.kiwi.com/airlines/64/QF.png",
-    "country": "Australia"
+  "TGW": {
+    "name": "Scoot",
+    "icao": "TGW",
+    "iata": "TR",
+    "logo": "https://images.kiwi.com/airlines/64/TR.png",
+    "country": "Singapore"
   },
   "ANZ": {
     "name": "Air New Zealand",
@@ -342,11 +363,11 @@
     "logo": "https://images.kiwi.com/airlines/64/NZ.png",
     "country": "New Zealand"
   },
-  "ETH": {
-    "name": "Ethiopian Airlines",
-    "icao": "ETH",
-    "iata": "ET",
-    "logo": "https://images.kiwi.com/airlines/64/ET.png",
-    "country": "Ethiopia"
+  "GIA": {
+    "name": "Garuda Indonesia",
+    "icao": "GIA",
+    "iata": "GA",
+    "logo": "https://images.kiwi.com/airlines/64/GA.png",
+    "country": "Indonesia"
   }
 }
