@@ -1006,7 +1006,7 @@ function calculateFlightProgress(data, airports) {
 async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
   
-    // 🔥 在這裡添加：確保 flightStatus 存在
+  // 🔥 在這裡添加：確保 flightStatus 存在
   if (!data.flightStatus) {
     const obj = aircrafts.get(id);
     const prev = obj && obj.data ? obj.data : null;
@@ -1020,6 +1020,10 @@ async function showAircraftPanel(data, id) {
     const oldContent = oldPanel.querySelector('#expandedContent');
     wasExpanded = oldContent && oldContent.style.display === 'block';
   }
+  
+  // 獲取航空公司資訊 - 🔥 移到這裡
+  const airlineInfo = getAirlineInfo(data.callsign, data.flightNo);
+  const airlineName = airlineInfo ? airlineInfo.name : 'Unknown Airline';
   
   // 處理 flight plan
   let plan = data.flightPlan;
