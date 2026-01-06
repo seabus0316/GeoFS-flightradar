@@ -407,10 +407,6 @@ wss.on('connection', (ws, req) => {
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use(express.static(path.join(__dirname, 'public')));
-// 確保 airlines.json 可以被訪問
-app.get('/airlines.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'airlines.json'));
-});
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
 app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
