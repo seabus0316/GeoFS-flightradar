@@ -91,7 +91,63 @@ const FLIGHT_STATUS_IMAGES = {
    };
 let flightChartObj;
 
-// 資料抽稀函數 - 使用 Douglas-Peucker 簡化算法
+// 航空公司資料庫
+let airlinesData = {};
+
+// 載入航空公司資料
+async function loadAirlines() {
+  try {
+    const response = await fetch('/airlines.json');
+    if (!response.ok) throw new Error('Failed to fetch airlines');
+    airlinesData = await response.json();
+    console.log('✅ Loaded', Object.keys(airlinesData).length, 'airlines');
+  } catch (error) {
+    console.error('Failed to load airlines:', error);
+  }
+}
+
+// 根據 callsign 或 flightNo 識別航空公司
+function getAirlineInfo(callsign, flightNo) {
+  if (!callsign && !flightNo) return null;
+  
+  // 優先使用 callsign (ICAO code)
+  if (callsign) {
+    // 提取前3個字母作為 ICAO code
+    const icaoCode = callsign.substring(0, 3).toUpperCase();
+    if (airlinesData[icaoCode]) {
+      return {
+        name: airlinesData[icaoCode].name,
+        icao: airlinesData[icaoCode].icao,
+        iata: airlinesData[icaoCode].iata,
+        logo: airlinesData[icaoCode].logo,
+        country: airlinesData[icaoCode].country
+      };
+    }
+  }
+  
+  // 如果 callsign 找不到，嘗試用 flightNo (IATA code)
+  if (flightNo) {
+    // 提取前2-3個字母作為 IATA code
+    const iataMatch = flightNo.match(/^([A-Z]{2,3})/);
+    if (iataMatch) {
+      const iataCode = iataMatch[1];
+      // 在資料庫中搜尋對應的 IATA code
+      for (const icao in airlinesData) {
+        if (airlinesData[icao].iata === iataCode) {
+          return {
+            name: airlinesData[icao].name,
+            icao: airlinesData[icao].icao,
+            iata: airlinesData[icao].iata,
+            logo: airlinesData[icao].logo,
+            country: airlinesData[icao].country
+          };
+        }
+      }
+    }
+  }
+  
+  return null;
+}
 // 資料抽稀函數 - 改進版
 function simplifyTrackData(track, maxPoints = 300) {
   if (track.length <= maxPoints) return track;
@@ -1198,7 +1254,7 @@ async function showAircraftPanel(data, id) {
     </div>
 
     <div style="font-size:13px;color:#fff;background:#1a1a1a;padding-bottom:12px;padding-left:16px;">
-      Unknown Airline
+      ${escapeHtml(airlineName)}
     </div>
 
     ${isEmergency ? '<div style="background:#d32f2f;color:#fff;padding:12px;text-align:center;font-weight:600;font-size:14px;">⚠️ EMERGENCY SQUAWK 7700</div>' : ''}
