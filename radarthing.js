@@ -1,3 +1,4 @@
+
 (function () {
   "use strict";
 
@@ -10,31 +11,28 @@
 
   function calculateAGL() {
     try {
-      const altitudeMSL = geofs?.animation?.values?.altitude;
-      const groundElevationFeet =
-        geofs?.animation?.values?.groundElevationFeet;
-      const aircraft = geofs?.aircraft?.instance;
+      const altMSL = geofs.animation.values.altitude;
+      const ground =
+        geofs.animation.values.groundElevationFeet;
+      const aircraft = geofs.aircraft.instance;
 
       if (
-        typeof altitudeMSL === "number" &&
-        typeof groundElevationFeet === "number" &&
-        aircraft?.collisionPoints?.length >= 2
+        aircraft.collisionPoints?.length >= 2
       ) {
-        const collisionZFeet =
+        const z =
           aircraft.collisionPoints[
             aircraft.collisionPoints.length - 2
           ].worldPosition[2] * 3.2808399;
 
-        return Math.round(
-          altitudeMSL - groundElevationFeet + collisionZFeet
-        );
+        return Math.round(altMSL - ground + z);
       }
     } catch {}
     return null;
   }
 
   function checkTakeoff() {
-    const onGround = geofs?.aircraft?.instance?.groundContact ?? true;
+    const onGround =
+      geofs.aircraft.instance.groundContact ?? true;
     if (wasOnGround && !onGround) {
       takeoffTimeUTC = new Date().toISOString();
     }
@@ -42,25 +40,36 @@
   }
 
   function buildPayload() {
-    const inst = geofs?.aircraft?.instance;
-    if (!inst) return null;
+    const info = JSON.parse(
+      localStorage.getItem("geofsFlightInfo")
+    );
 
+    if (
+      !info ||
+      !info.departure ||
+      !info.arrival ||
+      !info.flightNo
+    ) {
+      return null;
+    }
+
+    const inst = geofs.aircraft.instance;
     const lla = inst.llaLocation;
-    if (!lla || typeof lla[0] !== "number") return null;
+    if (!lla) return null;
 
-    const altMeters = lla[2] || 0;
-    const altMSL = altMeters * 3.28084;
+    const altMSL = (lla[2] || 0) * 3.28084;
     const altAGL = calculateAGL();
 
     checkTakeoff();
 
-    const info = { dep: "", arr: "", flt: "", sqk: "" };
-
     return {
-      id: geofs.userRecord.googleid || geofs.userRecord.callsign,
+      id:
+        geofs.userRecord.googleid ||
+        geofs.userRecord.callsign,
       googleId: geofs.userRecord.googleid || null,
       callsign: geofs.userRecord.callsign,
-      type: inst.aircraftRecord?.name || "Unknown",
+      type:
+        inst.aircraftRecord?.name || "Unknown",
       lat: lla[0],
       lon: lla[1],
       alt:
@@ -74,18 +83,18 @@
       speed: Math.round(
         geofs.animation.values.kias || 0
       ),
-      flightNo: info.flt,
-      departure: info.dep,
-      arrival: info.arr,
+      flightNo: info.flightNo,
+      departure: info.departure,
+      arrival: info.arrival,
       takeoffTime: takeoffTimeUTC,
-      squawk: info.sqk,
-      flightPlan: geofs.flightPlan?.export
-        ? geofs.flightPlan.export()
-        : [],
+      squawk: info.squawk || "",
+      flightPlan:
+        geofs.flightPlan?.export?.() || [],
       nextWaypoint:
-        geofs.flightPlan?.trackedWaypoint?.ident || null,
+        geofs.flightPlan?.trackedWaypoint?.ident ||
+        null,
       vspeed: Math.floor(
-        geofs.animation?.values?.verticalSpeed || 0
+        geofs.animation.values.verticalSpeed || 0
       ),
     };
   }
@@ -103,8 +112,10 @@
     } catch {}
   }
 
-  setInterval(() => {
-    if (!window.geofs || !geofs.aircraft?.instance) return;
-    sendPosition();
-  }, SEND_INTERVAL_MS);
+  const wait = setInterval(() => {
+    if (window.geofs?.aircraft?.instance) {
+      clearInterval(wait);
+      setInterval(sendPosition, SEND_INTERVAL_MS);
+    }
+  }, 500);
 })();

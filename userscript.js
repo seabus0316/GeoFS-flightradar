@@ -263,42 +263,43 @@ function buildPayload(snap) {
 
   // --- UI 注入 ---
   function injectFlightUI() {
-    flightUI = document.createElement('div');
-    flightUI.id = 'flightInfoUI';
-    flightUI.style.position = 'fixed';
-    flightUI.style.bottom = '280px';
-    flightUI.style.right = '6px';
-    flightUI.style.background = 'rgba(0,0,0,0.6)';
-    flightUI.style.padding = '8px';
-    flightUI.style.borderRadius = '6px';
-    flightUI.style.color = 'white';
-    flightUI.style.fontSize = '12px';
-    flightUI.style.zIndex = 999999;
+    flightUI = document.createElement("div");
+    flightUI.style.cssText =
+      "position:fixed;bottom:280px;right:6px;background:rgba(0,0,0,0.6);padding:8px;border-radius:6px;color:white;font-size:12px;z-index:999999";
 
     flightUI.innerHTML = `
-      <div>Dep: <input id="depInput" style="width:60px"></div>
-      <div>Arr: <input id="arrInput" style="width:60px"></div>
-      <div>Flt#: <input id="fltInput" style="width:60px"></div>
-      <div>SQK: <input id="sqkInput" style="width:60px" maxlength="4"></div>
+      <div>Dep <input id="depInput" style="width:60px"></div>
+      <div>Arr <input id="arrInput" style="width:60px"></div>
+      <div>Flt <input id="fltInput" style="width:60px"></div>
+      <div>SQK <input id="sqkInput" style="width:60px"></div>
       <button id="saveBtn">Save</button>
     `;
 
     document.body.appendChild(flightUI);
 
-    // 讓輸入框自動轉大寫
-    ['depInput','arrInput','fltInput','sqkInput'].forEach(id => {
-      const el = document.getElementById(id);
-      el.addEventListener('input', () => {
-        el.value = el.value.toUpperCase();
-      });
-    });
+    try {
+      const saved = JSON.parse(
+        localStorage.getItem("geofsFlightInfo")
+      );
+      if (saved) {
+        flightInfo = saved;
+        depInput.value = saved.departure || "";
+        arrInput.value = saved.arrival || "";
+        fltInput.value = saved.flightNo || "";
+        sqkInput.value = saved.squawk || "";
+      }
+    } catch {}
 
-    document.getElementById('saveBtn').onclick = () => {
-      flightInfo.departure = document.getElementById('depInput').value.trim();
-      flightInfo.arrival = document.getElementById('arrInput').value.trim();
-      flightInfo.flightNo = document.getElementById('fltInput').value.trim();
-      flightInfo.squawk = document.getElementById('sqkInput').value.trim();
-      showToast('Flight info saved!');
+    saveBtn.onclick = () => {
+      flightInfo.departure = depInput.value.trim();
+      flightInfo.arrival = arrInput.value.trim();
+      flightInfo.flightNo = fltInput.value.trim();
+      flightInfo.squawk = sqkInput.value.trim();
+
+      localStorage.setItem(
+        "geofsFlightInfo",
+        JSON.stringify(flightInfo)
+      );
     };
   }
   injectFlightUI();
