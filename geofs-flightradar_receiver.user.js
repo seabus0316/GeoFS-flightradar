@@ -7,6 +7,6 @@
 // @match        http://*/geofs.php*
 // @match        https://*/geofs.php*
 // @require      https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/userscript.js?nocache=1
-// @require      https://raw.githubusercontent.com/mansoorbarri/GeoFS-flightradar/refs/heads/main/radarthing.js?nocache=1
+// @require      https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/radarthing.js?nocache=1
 // @grant        none
 // ==/UserScript==
