@@ -413,7 +413,9 @@ app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
 app.get('/photomap.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
 app.get('/health', (req, res) => res.send('ok'));
-
+app.get('/airlines.json', (req, res) => {
+  res.sendFile(path.join(__dirname, 'airlines.json'));
+});
 function checkAdminPass(req, res, next) {
   const pass = req.headers['x-admin-pass'];
   if (pass === ADMIN_PASSWORD) next();
