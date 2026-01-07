@@ -4,7 +4,7 @@
 
   const ENDPOINT =
     "https://radar-sse-production.up.railway.app/api/atc/position";
-  const SEND_INTERVAL_MS = 1500;
+  const SEND_INTERVAL_MS = 5000;
 
   let wasOnGround = true;
   let takeoffTimeUTC = "";
