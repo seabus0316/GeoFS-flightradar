@@ -2,8 +2,6 @@
 <html lang="zh-Hant">
 <head>
   <meta name="google-site-verification" content="Ss-BjkX0hVH_hO107C5YcoDD55wmd25bM2zXCM6ZCnA" />
-  <script src="https://cdn.jsdelivr.net/npm/chart.js">
-</script>
   <meta charset="utf-8" />
   <title>GeoFS-Flightradar</title>
   <meta name="viewport" content="width=device-width,initial-scale=1" />
@@ -65,17 +63,6 @@
   </div>
 </div>
 
-<!-- 仿 Flightradar24 底部圖表容器 -->
-<div id="flightChartContainer"
-  style="position:fixed;left:0;right:440px;bottom:0;height:180px;background:#222;z-index:99999;
-    padding:12px 10px 0 10px;display:none;box-shadow:0 -2px 12px #000;">
-  <div style="font-family:'Inter','Noto Sans TC',Arial,sans-serif;font-size:14px;color:#fff;font-weight:bold;margin-bottom:3px;">
-    SPEED & ALTITUDE GRAPH
-  </div>
-  <div style="height:155px;padding-bottom:10px;">
-    <canvas id="flightChart"></canvas>
-  </div>
-</div>
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js">
 </script>
 <script>
@@ -89,8 +76,6 @@ const FLIGHT_STATUS_IMAGES = {
      'unknown': 'https://i.ibb.co/Rpc7Jk13/refresh-cw-off.png', 
      'ground': 'https://i.ibb.co/wZn8KNYD/plane.png'
    };
-let flightChartObj;
-
 // 航空公司資料庫
 let airlinesData = {};
 
@@ -1248,8 +1233,8 @@ async function showAircraftPanel(data, id) {
       
       <div style="display:flex;gap:8px;align-items:center;">
         <button style="background:transparent;border:none;color:#ffd500;cursor:pointer;padding:4px;font-size:20px;">★</button>
-        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();hideFlightChart();" 
-                style="background:transparent;border:none;color:#fff;cursor:pointer;padding:4px;font-size:20px;">×</button>
+        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();" 
+        style="background:transparent;border:none;color:#fff;cursor:pointer;padding:4px;font-size:20px;">×</button>
       </div>
       
       <div style="position:absolute;top:8px;right:60px;font-size:10px;color:#ffd500;font-weight:700;letter-spacing:0.5px;">
@@ -1514,26 +1499,8 @@ async function showAircraftPanel(data, id) {
       expandIcon.textContent = '▲';
     }
   });
-
-  // 顯示飛行軌跡圖表
-  let trackArr = [];
-  if (aircrafts.has(id)) {
-    const obj = aircrafts.get(id);
-    if (obj.rawTrack && obj.rawTrack.length > 2) {
-      trackArr = obj.rawTrack;
-    } else if (obj.rawPathForDisplay && obj.rawPathForDisplay.length > 2) {
-      trackArr = obj.rawPathForDisplay.map(tp => ({
-        alt: tp[2],
-        speed: tp[3]
-      }));
-    }
-  }
-  if (trackArr.length > 2) {
-    showFlightChart(trackArr);
-  } else {
-    hideFlightChart();
-  }
 }
+
 // Photo Map 功能
 let photoMapEnabled = false;
 let photoMarkers = [];
@@ -2470,4 +2437,4 @@ async function selectAirport(lat, lon, icao, name) {
 loadAirlines();
 </script>
 </body>
-</html>
+</html>.
