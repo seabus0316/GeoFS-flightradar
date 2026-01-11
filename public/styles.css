@@ -80,6 +80,8 @@
   font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
+  max-height: 90vh;
+  overflow-y: auto;
 }
 
 #aircraftPanel button {
