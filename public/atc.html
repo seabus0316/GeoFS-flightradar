@@ -1161,7 +1161,7 @@ async function showAircraftPanel(data, id) {
 
       ${(() => {
         const flightProgress = calculateFlightProgress(data, airportsData);
-        if (flightProgress.depAirport && flightProgress.arrAirport && data.takeoffTime) {
+        if (flightProgress.depAirport && flightProgress.arrAirport) {
           return `
             <!-- Flightradar24 Style Progress Bar -->
             <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;">
