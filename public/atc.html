@@ -924,6 +924,13 @@ function formatFlightDuration(ms) {
 
 // 計算飛行進度
 function calculateFlightProgress(data, airports) {
+  // 🔥 【新增區塊】 手動補丁：這裡可以補上資料庫缺少的機場座標
+  const MANUAL_AIRPORTS = {
+    "UTTT": { lat: 41.2579, lon: 69.2812, name: "Tashkent Intl" },
+    // 你可以在這裡繼續加其他缺少的機場，例如:
+    //"OIII": { lat: 35.6892, lon: 51.3134, name: "Mehrabad Intl" },
+  };
+
   let progress = 0;
   let totalDist = 0;
   let distFlown = 0;
@@ -931,16 +938,29 @@ function calculateFlightProgress(data, airports) {
   let elapsedTime = 0;
   let ete = 0;
 
-  // 查找起降機場
-  const depAirport = airports.find(a => 
+  // 1. 先嘗試從主要資料庫 (airports) 搜尋
+  let depAirport = airports.find(a => 
     a.ident === data.departure || 
     (data.departure && data.departure.length === 4 && a.ident.endsWith(data.departure))
   );
-  const arrAirport = airports.find(a => 
+
+  let arrAirport = airports.find(a => 
     a.ident === data.arrival || 
     (data.arrival && data.arrival.length === 4 && a.ident.endsWith(data.arrival))
   );
 
+  // 🔥 【新增區塊】 2. 如果資料庫找不到，就去查我們的手動補丁 (MANUAL_AIRPORTS)
+  if (!depAirport && data.departure && MANUAL_AIRPORTS[data.departure]) {
+    const m = MANUAL_AIRPORTS[data.departure];
+    depAirport = { ident: data.departure, name: m.name, latitude_deg: m.lat, longitude_deg: m.lon };
+  }
+  
+  if (!arrAirport && data.arrival && MANUAL_AIRPORTS[data.arrival]) {
+    const m = MANUAL_AIRPORTS[data.arrival];
+    arrAirport = { ident: data.arrival, name: m.name, latitude_deg: m.lat, longitude_deg: m.lon };
+  }
+
+  // --- 以下邏輯保持不變 ---
   if (depAirport && arrAirport && data.lat && data.lon) {
     totalDist = calculateFlightDistance(
       depAirport.latitude_deg, 
