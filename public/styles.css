@@ -175,17 +175,17 @@
   font-size: 12px;
   color: #e6edf3;
 }
-/* 新的 Discord 按鈕容器 */
+/* 新的 Discord 按鈕容器 
 .social-buttons {
   position: fixed;
   bottom: 10px;
   left: 10px;
   display: flex;
   gap: 10px;
-  z-index: 99997; /* z-index 保持不變 */
+  z-index: 99997;  z-index 保持不變 
 }
 
-/* 按鈕的通用樣式 (未來可擴充) */
+/* 按鈕的通用樣式 (未來可擴充) 
 .social-btn {
   width: 40px;
   height: 40px;
@@ -197,9 +197,9 @@
   font-size: 24px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
   transition: transform 0.2s, box-shadow 0.2s;
-}
+}*/
 
-/* Discord 按鈕的專屬顏色 */
+/* Discord 按鈕的專屬顏色 
 .discord-btn {
   background: #5865F2;
   color: white;
@@ -234,7 +234,7 @@
 }
 .github-ribbon a:hover {
   background: #a93226;
-}
+}*/
 * {
   box-sizing: border-box;
 }
@@ -483,4 +483,61 @@ html,body {
   background: rgba(158, 158, 158, 0.15);
   color: #9E9E9E;
   border: 1px solid rgba(158, 158, 158, 0.3);
+}
+/* ========== 選單系統樣式 ========== */
+/* 開關按鈕樣式 */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 26px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #444;
+  transition: .3s;
+  border-radius: 26px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: .3s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #667eea;
+}
+
+input:checked + .slider:before {
+  transform: translateX(24px);
+}
+
+/* 選單連結 hover 效果 */
+#sideMenu a:hover {
+  background: rgba(255,255,255,0.1) !important;
+}
+
+/* 漢堡選單按鈕 hover 效果 */
+#menuToggle:hover {
+  background: rgba(255, 255, 255, 1) !important;
+  transform: scale(1.05);
 }
