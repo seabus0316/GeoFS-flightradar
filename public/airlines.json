@@ -292,5 +292,124 @@
     "iata": "TS",
     "logo": "https://images.kiwi.com/airlines/64/TS.png",
     "country": "Canada"
+  },
+  "UNI": {
+    "name": "Union Airlines",
+    "icao": "UNI",
+    "iata": "UI",
+    "logo": "https://cdn.discordapp.com/attachments/1458047856123314285/1462698084579545179/UNION_6.png?ex=6975babe&is=6974693e&hm=e07695a5cc5a3f85a00d403358e1256a7fe6737c430a4eda81e7248a60b18ec1&",
+    "country": "United States"
+  },
+  "HDA": {
+    "name": "Cathay Pacific",
+    "icao": "HDA",
+    "iata": "KA",
+    "logo": "https://media.discordapp.net/attachments/1458047856123314285/1458050291910967409/Untitled_design_1.png?ex=6975f5a6&is=6974a426&hm=1d89fe264b30f1f004a685deaa8187b4e35072370f89b5f070d1aabe83380984&=&format=webp&quality=lossless&width=1104&height=1104",
+    "country": "Hong Kong"
+  },
+  "VIR": {
+    "name": "Virgin Atlantic",
+    "icao": "VIR",
+    "iata": "VS",
+    "logo": "https://images.kiwi.com/airlines/64/VS.png",
+    "country": "United Kingdom"
+  },
+  "SWR": {
+    "name": "Swiss International Air Lines",
+    "icao": "SWR",
+    "iata": "LX",
+    "logo": "https://images.kiwi.com/airlines/64/LX.png",
+    "country": "Switzerland"
+  },
+  "NKS": {
+    "name": "Spirit Airlines",
+    "icao": "NKS",
+    "iata": "NK",
+    "logo": "https://images.kiwi.com/airlines/64/NK.png",
+    "country": "United States"
+  },
+  "JBU": {
+    "name": "JetBlue Airways",
+    "icao": "JBU",
+    "iata": "B6",
+    "logo": "https://images.kiwi.com/airlines/64/B6.png",
+    "country": "United States"
+  },
+  "FFT": {
+    "name": "Frontier Airlines",
+    "icao": "FFT",
+    "iata": "F9",
+    "logo": "https://images.kiwi.com/airlines/64/F9.png",
+    "country": "United States"
+  },
+  "ALC": {
+    "name": "Allegiant Air",
+    "icao": "ALC",
+    "iata": "G4",
+    "logo": "https://images.kiwi.com/airlines/64/G4.png",
+    "country": "United States"
+  },
+  "ARL": {
+    "name": "AeroLavras",
+    "icao": "ARL",
+    "iata": "AL",
+    "logo": "https://media.discordapp.net/attachments/1458047856123314285/1458154719221383270/New_AeroLavras_Logo.png?ex=6975ae28&is=69745ca8&hm=6427ce00f7ad5f03b927723de203424e2d2808a07acbf4e5a7d687efc34d3a16&=&format=webp&quality=lossless&width=811&height=532",
+    "country": "Brazil"
+  },
+  "TAP": {
+    "name": "TAP Air Portugal",
+    "icao": "TAP",
+    "iata": "TP",
+    "logo": "https://images.kiwi.com/airlines/64/TP.png",
+    "country": "Portugal"
+  },
+  "LOT": {
+    "name": "LOT Polish Airlines",
+    "icao": "LOT",
+    "iata": "LO",
+    "logo": "https://images.kiwi.com/airlines/64/LO.png",
+    "country": "Poland"
+  },
+  "AFL": {
+    "name": "Afriqiyah Airways",
+    "icao": "AFL",
+    "iata": "8U",
+    "logo": "https://images.kiwi.com/airlines/64/8U.png",
+    "country": "Libya"
+  },
+  "LAD": {
+    "name": "Lufthansa Cargo",
+    "icao": "LAD",
+    "iata": "LH",
+    "logo": "https://images.kiwi.com/airlines/64/LH.png",
+    "country": "Germany"
+  },
+  "GFA": {
+    "name": "Gulf Air",
+    "icao": "GFA",
+    "iata": "GF",
+    "logo": "https://images.kiwi.com/airlines/64/GF.png",
+    "country": "Bahrain"
+  },
+  "SIAF": {
+    "name": "SilkAir",
+    "icao": "SIAF",
+    "iata": "MI",
+    "logo": "https://images.kiwi.com/airlines/64/MI.png",
+    "country": "Singapore"
+  },
+  "JAZ": {
+    "name": "Jazeera Airways",
+    "icao": "JAZ",
+    "iata": "J9",
+    "logo": "https://images.kiwi.com/airlines/64/J9.png",
+    "country": "Kuwait"
+  },
+  "MEA": {
+    "name": "Middle East Airlines",
+    "icao": "MEA",
+    "iata": "ME",
+    "logo": "https://images.kiwi.com/airlines/64/ME.png",
+    "country": "Lebanon"
   }
 }
