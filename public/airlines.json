@@ -411,5 +411,12 @@
     "iata": "ME",
     "logo": "https://images.kiwi.com/airlines/64/ME.png",
     "country": "Lebanon"
+  },
+  "RJA": {
+    "name": "Royal Japan Airlines",
+    "icao": "RJA",
+    "iata": "RJ",
+    "logo": "https://media.discordapp.net/attachments/1323652074059202581/1465021069030064158/image_11.png?ex=697796b1&is=69764531&hm=c2e2167a0bacdf1cab5cabaf2bb7e9b092eeb1d9f6a9a65441ed456bb13c5b22&=&format=webp&quality=lossless&width=1291&height=707",
+    "country": "Japan"
   }
 }
