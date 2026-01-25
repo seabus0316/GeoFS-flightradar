@@ -186,42 +186,40 @@ async function loadAirlines() {
   }
 }
 
-// 根據 callsign 或 flightNo 識別航空公司
+// 優化後的航空公司識別邏輯
 function getAirlineInfo(callsign, flightNo) {
   if (!callsign && !flightNo) return null;
   
-  // 優先使用 callsign (ICAO code)
-  if (callsign) {
-    // 提取前3個字母作為 ICAO code
-    const icaoCode = callsign.substring(0, 3).toUpperCase();
-    if (airlinesData[icaoCode]) {
-      return {
-        name: airlinesData[icaoCode].name,
-        icao: airlinesData[icaoCode].icao,
-        iata: airlinesData[icaoCode].iata,
-        logo: airlinesData[icaoCode].logo,
-        country: airlinesData[icaoCode].country
-      };
+  // 第一優先：從 flightNo (航班號欄位) 尋找
+  if (flightNo) {
+    const fn = String(flightNo).toUpperCase();
+    
+    // 階段 1: 嘗試匹配 IATA (通常是前 2 碼，如 CX872 -> CX)
+    const iataPrefix = fn.substring(0, 2);
+    for (const icao in airlinesData) {
+      if (airlinesData[icao].iata === iataPrefix) {
+        return { ...airlinesData[icao], source: 'flightNo-iata' };
+      }
+    }
+
+    // 階段 2: 您要求的修改 — 如果 IATA 查不到，用同一個 flightNo 查 ICAO (如 CPA872 -> CPA)
+    const icaoPrefix = fn.substring(0, 3);
+    if (airlinesData[icaoPrefix]) {
+      return { ...airlinesData[icaoPrefix], source: 'flightNo-icao' };
     }
   }
   
-  // 如果 callsign 找不到，嘗試用 flightNo (IATA code)
-  if (flightNo) {
-    // 提取前2-3個字母作為 IATA code
-    const iataMatch = flightNo.match(/^([A-Z]{2,3})/);
-    if (iataMatch) {
-      const iataCode = iataMatch[1];
-      // 在資料庫中搜尋對應的 IATA code
-      for (const icao in airlinesData) {
-        if (airlinesData[icao].iata === iataCode) {
-          return {
-            name: airlinesData[icao].name,
-            icao: airlinesData[icao].icao,
-            iata: airlinesData[icao].iata,
-            logo: airlinesData[icao].logo,
-            country: airlinesData[icao].country
-          };
-        }
+  // 第二優先：檢查 callsign (呼號/使用者名稱)
+  // 增加嚴格條件：只有符合航空公司格式 (3個大寫字母+數字，如 CPA123) 才會處理
+  // 這樣可以避免把 Peter (前三碼 PET) 誤判為 Petroleum Air Services
+  if (callsign) {
+    const cs = String(callsign).toUpperCase();
+    const isAirlineFormat = /^[A-Z]{3}[0-9]/.test(cs); 
+    
+    if (isAirlineFormat) {
+      const icaoCode = cs.substring(0, 3);
+      if (airlinesData[icaoCode]) {
+        return { ...airlinesData[icaoCode], source: 'callsign-icao' };
       }
     }
   }
