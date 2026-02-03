@@ -3,7 +3,7 @@
 # GeoFS Flightradar
 Just like the FlightRadar24 in real world
 
-[![License](https://img.shields.io/badge/License-MIT%20License-green.svg)](https://opensource.org/license/MIT)
+SeaBus(c) 2026. All Rights Reserved.
 
 # How to use?
 Install the receiver.user.js and It will load the latest script. The script can send your position info to the atc screen
