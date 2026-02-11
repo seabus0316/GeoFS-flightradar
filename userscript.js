@@ -277,30 +277,12 @@ function buildPayload(snap) {
 
     document.body.appendChild(flightUI);
 
-    try {
-      const saved = JSON.parse(
-        localStorage.getItem("geofsFlightInfo")
-      );
-      if (saved) {
-        flightInfo = saved;
-        depInput.value = saved.departure || "";
-        arrInput.value = saved.arrival || "";
-        fltInput.value = saved.flightNo || "";
-        sqkInput.value = saved.squawk || "";
-      }
-    } catch {}
-
     saveBtn.onclick = () => {
       flightInfo.departure = depInput.value.trim();
       flightInfo.arrival = arrInput.value.trim();
       flightInfo.flightNo = fltInput.value.trim();
       flightInfo.squawk = sqkInput.value.trim();
-
-      localStorage.setItem(
-        "geofsFlightInfo",
-        JSON.stringify(flightInfo)
-      );
-    };
+      showToast('Flight Info Saved');};
   }
   injectFlightUI();
 
