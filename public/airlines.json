@@ -418,5 +418,26 @@
     "iata": "RJ",
     "logo": "https://media.discordapp.net/attachments/1323652074059202581/1465021069030064158/image_11.png?ex=697796b1&is=69764531&hm=c2e2167a0bacdf1cab5cabaf2bb7e9b092eeb1d9f6a9a65441ed456bb13c5b22&=&format=webp&quality=lossless&width=1291&height=707",
     "country": "Japan"
+  },
+  "SIF": {
+    "name": "AirSial",
+    "icao": "SIF",
+    "iata": "PF",
+    "logo": "https://i.ibb.co/zVmJGHzb/Airsial-logo-1.png",
+    "country": "Pakistan"
+  },
+    "FJL": {
+    "name": "Fujairah Air",
+    "icao": "FJL",
+    "iata": "9P",
+    "logo": "https://images.kiwi.com/airlines/64/FJ.png",
+    "country": "United Arab Emirates"
+  },
+    "ABQ": {
+    "name": "Airblue",
+    "icao": "ABQ",
+    "iata": "PA",
+    "logo": "https://images.kiwi.com/airlines/64/PA.png",
+    "country": "Pakistan"
   }
 }
