@@ -8,6 +8,89 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="/styles.css">
 </head>
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<!-- 右下角自訂地圖控制列 -->
+<div id="customMapBar" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;">
+
+  <!-- 縮放按鈕 -->
+  <div style="display:flex;flex-direction:column;gap:4px;">
+    <button onclick="map.zoomIn()" style="width:44px;height:44px;border-radius:10px;border:none;background:rgba(20,24,32,0.92);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.45);">＋</button>
+    <button onclick="map.zoomOut()" style="width:44px;height:44px;border-radius:10px;border:none;background:rgba(20,24,32,0.92);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.45);">－</button>
+  </div>
+
+  <!-- 天氣按鈕 -->
+  <div style="position:relative;">
+    <button id="wxBtn" onclick="togglePanel('wxPanel',this)" style="width:44px;height:44px;border-radius:10px;border:none;background:rgba(20,24,32,0.92);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.45);">☁</button>
+    <div id="wxPanel" style="display:none;position:absolute;bottom:54px;right:0;background:rgba(20,24,32,0.97);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 20px rgba(0,0,0,0.55);">
+      <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 8px;border-bottom:1px solid #333;margin-bottom:4px;">Weather (WX)</div>
+      <button class="wx-row" onclick="toggleLayer(owmClouds,this)">☁️ Clouds</button>
+      <button class="wx-row" onclick="toggleLayer(owmPrecipitation,this)">🌧 Precipitation</button>
+      <button class="wx-row" onclick="toggleLayer(owmWind,this)">💨 Wind</button>
+      <button class="wx-row" onclick="toggleLayer(openAIP,this)">🛩 OpenAIP</button>
+    </div>
+  </div>
+
+  <!-- 底圖按鈕 -->
+  <div style="position:relative;">
+    <button id="tileBtn" onclick="togglePanel('tilePanel',this)" style="width:44px;height:44px;border-radius:10px;border:none;background:rgba(20,24,32,0.92);color:#fff;font-size:22px;cursor:pointer;box-shadow:0 2px 10px rgba(0,0,0,0.45);">🗂</button>
+    <div id="tilePanel" style="display:none;position:absolute;bottom:54px;right:0;background:rgba(20,24,32,0.97);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 20px rgba(0,0,0,0.55);">
+      <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 8px;border-bottom:1px solid #333;margin-bottom:4px;">Map Tiles</div>
+      <button class="tile-row active-tile" onclick="switchBase(googleSat,this)">Google Satellite</button>
+      <button class="tile-row" onclick="switchBase(googleHybrid,this)"> Google Hybrid</button>
+      <button class="tile-row" onclick="switchBase(googleStreet,this)"> Google Streets</button>
+      <button class="tile-row" onclick="switchBase(googleTer,this)"> Google Terrain</button>
+      <button class="tile-row" onclick="switchBase(osmLayer,this)"> OpenStreetMap</button>
+      <button class="tile-row" onclick="switchBase(amapStreets,this)"> Amap Streets</button>
+      <button class="tile-row" onclick="switchBase(amapSatellite,this)"> Amap Satellite</button>
+    </div>
+  </div>
+
+</div>
+
+<style>
+.wx-row, .tile-row {
+  display:block;width:100%;background:transparent;border:none;color:#ddd;
+  font-size:13px;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;
+  transition:background 0.15s;
+}
+.wx-row:hover, .tile-row:hover { background:rgba(255,255,255,0.1); }
+.wx-row.on { color:#00cfff;background:rgba(0,207,255,0.12); }
+.active-tile { color:#4287f5;background:rgba(66,135,245,0.2); }
+</style>
+
+<script>
+let currentBase = googleSat;
+
+function togglePanel(id, btn) {
+  const panel = document.getElementById(id);
+  const isOpen = panel.style.display === 'block';
+  // 關掉所有面板
+  document.getElementById('wxPanel').style.display = 'none';
+  document.getElementById('tilePanel').style.display = 'none';
+  if (!isOpen) panel.style.display = 'block';
+}
+
+function toggleLayer(layer, btn) {
+  if (map.hasLayer(layer)) { map.removeLayer(layer); btn.classList.remove('on'); }
+  else { map.addLayer(layer); btn.classList.add('on'); }
+}
+
+function switchBase(layer, btn) {
+  map.removeLayer(currentBase);
+  currentBase = layer;
+  map.addLayer(layer);
+  document.querySelectorAll('.tile-row').forEach(b => b.classList.remove('active-tile'));
+  btn.classList.add('active-tile');
+}
+
+// 點其他地方關掉面板
+document.addEventListener('click', e => {
+  if (!e.target.closest('#customMapBar')) {
+    document.getElementById('wxPanel').style.display = 'none';
+    document.getElementById('tilePanel').style.display = 'none';
+  }
+});
+</script>
 <body>
   <!-- ❌ 刪除 -->
 <button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
@@ -105,7 +188,7 @@
 </div>
 
 <!-- UTC Time Box with Clocks -->
-<div id="utcTime" style="position: fixed; bottom: 20px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+<div id="utcTime" style="position: fixed; bottom: 130px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
   <div style="margin-bottom: 8px; font-weight: bold;">UTC Time: <span id="utcTimeText">--</span></div>
   <div id="clockContainer" style="display: flex; gap: 15px; justify-content: center;">
     <!-- Clocks will be inserted here -->
@@ -589,25 +672,6 @@ const map = L.map('map', {
 // 新增 waypointPane (z-index 比 tilePane高,比overlayPane低)
 map.createPane('waypointPane');
 map.getPane('waypointPane').style.zIndex = 550;
-
-L.control.layers(
-  {
-    "OpenStreetMap": osmLayer,
-    "Thunderforest Transport": Thunderforest_Transport,
-    "Google Streets": googleStreet,
-    "Google Terrain": googleTer,
-    "Google Hybrid": googleHybrid,
-    "Google Satellite": googleSat,
-    "Amap Streets": amapStreets,
-    "Amap Satellite": amapSatellite
-  },
-  {
-    "OpenAIP": openAIP,
-    "OWM Clouds": owmClouds,          // 新增
-    "OWM Precipitation": owmPrecipitation,   // 新增
-    "OWM Wind": owmWind
-  }
-).addTo(map);
 // Canvas renderer
 const canvasRenderer = L.canvas();
 
