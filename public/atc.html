@@ -44,7 +44,7 @@
       <button class="tile-row" onclick="switchBase(amapSatellite,this)"> Amap Satellite</button>
     </div>
   </div>
-
+<button id="atcBtn" class="atc-mode-btn" onclick="toggleAtcMode()" title="ATC Mode">📡</button>
 </div>
 
 <style>
@@ -59,7 +59,7 @@
 </style>
 
 <script>
-let currentBase = googleSat;
+let currentBase;
 
 function togglePanel(id, btn) {
   const panel = document.getElementById(id);
@@ -615,7 +615,7 @@ const googleSat = L.tileLayer('https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z
 const googleTer = L.tileLayer('http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}', {
   attribution: 'Map data &copy; Google'
 });
-
+currentBase = googleSat;
 // 高德地图 (Amap)
 const amapStreets = L.tileLayer(
   'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}',
@@ -692,6 +692,7 @@ function clearFlightPlanMarkers() {
 }
 
 function makeDivIcon(data){
+  if (atcMode) return makeAtcBlip(data);
   const imgW=32,imgH=32,labelW=150,labelH=60,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
   const color=getAltitudeColor(data.alt);
   const isEmergency = data.squawk === '7700';
@@ -744,6 +745,178 @@ async function loadHistoryFromBackend(aircraftId) {
   }
 }
 
+// ===== ATC MODE =====
+let atcMode = false;
+let polarLayer = null;
+let radarSweepInterval = null;
+let prevTileLayer = null; // 記住切換前的底圖
+
+function toggleAtcMode() {
+  atcMode = !atcMode;
+  document.getElementById('atcBtn').classList.toggle('active', atcMode);
+
+  if (atcMode) {
+    // 切換至深色底圖
+    prevTileLayer = currentBase;
+        //建議換成 CartoDB Dark Matter：
+    const darkTile = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {attribution: '© CartoDB'});
+    switchBase(darkTile, null);
+
+    startRadarOverlay();
+  } else {
+    stopRadarOverlay();
+    // 還原底圖
+    if (prevTileLayer) switchBase(prevTileLayer, null);
+  }
+
+  // 重新渲染所有飛機圖示（切換雷達 blip / 一般圖示）
+  aircrafts.forEach((obj, id) => {
+    if (obj.marker) {
+      obj.marker.setIcon(makeDivIcon(obj.data));
+      updateAtcLabel(obj, atcMode);
+    }
+  });
+}
+
+// ===== 雷達 Blip 圖示（atcMode 時使用）=====
+function makeAtcBlip(data) {
+  const squawk = String(data.squawk || '').trim();
+  const isEmergency = ['7700', '7600', '7500'].includes(squawk);
+  const blipSize = isEmergency ? 42 : 34;
+  const blipColor = isEmergency ? '#ff3b3b' : '#35f59b';
+  const lineLength = Math.round(blipSize * 0.72);
+  const hdg = Number(data.heading || 0) - 90;
+
+  const html = `
+    <div style="width:${blipSize}px;height:${blipSize}px;position:relative;display:flex;align-items:center;justify-content:center;">
+      <div style="position:absolute;width:2px;height:${lineLength}px;background:${blipColor};
+           top:${(blipSize - lineLength)/2}px;left:${(blipSize - 2)/2}px;
+           transform-origin:center bottom;transform:rotate(${hdg}deg);
+           box-shadow:0 0 12px ${blipColor};opacity:0.95;"></div>
+      <div style="position:absolute;width:${Math.round(blipSize*0.64)}px;height:${Math.round(blipSize*0.64)}px;
+           border:1.5px solid ${blipColor};border-radius:50%;opacity:0.35;box-shadow:0 0 10px ${blipColor};"></div>
+      <div style="width:${Math.round(blipSize*0.30)}px;height:${Math.round(blipSize*0.30)}px;
+           border:2px solid ${blipColor};border-radius:50%;
+           box-shadow:0 0 12px ${blipColor}, inset 0 0 6px ${blipColor};
+           background:radial-gradient(circle, ${blipColor} 0%, rgba(53,245,155,0.26) 40%, transparent 70%);
+           position:relative;z-index:2;"></div>
+    </div>`;
+
+  return L.divIcon({
+    html,
+    className: 'atc-radar-blip',
+    iconSize: [blipSize, blipSize],
+    iconAnchor: [blipSize / 2, blipSize / 2]
+  });
+}
+// ===== ATC Tooltip Label =====
+function updateAtcLabel(obj, enable) {
+  const marker = obj.marker;
+  if (!marker) return;
+  if (enable) {
+    const d = obj.data;
+    const squawk = d.squawk ? `\n⚠ SQK ${d.squawk}` : '';
+    const labelHtml = `
+      <span style="font-weight:700;font-size:11px;">${d.callsign || 'UNK'}</span><br>
+      <span style="font-size:10px;">${d.type || '??'} · ${Math.round(d.alt || 0)}ft · ${Math.round(d.speed || 0)}kt</span>
+      ${squawk ? `<br><span style="color:#ff4444;font-size:10px;">${squawk}</span>` : ''}
+    `;
+    marker.bindTooltip(labelHtml, {
+      permanent: true,
+      direction: 'right',
+      offset: [10, 0],
+      className: 'atc-target-label'
+    }).openTooltip();
+  } else {
+    marker.unbindTooltip();
+  }
+}
+
+// ===== 雷達極坐標覆蓋層（圓環、輻射線、掃描扇） =====
+function buildRadarOverlay() {
+  if (polarLayer) { map.removeLayer(polarLayer); polarLayer = null; }
+
+  const center = map.getCenter();
+  const c = { lat: center.lat, lng: center.lng };
+
+  const toRad = d => d * Math.PI / 180;
+  const toDeg = r => r * 180 / Math.PI;
+  const project = (lat, lon, brng, distNm) => {
+    const d = (distNm * 1852) / 6371000;
+    const b = toRad(brng);
+    const lat1 = toRad(lat), lon1 = toRad(lon);
+    const lat2 = Math.asin(Math.sin(lat1)*Math.cos(d) + Math.cos(lat1)*Math.sin(d)*Math.cos(b));
+    const lon2 = lon1 + Math.atan2(Math.sin(b)*Math.sin(d)*Math.cos(lat1), Math.cos(d)-Math.sin(lat1)*Math.sin(lat2));
+    return { lat: toDeg(lat2), lon: toDeg(lon2) };
+  };
+
+  const layers = [];
+
+  // 圓環
+  [50, 100, 150, 200, 250, 300].forEach(r => {
+    layers.push(L.circle([c.lat, c.lng], {
+      radius: r * 1852,
+      color: 'rgba(53,245,155,0.35)', weight: 1, dashArray: '4 6', fillOpacity: 0
+    }));
+    // 距離標籤
+    const p = project(c.lat, c.lng, 0, r);
+    layers.push(L.marker([p.lat, p.lon], {
+      icon: L.divIcon({
+        html: `<div style="color:rgba(103,243,163,0.85);font:600 10px/1.1 monospace;">${r}nm</div>`,
+        iconSize: [38, 12], iconAnchor: [19, 6]
+      }),
+      interactive: false
+    }));
+  });
+
+  // 輻射線（每 30 度）
+  for (let i = 0; i < 12; i++) {
+    const end = project(c.lat, c.lng, i * 30, 320);
+    layers.push(L.polyline([[c.lat, c.lng], [end.lat, end.lon]], {
+      color: 'rgba(53,245,155,0.14)', weight: 1, dashArray: '2 9', interactive: false
+    }));
+  }
+
+  // 掃描扇（sweep）
+  const sweepAngle = (Date.now() / 26) % 360;
+  const sweepPts = [[c.lat, c.lng]];
+  for (let a = sweepAngle - 12; a <= sweepAngle + 12; a += 2) {
+    const p = project(c.lat, c.lng, (a + 360) % 360, 320);
+    sweepPts.push([p.lat, p.lon]);
+  }
+  sweepPts.push([c.lat, c.lng]);
+  layers.push(L.polygon(sweepPts, {
+    color: 'rgba(53,245,155,0.45)', weight: 1,
+    fillColor: '#35f59b', fillOpacity: 0.16, interactive: false
+  }));
+
+  // 速度向量線
+  aircrafts.forEach(obj => {
+    const f = obj.data;
+    if (!f.lat || !f.lon) return;
+    const hdg = Number(f.heading || 0);
+    const spd = Number(f.speed || 0);
+    const vecNm = Math.max(2, Math.min(16, spd / 110));
+    const end = project(f.lat, f.lon, hdg, vecNm);
+    const isEmg = ['7700','7600','7500'].includes(String(f.squawk||''));
+    layers.push(L.polyline([[f.lat, f.lon], [end.lat, end.lon]], {
+      color: isEmg ? 'rgba(255,59,59,0.92)' : 'rgba(103,243,163,0.88)',
+      weight: 1.5, interactive: false
+    }));
+  });
+
+  polarLayer = L.layerGroup(layers).addTo(map);
+}
+
+function startRadarOverlay() {
+  buildRadarOverlay();
+  radarSweepInterval = setInterval(buildRadarOverlay, 500); // 每 0.5 秒更新掃描扇
+}
+
+function stopRadarOverlay() {
+  if (radarSweepInterval) { clearInterval(radarSweepInterval); radarSweepInterval = null; }
+  if (polarLayer) { map.removeLayer(polarLayer); polarLayer = null; }
+}
 // 載入所有當前飛機的歷史軌跡
 async function loadAllHistoryFromBackend() {
   try {
