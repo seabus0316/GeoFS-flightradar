@@ -80,7 +80,7 @@ function switchBase(layer, btn) {
   currentBase = layer;
   map.addLayer(layer);
   document.querySelectorAll('.tile-row').forEach(b => b.classList.remove('active-tile'));
-  btn.classList.add('active-tile');
+  if (btn) btn.classList.add('active-tile');
 }
 
 // 點其他地方關掉面板
@@ -863,7 +863,8 @@ function buildRadarOverlay() {
     layers.push(L.marker([p.lat, p.lon], {
       icon: L.divIcon({
         html: `<div style="color:rgba(103,243,163,0.85);font:600 10px/1.1 monospace;">${r}nm</div>`,
-        iconSize: [38, 12], iconAnchor: [19, 6]
+        iconSize: [38, 12], iconAnchor: [19, 6],
+        className: ''
       }),
       interactive: false
     }));
