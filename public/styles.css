@@ -396,7 +396,6 @@ html,body {
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transition: all 0.2s ease;
-  position: relative;
 }
 
 #metarToggle:hover {
