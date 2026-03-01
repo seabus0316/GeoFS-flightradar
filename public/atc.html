@@ -751,6 +751,41 @@ let polarLayer = null;
 let radarSweepInterval = null;
 let prevTileLayer = null; // 記住切換前的底圖
 
+// ===== 機場標點層 =====
+let airportPinLayer = null;
+
+function updateAirportPins() {
+  if (!atcMode) return;
+  if (airportPinLayer) { airportPinLayer.clearLayers(); }
+  else { airportPinLayer = L.layerGroup().addTo(map); }
+
+  const zoom = map.getZoom();
+  if (zoom < 8) return;  // 縮放 < 8 不顯示
+
+  const bounds = map.getBounds();
+  airportsData.forEach(apt => {
+    if (!apt.lat || !apt.lon) return;
+    if (!bounds.contains([apt.lat, apt.lon])) return;
+
+    const label = String(apt.iata || apt.icao || '').toUpperCase();
+    const icon = L.divIcon({
+      className: '',
+      html: `
+        <div style="display:flex;flex-direction:column;align-items:center;">
+          <div style="background:#00ff85;width:7px;height:7px;border-radius:50%;border:1px solid #003d20;box-shadow:0 0 6px #00ff85;"></div>
+          <div style="font-size:10px;font-weight:bold;color:#00ff85;text-shadow:0 0 6px #003d20,1px 1px 0 #000;margin-top:1px;white-space:nowrap;">${label}</div>
+        </div>`,
+      iconSize: [40, 26],
+      iconAnchor: [4, 4]
+    });
+    L.marker([apt.lat, apt.lon], { icon, interactive: false }).addTo(airportPinLayer);
+  });
+}
+
+function removeAirportPins() {
+  if (airportPinLayer) { map.removeLayer(airportPinLayer); airportPinLayer = null; }
+}
+
 function toggleAtcMode() {
   atcMode = !atcMode;
   document.getElementById('atcBtn').classList.toggle('active', atcMode);
@@ -763,8 +798,12 @@ function toggleAtcMode() {
     switchBase(darkTile, null);
 
     startRadarOverlay();
+    updateAirportPins();                           // ✅ 新增
+    map.on('moveend zoomend', updateAirportPins);
   } else {
     stopRadarOverlay();
+    removeAirportPins();                           // ✅ 新增
+    map.off('moveend zoomend', updateAirportPins);
     // 還原底圖
     if (prevTileLayer) switchBase(prevTileLayer, null);
   }
@@ -789,10 +828,6 @@ function makeAtcBlip(data) {
 
   const html = `
     <div style="width:${blipSize}px;height:${blipSize}px;position:relative;display:flex;align-items:center;justify-content:center;">
-      <div style="position:absolute;width:2px;height:${lineLength}px;background:${blipColor};
-           top:${(blipSize - lineLength)/2}px;left:${(blipSize - 2)/2}px;
-           transform-origin:center bottom;transform:rotate(${hdg}deg);
-           box-shadow:0 0 12px ${blipColor};opacity:0.95;"></div>
       <div style="position:absolute;width:${Math.round(blipSize*0.64)}px;height:${Math.round(blipSize*0.64)}px;
            border:1.5px solid ${blipColor};border-radius:50%;opacity:0.35;box-shadow:0 0 10px ${blipColor};"></div>
       <div style="width:${Math.round(blipSize*0.30)}px;height:${Math.round(blipSize*0.30)}px;
@@ -815,7 +850,7 @@ function updateAtcLabel(obj, enable) {
   if (!marker) return;
   if (enable) {
     const d = obj.data;
-    const squawk = d.squawk ? `\n⚠ SQK ${d.squawk}` : '';
+    const squawk = d.squawk === '7700' ? `⚠ SQK 7700` : '';
     const labelHtml = `
       <span style="font-weight:700;font-size:11px;">${d.callsign || 'UNK'}</span><br>
       <span style="font-size:10px;">${d.type || '??'} · ${Math.round(d.alt || 0)}ft · ${Math.round(d.speed || 0)}kt</span>
