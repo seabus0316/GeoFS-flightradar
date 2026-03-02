@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 <link rel="stylesheet" href="/styles.css">
 </head>
+<script src="https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js"></script>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <!-- 右下角自訂地圖控制列 -->
 <div id="customMapBar" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;">
@@ -45,6 +46,9 @@
     </div>
   </div>
 <button id="atcBtn" class="atc-mode-btn" onclick="toggleAtcMode()" title="ATC Mode">📡</button>
+<button id="dayNightBtn" class="atc-mode-btn" onclick="toggleDayNight()" title="晝夜地圖">
+  <i data-lucide="moon"></i>
+</button>
 </div>
 
 <style>
@@ -2828,6 +2832,41 @@ async function selectAirport(lat, lon, icao, name) {
   }, 5000);
 }
 loadAirlines();
+let dayNightLayer = null;
+let dayNightTimer = null;
+
+function toggleDayNight() {
+  const btn = document.getElementById('dayNightBtn');
+  
+  if (dayNightLayer) {
+    // 如果圖層已存在，則移除
+    map.removeLayer(dayNightLayer);
+    dayNightLayer = null;
+    if (dayNightTimer) clearInterval(dayNightTimer);
+    btn.style.color = ''; // 恢復原色
+  } else {
+    // 建立晝夜圖層並設定樣式 (參考 test.html)
+    dayNightLayer = L.terminator({
+      fillColor: '#000',
+      fillOpacity: 0.42,
+      color: '#999',
+      weight: 1,
+      opacity: 0.45,
+      dashArray: '4 6',
+      interactive: false
+    }).addTo(map);
+
+    // 每分鐘自動更新位置
+    dayNightTimer = setInterval(() => {
+      if (dayNightLayer && dayNightLayer.setTime) {
+        dayNightLayer.setTime();
+      }
+    }, 60000);
+    
+    // 啟用時按鈕變色 (藍色發光)
+    btn.style.color = '#3b82f6';
+  }
+}
 </script>
 </body>
 </html>
