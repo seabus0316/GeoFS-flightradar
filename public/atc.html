@@ -23,10 +23,10 @@
     <button id="wxBtn" onclick="togglePanel('wxPanel',this)" class="map-control-btn">☁</button>
     <div id="wxPanel" style="display:none;position:absolute;bottom:54px;right:0;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
       <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 8px;border-bottom:1px solid #333;margin-bottom:4px;">Weather (WX)</div>
-      <button class="wx-row" onclick="toggleLayer(owmClouds,this)">☁️ Clouds</button>
-      <button class="wx-row" onclick="toggleLayer(owmPrecipitation,this)">🌧 Precipitation</button>
-      <button class="wx-row" onclick="toggleLayer(owmWind,this)">💨 Wind</button>
-      <button class="wx-row" onclick="toggleLayer(openAIP,this)">🛩 OpenAIP</button>
+      <button class="wx-row" onclick="toggleLayer(owmClouds,this)"><i data-lucide="cloud"></i> Clouds</button>
+      <button class="wx-row" onclick="toggleLayer(owmPrecipitation,this)"><i data-lucide="cloud-rain"></i> Precipitation</button>
+      <button class="wx-row" onclick="toggleLayer(owmWind,this)"><i data-lucide="wind"></i> Wind</button>
+      <button class="wx-row" onclick="toggleLayer(openAIP,this)"><i data-lucide="airplay"></i> OpenAIP</button>
     </div>
   </div>
 
@@ -44,7 +44,7 @@
       <button class="tile-row" onclick="switchBase(amapSatellite,this)"> Amap Satellite</button>
     </div>
   </div>
-<button id="atcBtn" class="atc-mode-btn" onclick="toggleAtcMode()" title="ATC Mode"><i data-lucide="radio"></button>
+<button id="atcBtn" class="atc-mode-btn" onclick="toggleAtcMode()" title="ATC Mode"><i data-lucide="radio"></i></button>
 <button id="dayNightBtn" class="atc-mode-btn" onclick="toggleDayNight()" title="晝夜地圖">
   <i data-lucide="moon"></i>
 </button>
@@ -2866,6 +2866,7 @@ function toggleDayNight() {
     btn.style.color = '#3b82f6';
   }
 }
+lucide.createIcons();
 </script>
 </body>
 </html>
