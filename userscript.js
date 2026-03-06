@@ -198,7 +198,7 @@
     }
   }
 
-  // --- 組裝 payload ---
+  // --- 組裝 payload ----
 function buildPayload(snap) {
   checkTakeoff();
   let flightPlan = [];
