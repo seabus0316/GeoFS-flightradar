@@ -9,6 +9,7 @@
 <link rel="stylesheet" href="/styles.css">
 </head>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="/aircraft-icons.js"></script>
 <!-- 右下角自訂地圖控制列 -->
 <div id="customMapBar" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;">
 
@@ -680,7 +681,7 @@ map.getPane('waypointPane').style.zIndex = 550;
 const canvasRenderer = L.canvas();
 
 const aircrafts = new Map();
-const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
+//const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
 const NEXT_WAYPOINT_IMG = "https://i.ibb.co/4ZTy2Gds/watpoint.png"; 
 let focusedAircraftId = null;
 let flightPlanMarkers = [];
@@ -708,7 +709,7 @@ function makeDivIcon(data){
   return L.divIcon({
   html:`
     <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-      <img src="${PLANE_IMG}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);"/>
+      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">

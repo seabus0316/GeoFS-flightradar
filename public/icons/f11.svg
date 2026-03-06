@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<svg viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" xmlns:bx="https://boxy-svg.com">
+  <defs>
+    <bx:grid x="0" y="0" width="14.286" height="14.3"/>
+  </defs>
+  <ellipse cx="100" cy="65.49" rx="50" ry="51.19"/>
+  <rect x="71.43" y="143" width="57.144" height="42.9"/>
+  <path style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0); stroke-width: 8px;" d="M 123.755 148.558 L 144.86 64.556"/>
+  <path style="fill: rgb(216, 216, 216); stroke: rgb(0, 0, 0); stroke-width: 8px;" d="M 55.144 64.298 L 76.249 148.3" transform="matrix(-1, 0, 0, -1, 131.393002, 212.598)"/>
+</svg>
