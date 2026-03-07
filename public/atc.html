@@ -68,7 +68,7 @@ let currentBase;
 function togglePanel(id, btn) {
   const panel = document.getElementById(id);
   const isOpen = panel.style.display === 'block';
-  // 關掉所有面板//
+  // 關掉所有面板
   document.getElementById('wxPanel').style.display = 'none';
   document.getElementById('tilePanel').style.display = 'none';
   if (!isOpen) panel.style.display = 'block';
@@ -681,7 +681,7 @@ map.getPane('waypointPane').style.zIndex = 550;
 const canvasRenderer = L.canvas();
 
 const aircrafts = new Map();
-//const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
+const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
 const NEXT_WAYPOINT_IMG = "https://i.ibb.co/4ZTy2Gds/watpoint.png"; 
 let focusedAircraftId = null;
 let flightPlanMarkers = [];
@@ -709,7 +709,7 @@ function makeDivIcon(data){
   return L.divIcon({
   html:`
     <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);" onerror="this.src='/icons/c0.svg'"/>
+      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);filter:brightness(0) saturate(100%) invert(88%) sepia(60%) saturate(800%) hue-rotate(5deg) brightness(103%);" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
