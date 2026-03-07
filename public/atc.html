@@ -60,48 +60,6 @@
 .wx-row:hover, .tile-row:hover { background:rgba(255,255,255,0.1); }
 .wx-row.on { color:#00cfff;background:rgba(0,207,255,0.12); }
 .active-tile { color:#4287f5;background:rgba(66,135,245,0.2); }
-/* 右側飛機資訊面板 */
-#aircraftPanel {
-  position: fixed;
-  top: 74px;
-  right: 16px; /* 移至右側 */
-  width: 320px;
-  max-height: calc(100vh - 100px);
-  background: rgba(13, 20, 32, 0.92);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  z-index: 9000;
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
-  display: none; /* 預設隱藏，選中飛機後才顯示 */
-  flex-direction: column;
-  color: #e8edf2;
-  font-family: "Inter", sans-serif;
-  overflow: hidden;
-}
-
-#apHeader { position: relative; width: 100%; height: 180px; background: #000; overflow: hidden; }
-#apPhoto { width: 100%; height: 100%; object-fit: cover; }
-#apClose {
-  position: absolute; top: 10px; right: 10px;
-  background: rgba(0,0,0,0.5); border: none; color: white;
-  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
-  display: flex; align-items: center; justify-content: center; z-index: 2;
-}
-
-#apContent { padding: 16px; overflow-y: auto; }
-.ap-row-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
-.ap-callsign { font-size: 22px; font-weight: 800; color: #ffd500; }
-.ap-flightno { font-size: 14px; color: #8a9db0; }
-
-.ap-route { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); margin: 10px 0; }
-.ap-apt { text-align: center; flex: 1; }
-.ap-apt-code { font-size: 24px; font-weight: 700; display: block; }
-.ap-apt-name { font-size: 11px; color: #5a7080; }
-
-.ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
-.ap-label { font-size: 11px; color: #5a7080; text-transform: uppercase; margin-bottom: 2px; }
-.ap-val { font-size: 14px; font-weight: 600; color: #e8edf2; }
 </style>
 
 <script>
@@ -209,63 +167,53 @@ document.addEventListener('click', e => {
 ═══════════════════════════════════════════════ -->
 <style>
 #flightListPanel {
-  position: fixed;
-  top: 74px;
-  left: 16px;
-  width: 320px;
-  max-height: calc(100vh - 90px);
-  background: rgba(13, 20, 32, 0.92);
+  position: fixed; top: 0; left: 0;
+  width: 340px;
+  max-height: 100vh;
+  background: rgba(13, 20, 32, 0.88);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
-  z-index: 8000;
+  z-index: 9000;
   display: flex; flex-direction: column;
   font-family: "Inter","Segoe UI",sans-serif;
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
-  transform: translateY(0) scale(1);
-  opacity: 1;
-  transition: transform 0.25s cubic-bezier(.4,0,.2,1), opacity 0.2s ease;
-  overflow: hidden;
+  box-shadow: 2px 0 24px rgba(0,0,0,0.5);
+  transform: translateX(0);
+  transition: transform 0.3s cubic-bezier(.4,0,.2,1);
+  border-right: 1px solid rgba(255,255,255,0.07);
 }
-#flightListPanel.collapsed {
-  transform: translateY(-12px) scale(0.97);
-  opacity: 0;
-  pointer-events: none;
-}
+#flightListPanel.collapsed { transform: translateX(-100%); }
 
 /* Header */
 #flpHeader {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px 0; flex-shrink: 0;
+  padding: 16px 16px 0; flex-shrink: 0;
 }
-.flp-brand { font-size: 14px; font-weight: 700; color: #e8edf2; letter-spacing: -0.2px; }
+.flp-brand { font-size: 15px; font-weight: 700; color: #e8edf2; letter-spacing: -0.2px; }
 .flp-brand em { color: #ffd500; font-style: normal; }
-.flp-collapse { background: none; border: none; color: #5a6a7a; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1; }
-.flp-collapse:hover { color: #e8edf2; background: rgba(255,255,255,0.08); }
+.flp-collapse { background: none; border: none; color: #5a6a7a; font-size: 18px; cursor: pointer; padding: 2px 4px; border-radius: 4px; line-height: 1; }
+.flp-collapse:hover { color: #e8edf2; background: rgba(255,255,255,0.06); }
 
-/* Open button — sits next to search box */
+/* Open button */
 #flightListOpenBtn {
-  position: fixed; top: 20px; left: 16px; z-index: 9001;
-  background: rgba(13,20,32,0.88);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px; color: #ffd500; font-size: 16px;
-  width: 46px; height: 46px; cursor: pointer;
+  position: fixed; top: 14px; left: 14px; z-index: 9001;
+  background: rgba(13,20,32,0.88); border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px; color: #ffd500; font-size: 18px;
+  width: 38px; height: 38px; cursor: pointer;
   display: none; align-items: center; justify-content: center;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
+  box-shadow: 0 2px 10px rgba(0,0,0,0.6);
 }
 #flightListOpenBtn.visible { display: flex; }
 
 /* Tabs */
 #flpTabs {
-  display: flex; margin: 8px 0 0; flex-shrink: 0;
+  display: flex; margin: 12px 0 0; flex-shrink: 0;
   border-bottom: 1px solid rgba(255,255,255,0.07);
-  padding: 0 4px;
 }
 .fl-tab {
   flex: 1; background: none; border: none;
   border-bottom: 2px solid transparent;
   color: #4e6070; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.8px; padding: 7px 0;
+  letter-spacing: 0.8px; padding: 9px 0;
   cursor: pointer; text-transform: uppercase;
   transition: color 0.2s, border-color 0.2s;
 }
@@ -292,7 +240,7 @@ document.addEventListener('click', e => {
 /* Flight item */
 .fl-item {
   display: flex; align-items: center; gap: 10px;
-  padding: 9px 14px;
+  padding: 11px 14px;
   border-bottom: 1px solid rgba(255,255,255,0.04);
   cursor: pointer; transition: background 0.12s;
   border-left: 3px solid transparent;
@@ -365,42 +313,7 @@ document.addEventListener('click', e => {
   </div>
   <div id="flpBody"></div>
 </div>
-<div id="aircraftPanel">
-  <div id="apHeader">
-    <button id="apClose" onclick="closeAircraftPanel()">✕</button>
-    <img id="apPhoto" src="" alt="Aircraft Photo">
-  </div>
-  <div id="apContent">
-    <div class="ap-row-main">
-      <div>
-        <div id="apCallsign" class="ap-callsign">N/A</div>
-        <div id="apFlightNo" class="ap-flightno">---------</div>
-      </div>
-      <div id="apAirlineLogo" class="fl-logo" style="width:50px; height:50px;"></div>
-    </div>
 
-    <div class="ap-route">
-      <div class="ap-apt">
-        <span id="apDep" class="ap-apt-code">---</span>
-        <span id="apDepCity" class="ap-apt-name">Departure</span>
-      </div>
-      <div style="color:#ffd500; font-size:20px;">✈</div>
-      <div class="ap-apt">
-        <span id="apArr" class="ap-apt-code">---</span>
-        <span id="apArrCity" class="ap-apt-name">Arrival</span>
-      </div>
-    </div>
-
-    <div class="ap-grid">
-      <div><div class="ap-label">Aircraft Type</div><div id="apType" class="ap-val">—</div></div>
-      <div><div class="ap-label">Registration</div><div id="apReg" class="ap-val">—</div></div>
-      <div><div class="ap-label">Altitude</div><div id="apAlt" class="ap-val">—</div></div>
-      <div><div class="ap-label">Ground Speed</div><div id="apSpd" class="ap-val">—</div></div>
-      <div><div class="ap-label">Vertical Speed</div><div id="apVSpd" class="ap-val">—</div></div>
-      <div><div class="ap-label">Squawk</div><div id="apSquawk" class="ap-val">—</div></div>
-    </div>
-  </div>
-</div>
 <script>
 // ── Flight List Panel ────────────────────────────────────────
 let flCurrentTab = "live";
@@ -439,38 +352,24 @@ function makeLogoHtml(d) {
   return `<span class="fl-logo-fb">✈️</span>`;
 }
 
-// 穩定排序 key：記錄每架飛機第一次出現的時間
-const _flFirstSeen = new Map();
-
 function renderFlightList() {
   const body = document.getElementById("flpBody");
   if (!body) return;
-
-  const esc = typeof escapeHtml === "function" ? escapeHtml : s => String(s || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
-  const fmtSpd = typeof formatSpeed === "function" ? formatSpeed : s => Math.round(s || 0);
-
   let items = [];
 
   if (flCurrentTab === "live") {
     if (typeof aircrafts !== "undefined") {
       for (const [id, obj] of aircrafts.entries()) {
-        if (!_flFirstSeen.has(id)) _flFirstSeen.set(id, Date.now());
         items.push({ ...obj.data, _id: id });
       }
-      // 清理已消失的飛機
-      for (const k of _flFirstSeen.keys()) {
-        if (!aircrafts.has(k)) _flFirstSeen.delete(k);
-      }
     }
-    // firstSeen 排序：最早進來的排最上，順序穩定不跳
-    items.sort((a, b) => (_flFirstSeen.get(a._id) || 0) - (_flFirstSeen.get(b._id) || 0));
+    items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
     const badge = document.getElementById("flLiveBadge");
     if (badge) badge.textContent = items.length;
   } else {
     items = (window._recentlyLanded || []).slice(0, 100);
   }
 
-  // 空狀態
   if (items.length === 0) {
     body.innerHTML = `<div class="fl-empty">
       <div class="fl-empty-icon">✈️</div>
@@ -479,157 +378,74 @@ function renderFlightList() {
     return;
   }
 
-  // 移除空狀態 div
-  const emptyEl = body.querySelector(".fl-empty");
-  if (emptyEl) emptyEl.remove();
+  const esc = typeof escapeHtml === "function" ? escapeHtml : s => String(s || "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+  const fmtSpd = typeof formatSpeed === "function" ? formatSpeed : s => Math.round(s || 0);
 
-  // 移除已不存在的飛機
-  const newIds = new Set(items.map(d => d._id || d.aircraftId || d.callsign || ""));
-  for (const el of [...body.querySelectorAll(".fl-item[data-flid]")]) {
-    if (!newIds.has(el.dataset.flid)) el.remove();
-  }
-
-  // 新增 or 更新（只改數字，不重建 DOM → 不跳動）
-  items.forEach(d => {
+  body.innerHTML = items.map(d => {
     const id = d._id || d.aircraftId || d.callsign || "";
-    const dep4 = (d.actualDeparture || d.departure || "").substring(0, 4) || "—";
-    const arr4 = (d.actualArrival  || d.arrival   || "").substring(0, 4) || "—";
+    const safeId = id.replace(/'/g, "\\'");
+
+    // Departure / Arrival (prefer actualDeparture/Arrival, ICAO first 4 chars)
+    const depFull = d.actualDeparture || d.departure || "";
+    const arrFull = d.actualArrival  || d.arrival   || "";
+    const dep4 = depFull.substring(0, 4) || "—";
+    const arr4 = arrFull.substring(0, 4) || "—";
+
     const spd = fmtSpd(d.speed);
     const isGround = (d.speed || 0) < 30;
     const type = esc(d.type || "");
-    const time = d.ts ? new Date(d.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}) : "";
-    const row3 = [type, time].filter(Boolean).join(" | ");
+    const sel = id === flSelectedId ? "selected" : "";
+    const divBadge = d.isDiverted ? `<span class="fl-diverted">DIV</span>` : "";
+    const fnBadge = d.flightNo ? `<span class="fl-badge">${esc(d.flightNo)}</span>` : "";
+    const typeBadge = type ? `<span class="fl-badge type">${type}</span>` : "";
 
-    let el = body.querySelector(`.fl-item[data-flid="${CSS.escape(id)}"]`);
-
-    if (!el) {
-      // 新飛機 → 建立元素
-      const fnBadge = d.flightNo ? `<span class="fl-badge">${esc(d.flightNo)}</span>` : "";
-      const typeBadge = type ? `<span class="fl-badge type">${type}</span>` : "";
-      const divBadge = d.isDiverted ? `<span class="fl-diverted">DIV</span>` : "";
-      el = document.createElement("div");
-      el.className = `fl-item${id === flSelectedId ? " selected" : ""}`;
-      el.dataset.flid = id;
-      el.onclick = () => flSelectFlight(id);
-      el.innerHTML = `
-        <div class="fl-logo">${makeLogoHtml(d)}</div>
-        <div class="fl-info">
-          <div class="fl-row1">
-            <span class="fl-callsign">${esc(d.callsign || "N/A")}</span>
-            ${fnBadge}${typeBadge}${divBadge}
-          </div>
-          <div class="fl-row2">
-            <span class="fl-dep">${esc(dep4)}</span>
-            <span class="fl-arrow"> → </span>
-            <span class="fl-arr">${esc(arr4)}</span>
-          </div>
-          <div class="fl-row3 fl-r3"></div>
+    return `<div class="fl-item ${sel}" onclick="flSelectFlight('${safeId}')">
+      <div class="fl-logo">${makeLogoHtml(d)}</div>
+      <div class="fl-info">
+        <div class="fl-row1">
+          <span class="fl-callsign">${esc(d.callsign || "N/A")}</span>
+          ${fnBadge}${typeBadge}${divBadge}
         </div>
-        <div class="fl-spd fl-spd-n"></div>`;
-      body.appendChild(el);
-    } else {
-      // 只更新 selected 狀態
-      el.classList.toggle("selected", id === flSelectedId);
-    }
-
-    // 更新速度、route3（只改 textContent，不動 DOM 結構）
-    const spdEl = el.querySelector(".fl-spd-n");
-    if (spdEl) {
-      spdEl.textContent = `${spd} kts`;
-      spdEl.className = `fl-spd fl-spd-n${isGround ? " ground" : ""}`;
-    }
-    const r3El = el.querySelector(".fl-r3");
-    if (r3El && r3El.textContent !== row3) r3El.textContent = row3;
-  });
+        <div class="fl-row2">
+          <span class="fl-airport">${esc(dep4)}</span>
+          <span class="fl-arrow"> → </span>
+          <span class="fl-airport">${esc(arr4)}</span>
+        </div>
+        <div class="fl-row3">${type}${type && time ? ' | ' : ''}${time}</div>
+      </div>
+      <div class="fl-spd ${isGround ? 'ground' : ''}">${spd} kts</div>
+    </div>`;
+  }).join("");
 }
 
-
-// 關閉右側面板
-function closeAircraftPanel() {
-  document.getElementById('aircraftPanel').style.display = 'none';
-  flSelectedId = null;
-  renderFlightList();
-}
-
-// 修改原有的 flSelectFlight，加入更新面板的調用
 function flSelectFlight(id) {
   flSelectedId = id;
   renderFlightList();
-  
   if (typeof aircrafts !== "undefined" && aircrafts.has(id)) {
     const obj = aircrafts.get(id);
-    
-    // 1. 更新地圖視角
     if (obj && obj.marker) {
       obj.marker.fire("click");
-      map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 10), { duration: 1.5 });
+      map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
     }
-    
-    // 2. 更新並顯示右側面板
-    updateAircraftPanel(id);
   }
 }
 
-// 更新詳細資訊面板內容
-function updateAircraftPanel(id) {
-  const obj = aircrafts.get(id);
-  if (!obj) return;
-  const d = obj.data;
-  const panel = document.getElementById('aircraftPanel');
-  panel.style.display = 'flex';
-
-  // 填入文字資料
-  document.getElementById('apCallsign').textContent = d.callsign || "N/A";
-  document.getElementById('apFlightNo').textContent = d.flightNo || "No Flight Number";
-  document.getElementById('apType').textContent = d.type || "Unknown";
-  document.getElementById('apReg').textContent = d.registration || "—";
-  document.getElementById('apAlt').textContent = (d.altitude || 0).toLocaleString() + " ft";
-  document.getElementById('apSpd').textContent = (Math.round(d.speed || 0)) + " kts";
-  document.getElementById('apVSpd').textContent = (d.verticalSpeed || 0) + " fpm";
-  document.getElementById('apSquawk').textContent = d.squawk || "—";
-  
-  // 航線資料
-  document.getElementById('apDep').textContent = (d.actualDeparture || d.departure || "???").substring(0,4);
-  document.getElementById('apArr').textContent = (d.actualArrival || d.arrival || "???").substring(0,4);
-
-  // 更新 Logo (複用你已有的邏輯)
-  const logoBox = document.getElementById('apAirlineLogo');
-  logoBox.innerHTML = makeLogoHtml(d);
-
-  // 更新照片 (嘗試抓取 JetPhotos 縮圖)
-  const photo = document.getElementById('apPhoto');
-  if (d.registration) {
-    photo.src = `https://www.jetphotos.com/api/getPhotos.php?reg=${d.registration}`; 
-    // 注意：上述 API 是示意，如果沒有直接 API，建議設一個預設圖
-    photo.onerror = () => { photo.src = "https://i.ibb.co/ywrJMZN/plane.png"; }; 
-  } else {
-    photo.src = "https://i.ibb.co/ywrJMZN/plane.png";
+// Capture recent_update from socket
+const _flOrigMsg = window.onSocketMessage;
+window.onSocketMessage = (msg) => {
+  if (msg && msg.type === "recent_update" && Array.isArray(msg.payload)) {
+    window._recentlyLanded = msg.payload;
+    if (flCurrentTab !== "live") renderFlightList();
   }
-}
-// Capture recent_update — hook into the WS message event after connectWS runs
-function _hookFlightListWS() {
-  if (typeof ws === "undefined" || !ws) {
-    setTimeout(_hookFlightListWS, 500);
-    return;
-  }
-  ws.addEventListener("message", ev => {
-    try {
-      const m = JSON.parse(ev.data);
-      if (m.type === "recent_update" && Array.isArray(m.payload)) {
-        window._recentlyLanded = m.payload;
-        if (flCurrentTab !== "live") renderFlightList();
-      }
-    } catch(e) {}
-  });
-}
-setTimeout(_hookFlightListWS, 1000);
+  if (_flOrigMsg) _flOrigMsg(msg);
+};
 
 setInterval(() => { if (flCurrentTab === "live") renderFlightList(); }, 2000);
 setTimeout(renderFlightList, 1500);
 </script>
 
 <!-- Search Box -->
-<div id="searchBox" style="position: fixed; top: 20px; left: 72px; z-index: 9999; width: 260px;">
+<div id="searchBox" style="position: fixed; top: 20px; left: 80px; z-index: 9999; width: 240px;">
   <div style="position: relative;">
     <input type="text" id="searchInput" placeholder="🔍 Search flight or airport..." 
            style="width: 100%; padding: 12px 45px 12px 16px; font-size: 14px; border: none; border-radius: 8px; 
@@ -2570,24 +2386,6 @@ loadAirports();
 // 在頁面載入時載入機場數據
 loadAirports();
 connectWS();
-
-// Also listen via Socket.IO if available (server sends recent_update via io.emit)
-(function _trySocketIO() {
-  if (typeof io !== "undefined") {
-    try {
-      const _flSocket = io();
-      _flSocket.on("recent_update", data => {
-        window._recentlyLanded = Array.isArray(data) ? data : [];
-        if (flCurrentTab !== "live") renderFlightList();
-      });
-      _flSocket.on("traffic_update", data => {
-        // traffic_update is a dict, not used for list (WS handles aircraft_update)
-      });
-    } catch(e) {}
-  } else {
-    setTimeout(_trySocketIO, 1000);
-  }
-})();
 
 // ========== 平滑移動動畫系統 ==========
 
