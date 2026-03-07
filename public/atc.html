@@ -168,14 +168,15 @@ document.addEventListener('click', e => {
 <style>
 #flightListPanel {
   position: fixed; top: 0; left: 0;
-  width: 420px; height: 100vh;
-  background: rgba(13, 20, 32, 0.92);
-  backdrop-filter: blur(20px) saturate(160%);
-  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  width: 340px;
+  max-height: 100vh;
+  background: rgba(13, 20, 32, 0.88);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
   z-index: 9000;
   display: flex; flex-direction: column;
   font-family: "Inter","Segoe UI",sans-serif;
-  box-shadow: 4px 0 32px rgba(0,0,0,0.6);
+  box-shadow: 2px 0 24px rgba(0,0,0,0.5);
   transform: translateX(0);
   transition: transform 0.3s cubic-bezier(.4,0,.2,1);
   border-right: 1px solid rgba(255,255,255,0.07);
@@ -412,7 +413,7 @@ function renderFlightList() {
         </div>
         <div class="fl-row3">${type}${type && time ? ' | ' : ''}${time}</div>
       </div>
-      <div class="fl-spd ${isGround ? "ground" : ""}">${spd} kts</div>
+      <div class="fl-spd ${isGround ? 'ground' : ''}">${spd} kts</div>
     </div>`;
   }).join("");
 }
