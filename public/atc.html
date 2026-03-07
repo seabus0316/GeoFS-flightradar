@@ -168,10 +168,11 @@ document.addEventListener('click', e => {
 <style>
 #flightListPanel {
   position: fixed;
-  top: 74px;
-  left: 16px;
-  width: 320px;
-  max-height: calc(100vh - 90px);
+  top: 16px;
+  right: 16px;
+  left: auto;
+  width: 300px;
+  max-height: calc(100vh - 32px);
   background: rgba(13, 20, 32, 0.92);
   backdrop-filter: blur(24px) saturate(180%);
   -webkit-backdrop-filter: blur(24px) saturate(180%);
@@ -186,7 +187,7 @@ document.addEventListener('click', e => {
   overflow: hidden;
 }
 #flightListPanel.collapsed {
-  transform: translateY(-12px) scale(0.97);
+  transform: translateX(320px);
   opacity: 0;
   pointer-events: none;
 }
@@ -203,7 +204,7 @@ document.addEventListener('click', e => {
 
 /* Open button — sits next to search box */
 #flightListOpenBtn {
-  position: fixed; top: 20px; left: 16px; z-index: 9001;
+  position: fixed; top: 16px; right: 16px; left: auto; z-index: 9001;
   background: rgba(13,20,32,0.88);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px; color: #ffd500; font-size: 16px;
