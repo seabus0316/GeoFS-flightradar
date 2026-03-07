@@ -162,6 +162,207 @@ document.addEventListener('click', e => {
      background: rgba(0,0,0,0.5); z-index: 99998; display: none; opacity: 0; 
      transition: opacity 0.3s ease;"></div>
 
+<!-- ═══════════════════════════════════════════════
+     FR24-Style Flight List Panel
+═══════════════════════════════════════════════ -->
+<style>
+#flightListPanel {
+  position: fixed;
+  top: 0; right: 0;
+  width: 300px;
+  height: 100vh;
+  background: #0f1923;
+  z-index: 9000;
+  display: flex;
+  flex-direction: column;
+  font-family: "Inter", "Segoe UI", sans-serif;
+  box-shadow: -4px 0 20px rgba(0,0,0,0.6);
+  transform: translateX(0);
+  transition: transform 0.3s ease;
+}
+#flightListPanel.collapsed { transform: translateX(100%); }
+#flightListHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px 0;
+  flex-shrink: 0;
+}
+#flightListHeader .brand { font-size: 16px; font-weight: 700; color: #fff; display: flex; align-items: center; gap: 6px; }
+#flightListHeader .brand span { color: #3b82f6; }
+#flightListToggleBtn { background: none; border: none; color: #aaa; font-size: 20px; cursor: pointer; padding: 4px; line-height: 1; }
+#flightListToggleBtn:hover { color: #fff; }
+#flightListOpenBtn {
+  position: fixed; top: 14px; right: 14px; z-index: 9001;
+  background: rgba(15,25,35,0.85);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 8px;
+  color: #ffd500; font-size: 20px;
+  width: 40px; height: 40px;
+  cursor: pointer; display: none;
+  align-items: center; justify-content: center;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+#flightListOpenBtn.visible { display: flex; }
+#flightListTabs { display: flex; border-bottom: 1px solid #1e2d3d; margin: 10px 0 0; flex-shrink: 0; }
+.fl-tab {
+  flex: 1; background: none; border: none; border-bottom: 2px solid transparent;
+  color: #6b7e91; font-size: 12px; font-weight: 600; letter-spacing: 0.5px;
+  padding: 10px 4px; cursor: pointer; text-transform: uppercase;
+  transition: color 0.2s, border-color 0.2s;
+}
+.fl-tab:hover { color: #cdd6e0; }
+.fl-tab.active { color: #fff; border-bottom-color: #3b82f6; }
+#flightListBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+#flightListBody::-webkit-scrollbar { width: 4px; }
+#flightListBody::-webkit-scrollbar-track { background: transparent; }
+#flightListBody::-webkit-scrollbar-thumb { background: #2a3a4a; border-radius: 2px; }
+.fl-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-bottom: 1px solid #151f28;
+  cursor: pointer; transition: background 0.15s;
+}
+.fl-item:hover { background: #162030; }
+.fl-item.selected { background: #162d42; }
+.fl-logo {
+  width: 40px; height: 40px; border-radius: 8px;
+  background: #1e2d3d;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; overflow: hidden;
+}
+.fl-logo img { width: 34px; height: 34px; object-fit: contain; border-radius: 6px; }
+.fl-logo .fl-logo-fallback { font-size: 20px; }
+.fl-info { flex: 1; min-width: 0; }
+.fl-callsign { font-size: 15px; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-route { font-size: 12px; color: #8a9db0; margin-top: 2px; }
+.fl-type { font-size: 11px; color: #5d7080; margin-top: 2px; }
+.fl-speed-badge { background: #1e2d3d; color: #cdd6e0; font-size: 11px; font-weight: 600; padding: 4px 8px; border-radius: 6px; white-space: nowrap; flex-shrink: 0; }
+.fl-speed-badge.ground { color: #5d7080; }
+.fl-diverted { font-size: 10px; font-weight: 700; color: #f59e0b; background: rgba(245,158,11,0.15); padding: 1px 5px; border-radius: 3px; margin-left: 4px; }
+.fl-empty { text-align: center; padding: 40px 20px; color: #4a5a6a; font-size: 13px; }
+.fl-tab-count { display: inline-block; background: #3b82f6; color: #fff; font-size: 10px; padding: 1px 5px; border-radius: 8px; margin-left: 4px; vertical-align: middle; }
+</style>
+
+<div id="flightListOpenBtn" onclick="openFlightPanel()" title="Show Flights">✈</div>
+
+<div id="flightListPanel">
+  <div id="flightListHeader">
+    <div class="brand">GeoFS <span>Radar</span></div>
+    <button id="flightListToggleBtn" onclick="closeFlightPanel()" title="Collapse">∧</button>
+  </div>
+  <div id="flightListTabs">
+    <button class="fl-tab active" onclick="switchFlTab('live',this)">LIVE <span id="flTabLiveCount" class="fl-tab-count">0</span></button>
+    <button class="fl-tab" onclick="switchFlTab('recent',this)">RECENT</button>
+    <button class="fl-tab" onclick="switchFlTab('history',this)">HISTORY</button>
+  </div>
+  <div id="flightListBody"></div>
+</div>
+
+<script>
+let flCurrentTab = "live";
+let flSelectedId = null;
+
+function closeFlightPanel() {
+  document.getElementById("flightListPanel").classList.add("collapsed");
+  document.getElementById("flightListOpenBtn").classList.add("visible");
+}
+function openFlightPanel() {
+  document.getElementById("flightListPanel").classList.remove("collapsed");
+  document.getElementById("flightListOpenBtn").classList.remove("visible");
+}
+function switchFlTab(tab, btn) {
+  flCurrentTab = tab;
+  document.querySelectorAll(".fl-tab").forEach(b => b.classList.remove("active"));
+  btn.classList.add("active");
+  renderFlightList();
+}
+
+function makeLogoHtml(d) {
+  const info = (typeof getAirlineInfo === "function") ? getAirlineInfo(d.callsign, d.flightNo) : null;
+  if (info && typeof airlinesData !== "undefined") {
+    for (const [k, v] of Object.entries(airlinesData)) {
+      if (v === info || (v.name === info.name && v.iata === info.iata)) {
+        return `<img src="/logos/${k}.png" onerror="this.style.display='none';this.nextElementSibling.style.display='block';"/>
+                <span class="fl-logo-fallback" style="display:none;">✈️</span>`;
+      }
+    }
+  }
+  return `<span class="fl-logo-fallback">✈️</span>`;
+}
+
+function renderFlightList() {
+  const body = document.getElementById("flightListBody");
+  if (!body) return;
+  let items = [];
+
+  if (flCurrentTab === "live") {
+    if (typeof aircrafts !== "undefined") {
+      for (const [id, obj] of aircrafts.entries()) {
+        items.push({ ...obj.data, _id: id });
+      }
+    }
+    items.sort((a, b) => (b.ts || 0) - (a.ts || 0));
+    const badge = document.getElementById("flTabLiveCount");
+    if (badge) badge.textContent = items.length;
+  } else {
+    items = (window._recentlyLanded || []).slice(0, 100);
+  }
+
+  if (items.length === 0) {
+    body.innerHTML = `<div class="fl-empty">${flCurrentTab === "live" ? "📡 No live flights" : "🕓 No flights yet"}</div>`;
+    return;
+  }
+
+  const esc = typeof escapeHtml === "function" ? escapeHtml : s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;","\"":" &quot;"}[c]));
+  const fmtSpd = typeof formatSpeed === "function" ? formatSpeed : s => Math.round(s || 0);
+
+  body.innerHTML = items.map(d => {
+    const id = d._id || d.aircraftId || d.callsign;
+    const dep = (d.departure || d.actualDeparture || "???").substring(0, 4);
+    const arr = (d.arrival || d.actualArrival || "???").substring(0, 4);
+    const spd = fmtSpd(d.speed);
+    const isGround = (d.speed || 0) < 30;
+    const time = d.ts ? new Date(d.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"}) : "";
+    const diverted = d.isDiverted ? `<span class="fl-diverted">DIV</span>` : "";
+    const sel = id === flSelectedId ? "selected" : "";
+    return `<div class="fl-item ${sel}" onclick="flSelectFlight('${id}')">
+      <div class="fl-logo">${makeLogoHtml(d)}</div>
+      <div class="fl-info">
+        <div class="fl-callsign">${esc(d.callsign || "N/A")}${diverted}</div>
+        <div class="fl-route">${esc(dep)} → ${esc(arr)}</div>
+        <div class="fl-type">${esc(d.type || "—")} | ${time}</div>
+      </div>
+      <div class="fl-speed-badge ${isGround ? "ground" : ""}">${spd} kts</div>
+    </div>`;
+  }).join("");
+}
+
+function flSelectFlight(id) {
+  flSelectedId = id;
+  renderFlightList();
+  if (typeof aircrafts !== "undefined" && aircrafts.has(id)) {
+    const obj = aircrafts.get(id);
+    if (obj && obj.marker) {
+      obj.marker.fire("click");
+      map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), {duration: 1});
+    }
+  }
+}
+
+// Patch socket to capture recentlyLanded
+const _origOnMsg = window.onSocketMessage;
+const _flPatchSocket = (msg) => {
+  if (msg && msg.type === "recent_update" && Array.isArray(msg.payload)) {
+    window._recentlyLanded = msg.payload;
+    if (flCurrentTab !== "live") renderFlightList();
+  }
+  if (_origOnMsg) _origOnMsg(msg);
+};
+
+setInterval(() => { if (flCurrentTab === "live") renderFlightList(); }, 2000);
+setTimeout(renderFlightList, 1500);
+</script>
+
 <!-- Search Box -->
 <div id="searchBox" style="position: fixed; top: 20px; left: 80px; z-index: 9999; width: 240px;">
   <div style="position: relative;">
