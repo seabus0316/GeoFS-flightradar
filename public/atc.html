@@ -709,7 +709,7 @@ function makeDivIcon(data){
   return L.divIcon({
   html:`
     <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);filter:brightness(0) saturate(100%) invert(88%) sepia(60%) saturate(800%) hue-rotate(5deg) brightness(103%);" onerror="this.src='/icons/c0.svg'"/>
+      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);filter:brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%);" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
