@@ -394,6 +394,7 @@ function renderFlightList() {
     const spd = fmtSpd(d.speed);
     const isGround = (d.speed || 0) < 30;
     const type = esc(d.type || "");
+    const time = d.ts ? new Date(d.ts).toLocaleTimeString([], {hour:"2-digit", minute:"2-digit", second:"2-digit"}) : "";
     const sel = id === flSelectedId ? "selected" : "";
     const divBadge = d.isDiverted ? `<span class="fl-diverted">DIV</span>` : "";
     const fnBadge = d.flightNo ? `<span class="fl-badge">${esc(d.flightNo)}</span>` : "";
@@ -430,15 +431,23 @@ function flSelectFlight(id) {
   }
 }
 
-// Capture recent_update from socket
-const _flOrigMsg = window.onSocketMessage;
-window.onSocketMessage = (msg) => {
-  if (msg && msg.type === "recent_update" && Array.isArray(msg.payload)) {
-    window._recentlyLanded = msg.payload;
-    if (flCurrentTab !== "live") renderFlightList();
+// Capture recent_update — hook into the WS message event after connectWS runs
+function _hookFlightListWS() {
+  if (typeof ws === "undefined" || !ws) {
+    setTimeout(_hookFlightListWS, 500);
+    return;
   }
-  if (_flOrigMsg) _flOrigMsg(msg);
-};
+  ws.addEventListener("message", ev => {
+    try {
+      const m = JSON.parse(ev.data);
+      if (m.type === "recent_update" && Array.isArray(m.payload)) {
+        window._recentlyLanded = m.payload;
+        if (flCurrentTab !== "live") renderFlightList();
+      }
+    } catch(e) {}
+  });
+}
+setTimeout(_hookFlightListWS, 1000);
 
 setInterval(() => { if (flCurrentTab === "live") renderFlightList(); }, 2000);
 setTimeout(renderFlightList, 1500);
@@ -2386,6 +2395,24 @@ loadAirports();
 // 在頁面載入時載入機場數據
 loadAirports();
 connectWS();
+
+// Also listen via Socket.IO if available (server sends recent_update via io.emit)
+(function _trySocketIO() {
+  if (typeof io !== "undefined") {
+    try {
+      const _flSocket = io();
+      _flSocket.on("recent_update", data => {
+        window._recentlyLanded = Array.isArray(data) ? data : [];
+        if (flCurrentTab !== "live") renderFlightList();
+      });
+      _flSocket.on("traffic_update", data => {
+        // traffic_update is a dict, not used for list (WS handles aircraft_update)
+      });
+    } catch(e) {}
+  } else {
+    setTimeout(_trySocketIO, 1000);
+  }
+})();
 
 // ========== 平滑移動動畫系統 ==========
 
