@@ -60,6 +60,48 @@
 .wx-row:hover, .tile-row:hover { background:rgba(255,255,255,0.1); }
 .wx-row.on { color:#00cfff;background:rgba(0,207,255,0.12); }
 .active-tile { color:#4287f5;background:rgba(66,135,245,0.2); }
+/* 右側飛機資訊面板 */
+#aircraftPanel {
+  position: fixed;
+  top: 74px;
+  right: 16px; /* 移至右側 */
+  width: 320px;
+  max-height: calc(100vh - 100px);
+  background: rgba(13, 20, 32, 0.92);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  z-index: 9000;
+  border-radius: 14px;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
+  display: none; /* 預設隱藏，選中飛機後才顯示 */
+  flex-direction: column;
+  color: #e8edf2;
+  font-family: "Inter", sans-serif;
+  overflow: hidden;
+}
+
+#apHeader { position: relative; width: 100%; height: 180px; background: #000; overflow: hidden; }
+#apPhoto { width: 100%; height: 100%; object-fit: cover; }
+#apClose {
+  position: absolute; top: 10px; right: 10px;
+  background: rgba(0,0,0,0.5); border: none; color: white;
+  width: 30px; height: 30px; border-radius: 50%; cursor: pointer;
+  display: flex; align-items: center; justify-content: center; z-index: 2;
+}
+
+#apContent { padding: 16px; overflow-y: auto; }
+.ap-row-main { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+.ap-callsign { font-size: 22px; font-weight: 800; color: #ffd500; }
+.ap-flightno { font-size: 14px; color: #8a9db0; }
+
+.ap-route { display: flex; align-items: center; justify-content: space-between; padding: 15px 0; border-top: 1px solid rgba(255,255,255,0.1); border-bottom: 1px solid rgba(255,255,255,0.1); margin: 10px 0; }
+.ap-apt { text-align: center; flex: 1; }
+.ap-apt-code { font-size: 24px; font-weight: 700; display: block; }
+.ap-apt-name { font-size: 11px; color: #5a7080; }
+
+.ap-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 15px; }
+.ap-label { font-size: 11px; color: #5a7080; text-transform: uppercase; margin-bottom: 2px; }
+.ap-val { font-size: 14px; font-weight: 600; color: #e8edf2; }
 </style>
 
 <script>
@@ -323,7 +365,42 @@ document.addEventListener('click', e => {
   </div>
   <div id="flpBody"></div>
 </div>
+<div id="aircraftPanel">
+  <div id="apHeader">
+    <button id="apClose" onclick="closeAircraftPanel()">✕</button>
+    <img id="apPhoto" src="" alt="Aircraft Photo">
+  </div>
+  <div id="apContent">
+    <div class="ap-row-main">
+      <div>
+        <div id="apCallsign" class="ap-callsign">N/A</div>
+        <div id="apFlightNo" class="ap-flightno">---------</div>
+      </div>
+      <div id="apAirlineLogo" class="fl-logo" style="width:50px; height:50px;"></div>
+    </div>
 
+    <div class="ap-route">
+      <div class="ap-apt">
+        <span id="apDep" class="ap-apt-code">---</span>
+        <span id="apDepCity" class="ap-apt-name">Departure</span>
+      </div>
+      <div style="color:#ffd500; font-size:20px;">✈</div>
+      <div class="ap-apt">
+        <span id="apArr" class="ap-apt-code">---</span>
+        <span id="apArrCity" class="ap-apt-name">Arrival</span>
+      </div>
+    </div>
+
+    <div class="ap-grid">
+      <div><div class="ap-label">Aircraft Type</div><div id="apType" class="ap-val">—</div></div>
+      <div><div class="ap-label">Registration</div><div id="apReg" class="ap-val">—</div></div>
+      <div><div class="ap-label">Altitude</div><div id="apAlt" class="ap-val">—</div></div>
+      <div><div class="ap-label">Ground Speed</div><div id="apSpd" class="ap-val">—</div></div>
+      <div><div class="ap-label">Vertical Speed</div><div id="apVSpd" class="ap-val">—</div></div>
+      <div><div class="ap-label">Squawk</div><div id="apSquawk" class="ap-val">—</div></div>
+    </div>
+  </div>
+</div>
 <script>
 // ── Flight List Panel ────────────────────────────────────────
 let flCurrentTab = "live";
@@ -467,18 +544,68 @@ function renderFlightList() {
 }
 
 
+// 關閉右側面板
+function closeAircraftPanel() {
+  document.getElementById('aircraftPanel').style.display = 'none';
+  flSelectedId = null;
+  renderFlightList();
+}
+
+// 修改原有的 flSelectFlight，加入更新面板的調用
 function flSelectFlight(id) {
   flSelectedId = id;
   renderFlightList();
+  
   if (typeof aircrafts !== "undefined" && aircrafts.has(id)) {
     const obj = aircrafts.get(id);
+    
+    // 1. 更新地圖視角
     if (obj && obj.marker) {
       obj.marker.fire("click");
-      map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
+      map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 10), { duration: 1.5 });
     }
+    
+    // 2. 更新並顯示右側面板
+    updateAircraftPanel(id);
   }
 }
 
+// 更新詳細資訊面板內容
+function updateAircraftPanel(id) {
+  const obj = aircrafts.get(id);
+  if (!obj) return;
+  const d = obj.data;
+  const panel = document.getElementById('aircraftPanel');
+  panel.style.display = 'flex';
+
+  // 填入文字資料
+  document.getElementById('apCallsign').textContent = d.callsign || "N/A";
+  document.getElementById('apFlightNo').textContent = d.flightNo || "No Flight Number";
+  document.getElementById('apType').textContent = d.type || "Unknown";
+  document.getElementById('apReg').textContent = d.registration || "—";
+  document.getElementById('apAlt').textContent = (d.altitude || 0).toLocaleString() + " ft";
+  document.getElementById('apSpd').textContent = (Math.round(d.speed || 0)) + " kts";
+  document.getElementById('apVSpd').textContent = (d.verticalSpeed || 0) + " fpm";
+  document.getElementById('apSquawk').textContent = d.squawk || "—";
+  
+  // 航線資料
+  document.getElementById('apDep').textContent = (d.actualDeparture || d.departure || "???").substring(0,4);
+  document.getElementById('apArr').textContent = (d.actualArrival || d.arrival || "???").substring(0,4);
+
+  // 更新 Logo (複用你已有的邏輯)
+  const logoBox = document.getElementById('apAirlineLogo');
+  logoBox.innerHTML = makeLogoHtml(d);
+
+  // 更新照片 (嘗試抓取 JetPhotos 縮圖)
+  const photo = document.getElementById('apPhoto');
+  if (d.registration) {
+    photo.src = `https://www.jetphotos.com/api/getPhotos.php?reg=${d.registration}`; 
+    // 注意：上述 API 是示意，如果沒有直接 API，建議設一個預設圖
+    photo.onerror = () => { photo.src = "https://i.ibb.co/ywrJMZN/plane.png"; }; 
+  } else {
+    photo.src = "https://i.ibb.co/ywrJMZN/plane.png";
+  }
+}
 // Capture recent_update — hook into the WS message event after connectWS runs
 function _hookFlightListWS() {
   if (typeof ws === "undefined" || !ws) {
