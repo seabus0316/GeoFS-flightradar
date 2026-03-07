@@ -167,18 +167,20 @@ document.addEventListener('click', e => {
 ═══════════════════════════════════════════════ -->
 <style>
 #flightListPanel {
-  position: fixed; top: 0; right: 0;
-  width: 310px; height: 100vh;
-  background: #131c27;
+  position: fixed; top: 0; left: 0;
+  width: 420px; height: 100vh;
+  background: rgba(13, 20, 32, 0.92);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
   z-index: 9000;
   display: flex; flex-direction: column;
   font-family: "Inter","Segoe UI",sans-serif;
-  box-shadow: -3px 0 24px rgba(0,0,0,0.7);
+  box-shadow: 4px 0 32px rgba(0,0,0,0.6);
   transform: translateX(0);
   transition: transform 0.3s cubic-bezier(.4,0,.2,1);
-  border-left: 1px solid rgba(255,255,255,0.06);
+  border-right: 1px solid rgba(255,255,255,0.07);
 }
-#flightListPanel.collapsed { transform: translateX(100%); }
+#flightListPanel.collapsed { transform: translateX(-100%); }
 
 /* Header */
 #flpHeader {
@@ -192,8 +194,8 @@ document.addEventListener('click', e => {
 
 /* Open button */
 #flightListOpenBtn {
-  position: fixed; top: 14px; right: 14px; z-index: 9001;
-  background: #131c27; border: 1px solid rgba(255,255,255,0.1);
+  position: fixed; top: 14px; left: 14px; z-index: 9001;
+  background: rgba(13,20,32,0.88); border: 1px solid rgba(255,255,255,0.1);
   border-radius: 8px; color: #ffd500; font-size: 18px;
   width: 38px; height: 38px; cursor: pointer;
   display: none; align-items: center; justify-content: center;
@@ -230,7 +232,9 @@ document.addEventListener('click', e => {
 #flpBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
 #flpBody::-webkit-scrollbar { width: 3px; }
 #flpBody::-webkit-scrollbar-track { background: transparent; }
-#flpBody::-webkit-scrollbar-thumb { background: #2a3a4a; border-radius: 2px; }
+#flpBody::-webkit-scrollbar-thumb { background: #ffd500; border-radius: 2px; }
+#flpBody::-webkit-scrollbar { width: 3px; }
+.fl-row3 { font-size: 11px; color: #4e6070; margin-top: 3px; }
 
 /* Flight item */
 .fl-item {
@@ -297,7 +301,7 @@ document.addEventListener('click', e => {
 <div id="flightListPanel">
   <div id="flpHeader">
     <div class="flp-brand">GeoFS <em>Radar</em></div>
-    <button class="flp-collapse" onclick="closeFlightPanel()" title="Collapse">⌃</button>
+    <button class="flp-collapse" onclick="closeFlightPanel()" title="Collapse">∧</button>
   </div>
   <div id="flpTabs">
     <button class="fl-tab active" onclick="switchFlTab('live',this)">
@@ -403,11 +407,10 @@ function renderFlightList() {
         </div>
         <div class="fl-row2">
           <span class="fl-airport">${esc(dep4)}</span>
-          <span class="fl-iata">${esc(dep4)}</span>
-          <span class="fl-arrow">–</span>
+          <span class="fl-arrow"> → </span>
           <span class="fl-airport">${esc(arr4)}</span>
-          <span class="fl-iata">${esc(arr4)}</span>
         </div>
+        <div class="fl-row3">${type}${type && time ? ' | ' : ''}${time}</div>
       </div>
       <div class="fl-spd ${isGround ? "ground" : ""}">${spd} kts</div>
     </div>`;
