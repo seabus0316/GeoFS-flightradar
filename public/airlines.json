@@ -453,5 +453,33 @@
     "iata": "9C",
     "logo": "https://images.kiwi.com/airlines/64/9C.png",
     "country": "China"
+  },
+    "SVR": {
+    "name": "Ural airlines",
+    "icao": "SVR",
+    "iata": "U6",
+    "logo": "https://images.kiwi.com/airlines/64/U6.png",
+    "country": "Russia"
+  },
+    "PBD": {
+    "name": "Pobeda",
+    "icao": "PBD",
+    "iata": "DP",
+    "logo": "https://images.kiwi.com/airlines/64/DP.png",
+    "country": "Russia"
+  },
+    "AZV": {
+    "name": "Azur Air",
+    "icao": "AZV",
+    "iata": "ZF",
+    "logo": "https://media.discordapp.net/attachments/1424412356959539221/1480133484193251328/AZUR_air_idcT_eFOWy_1.png?ex=69ae913a&is=69ad3fba&hm=f90cee89a1316af67e9dd4b58c519cc59262b8e1251b10291d781b1a9d3ee046&=&format=webp&quality=lossless&width=1104&height=1104",
+    "country": "Russia"
+  },
+    "BRU": {
+    "name": "Belavia",
+    "icao": "BRU",
+    "iata": "B2",
+    "logo": "https://images.kiwi.com/airlines/64/B2.png",
+    "country": "Russia"
   }
 }
