@@ -440,11 +440,18 @@
     "logo": "https://images.kiwi.com/airlines/64/PA.png",
     "country": "Pakistan"
   },
-  "SBI": {
+    "SBI": {
     "name": "S7 Airlines",
     "icao": "SBI",
     "iata": "S7",
     "logo": "https://images.kiwi.com/airlines/64/S7.png",
     "country": "Russia"
+  },
+    "CQH": {
+    "name": "Spring Airlines",
+    "icao": "CQH",
+    "iata": "9C",
+    "logo": "https://images.kiwi.com/airlines/64/9C.png",
+    "country": "China"
   }
 }
