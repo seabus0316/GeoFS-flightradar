@@ -1738,6 +1738,22 @@ function calculateFlightProgress(data, airports) {
   };
 }
 // Panel
+// Country name → emoji flag
+function countryToFlag(country) {
+  const map = {
+    "Taiwan":"🇹🇼","Japan":"🇯🇵","United States":"🇺🇸","United Kingdom":"🇬🇧",
+    "Hong Kong":"🇭🇰","Singapore":"🇸🇬","South Korea":"🇰🇷","China":"🇨🇳",
+    "Australia":"🇦🇺","Canada":"🇨🇦","Germany":"🇩🇪","France":"🇫🇷",
+    "Netherlands":"🇳🇱","Thailand":"🇹🇭","Malaysia":"🇲🇾","Vietnam":"🇻🇳",
+    "Philippines":"🇵🇭","United Arab Emirates":"🇦🇪","Qatar":"🇶🇦",
+    "Bahrain":"🇧🇭","Kuwait":"🇰🇼","Lebanon":"🇱🇧","Ethiopia":"🇪🇹",
+    "Ireland":"🇮🇪","Spain":"🇪🇸","Italy":"🇮🇹","Portugal":"🇵🇹",
+    "Switzerland":"🇨🇭","Finland":"🇫🇮","Sweden":"🇸🇪","Poland":"🇵🇱",
+    "Brazil":"🇧🇷","Argentina":"🇦🇷","Mexico":"🇲🇽","Panama":"🇵🇦",
+    "Pakistan":"🇵🇰","Libya":"🇱🇾","India":"🇮🇳","Indonesia":"🇮🇩",
+  };
+  return map[country] || "🌐";
+}
 async function showAircraftPanel(data, id) {
   clearFlightPlanMarkers();
   
@@ -1833,18 +1849,18 @@ async function showAircraftPanel(data, id) {
     p = document.createElement('div');
     p.id = 'aircraftPanel';
     Object.assign(p.style, {
-      position: 'absolute',
-      top: '10px',
-      right: '10px',
-      width: '420px',
-      background: '#f5f5f5',
-      borderRadius: '8px',
-      boxShadow: '0 4px 20px rgba(0,0,0,0.15)',
+      position: 'fixed',
+      top: '16px',
+      left: '16px',
+      width: '360px',
+      background: '#fff',
+      borderRadius: '14px',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
       fontSize: '13px',
-      zIndex: 99999,
+      zIndex: 99990,
       fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
       overflow: 'hidden',
-      maxHeight: '90vh',
+      maxHeight: 'calc(100vh - 32px)',
       overflowY: 'auto'
     });
     document.body.appendChild(p);
@@ -1968,162 +1984,225 @@ async function showAircraftPanel(data, id) {
     `;
   }
 
+  // ── airline info ──
+  const airlineLogoUrl = airlineInfo ? airlineInfo.logo : null;
+  const airlineCountry = airlineInfo ? airlineInfo.country : null;
+  const airlineFlag   = airlineCountry ? countryToFlag(airlineCountry) : '';
+  const airlineIata   = airlineInfo ? (airlineInfo.iata || '') : '';
+
   p.innerHTML = `
-    <!-- Top Header -->
-    <div style="background:#1a1a1a;padding:16px;display:flex;justify-content:space-between;align-items:center;position:relative;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:24px;font-weight:700;color:#ffd500;">${escapeHtml(data.callsign || 'UNKNOWN')}</span>
-        <span style="background:#444;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;">
-          ${escapeHtml(data.flightNo || 'N/A')}
-        </span>
-        <span style="background:#0066cc;color:#fff;padding:4px 8px;border-radius:4px;font-size:11px;font-weight:600;">
-          ${escapeHtml(data.type || '??')}
-        </span>
+  <!-- ════ FR24-style Aircraft Panel ════ -->
+
+  <!-- ① Header: logo + callsign + badges + close -->
+  <div style="background:#1c2431;padding:14px 16px 12px;position:relative;">
+    <div style="display:flex;align-items:center;gap:10px;">
+
+      <!-- Airline logo box -->
+      <div style="width:46px;height:46px;border-radius:10px;background:#fff;
+                  display:flex;align-items:center;justify-content:center;
+                  flex-shrink:0;overflow:hidden;border:1px solid rgba(255,255,255,0.1);">
+        ${airlineLogoUrl
+          ? `<img src="${airlineLogoUrl}" style="width:38px;height:38px;object-fit:contain;"
+                  onerror="this.style.display='none';this.nextSibling.style.display='block';">
+             <span style="display:none;font-size:22px;">✈️</span>`
+          : `<span style="font-size:22px;">✈️</span>`}
       </div>
-      
-      <div style="display:flex;gap:8px;align-items:center;">
-        <button style="background:transparent;border:none;color:#ffd500;cursor:pointer;padding:4px;font-size:20px;">★</button>
-        <button onclick="document.getElementById('aircraftPanel').remove();clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();" 
-        style="background:transparent;border:none;color:#fff;cursor:pointer;padding:4px;font-size:20px;">×</button>
-      </div>
-      
-      <div style="position:absolute;top:8px;right:60px;font-size:10px;color:#ffd500;font-weight:700;letter-spacing:0.5px;">
-        flightradar<span style="color:#fff;">24</span>
-      </div>
-    </div>
 
-    <div style="font-size:13px;color:#fff;background:#1a1a1a;padding-bottom:12px;padding-left:16px;">
-      ${escapeHtml(airlineName)}
-    </div>
-
-    ${isEmergency ? '<div style="background:#d32f2f;color:#fff;padding:12px;text-align:center;font-weight:600;font-size:14px;">⚠️ EMERGENCY SQUAWK 7700</div>' : ''}
-
-    <!-- Hero Image -->
-    ${photosHtml}
-
-    <!-- Route Block -->
-    <div style="background:#fff;padding:24px 16px;border-bottom:1px solid #e0e0e0;">
-      <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:16px;margin-bottom:16px;">
-        <div style="text-align:center;">
-          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(depShort)}</div>
-          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.departure || '—')}</div>
-          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +04:00</div>
+      <!-- Title block -->
+      <div style="flex:1;min-width:0;">
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+          <span style="font-size:20px;font-weight:800;color:#fff;letter-spacing:-0.3px;">
+            ${escapeHtml(data.callsign || 'N/A')}
+          </span>
+          ${data.flightNo ? `<span style="background:rgba(255,255,255,0.1);color:#cdd6e0;
+              font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;
+              border:1px solid rgba(255,255,255,0.15);">${escapeHtml(data.flightNo)}</span>` : ''}
+          ${data.type ? `<span style="background:rgba(59,130,246,0.2);color:#7ec8e3;
+              font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;
+              border:1px solid rgba(59,130,246,0.3);">${escapeHtml(data.type)}</span>` : ''}
+          ${isEmergency ? `<span style="background:#d32f2f;color:#fff;
+              font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;">⚠ 7700</span>` : ''}
         </div>
-        <div style="display:flex;flex-direction:column;align-items:center;gap:8px;">
-          <img src="${data.flightStatus?.image || FLIGHT_STATUS_IMAGES.cruise}" 
-               alt="${data.flightStatus?.text || 'In Flight'}" 
-               style="width:64px;height:64px;object-fit:contain;">
-          <div style="font-size:12px;font-weight:600;color:${data.flightStatus?.color || '#2196F3'};">
-            ${data.flightStatus?.text || 'In Flight'}
+        <div style="font-size:12px;color:#8a9db0;margin-top:3px;display:flex;align-items:center;gap:5px;">
+          ${airlineFlag ? `<span style="font-size:14px;">${airlineFlag}</span>` : ''}
+          <span>${escapeHtml(airlineName)}</span>
+          ${airlineCountry ? `<span style="color:#4e6070;">· ${escapeHtml(airlineCountry)}</span>` : ''}
+        </div>
+      </div>
+
+      <!-- Close -->
+      <button onclick="document.getElementById('aircraftPanel').remove();
+                       clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();"
+        style="background:rgba(255,255,255,0.08);border:none;color:#8a9db0;
+               width:30px;height:30px;border-radius:8px;cursor:pointer;
+               font-size:18px;line-height:1;flex-shrink:0;
+               display:flex;align-items:center;justify-content:center;">×</button>
+    </div>
+  </div>
+
+  ${isEmergency ? `<div style="background:#d32f2f;color:#fff;padding:10px 16px;
+      text-align:center;font-weight:700;font-size:13px;letter-spacing:0.3px;">
+      ⚠️ EMERGENCY — SQUAWK 7700</div>` : ''}
+
+  <!-- ② Hero Photo -->
+  ${photosHtml}
+
+  <!-- ③ Route Block -->
+  <div style="background:#fff;padding:20px 16px 16px;">
+    <div style="display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:8px;">
+
+      <!-- DEP -->
+      <div style="text-align:center;">
+        <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
+          ${escapeHtml(depShort)}
+        </div>
+        <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
+          ${escapeHtml(data.departure || '—')}
+        </div>
+      </div>
+
+      <!-- Status icon + label -->
+      <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
+        <img src="${data.flightStatus?.image || FLIGHT_STATUS_IMAGES.cruise}"
+             style="width:52px;height:52px;object-fit:contain;">
+        <div style="font-size:11px;font-weight:700;color:${data.flightStatus?.color || '#2196F3'};">
+          ${data.flightStatus?.text || 'In Flight'}
+        </div>
+      </div>
+
+      <!-- ARR -->
+      <div style="text-align:center;">
+        <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
+          ${escapeHtml(arrShort)}
+        </div>
+        <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
+          ${escapeHtml(data.arrival || '—')}
+        </div>
+      </div>
+    </div>
+
+    ${(() => {
+      const fp = calculateFlightProgress(data, airportsData);
+      if (fp.depAirport && fp.arrAirport && data.takeoffTime) {
+        return `
+        <div style="margin-top:16px;padding-top:16px;border-top:1px solid #f0f0f0;">
+          <div style="display:flex;justify-content:space-between;margin-bottom:8px;">
+            <div>
+              <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:2px;">Elapsed</div>
+              <div style="font-size:15px;font-weight:700;color:#111;font-variant-numeric:tabular-nums;">
+                ${formatFlightDuration(fp.elapsedTime)}</div>
+            </div>
+            <div style="text-align:right;">
+              <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:2px;">Remaining</div>
+              <div style="font-size:15px;font-weight:700;color:#111;font-variant-numeric:tabular-nums;">
+                ${fp.ete > 0 ? formatFlightDuration(fp.ete) : '—'}</div>
+            </div>
           </div>
-        </div>
-        <div style="text-align:center;">
-          <div style="font-size:36px;font-weight:700;color:#000;line-height:1;">${escapeHtml(arrShort)}</div>
-          <div style="font-size:13px;color:#666;margin-top:4px;">${escapeHtml(data.arrival || '—')}</div>
-          <div style="font-size:11px;color:#999;margin-top:2px;">UTC +00:00</div>
-        </div>
-      </div>
-
-      ${(() => {
-        const flightProgress = calculateFlightProgress(data, airportsData);
-        if (flightProgress.depAirport && flightProgress.arrAirport && data.takeoffTime) {
-          return `
-            <!-- Flightradar24 Style Progress Bar -->
-            <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;">
-              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;">
-                <div style="text-align:left;">
-                  <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:2px;">ELAPSED</div>
-                  <div style="font-size:16px;font-weight:700;color:#000;font-family:monospace;">${formatFlightDuration(flightProgress.elapsedTime)}</div>
-                </div>
-                <div style="text-align:right;">
-                  <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:2px;">REMAINING</div>
-                  <div style="font-size:16px;font-weight:700;color:#000;font-family:monospace;">${flightProgress.ete > 0 ? formatFlightDuration(flightProgress.ete) : '--:--'}</div>
-                </div>
-              </div>
-              
-              <!-- Progress Bar -->
-              <div style="position:relative;width:100%;height:4px;background:#e0e0e0;border-radius:2px;margin:12px 0;overflow:visible;">
-                <div style="position:absolute;left:0;top:0;width:${flightProgress.progress}%;height:100%;background:#ffd500;border-radius:2px;transition:width 0.5s linear;"></div>
-                <!-- Plane Icon -->
-                <div style="position:absolute;left:${flightProgress.progress}%;top:50%;transform:translate(-50%, -50%) rotate(90deg);transition:left 0.5s linear;">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="#000" style="filter:drop-shadow(0 0 2px rgba(255,213,0,0.8));">
-                    <path d="M21,16V14L13,9V3.5A1.5,1.5 0 0,0 11.5,2A1.5,1.5 0 0,0 10,3.5V9L2,14V16L10,13.5V19L8,20.5V22L11.5,21L15,22V20.5L13,19V13.5L21,16Z"/>
-                  </svg>
-                </div>
-              </div>
-              
-              <div style="display:flex;justify-content:space-between;font-size:12px;color:#666;">
-                <span style="font-weight:600;">${flightProgress.distFlown} <span style="font-weight:400;color:#999;">nm</span></span>
-                <span style="font-weight:600;">${flightProgress.distRem} <span style="font-weight:400;color:#999;">nm</span></span>
-              </div>
+          <div style="position:relative;height:4px;background:#eee;border-radius:2px;margin:8px 0;">
+            <div style="position:absolute;left:0;top:0;height:100%;width:${fp.progress}%;
+                        background:#ffd500;border-radius:2px;transition:width 0.5s;"></div>
+            <div style="position:absolute;left:${fp.progress}%;top:50%;
+                        transform:translate(-50%,-50%) rotate(90deg);transition:left 0.5s;">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="#111">
+                <path d="M21,16V14L13,9V3.5A1.5,1.5 0 0,0 11.5,2A1.5,1.5 0 0,0 10,3.5V9L2,14V16L10,13.5V19L8,20.5V22L11.5,21L15,22V20.5L13,19V13.5L21,16Z"/>
+              </svg>
             </div>
-          `;
-        } else if (data.takeoffTime) {
-          return `
-            <div style="margin-top:20px;padding-top:20px;border-top:1px solid #e0e0e0;">
-              <div>
-                <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">TAKEOFF TIME</div>
-                <div style="font-size:16px;font-weight:700;color:#000;font-family:monospace;">${escapeHtml(data.takeoffTime.substring(11, 19))} UTC</div>
-              </div>
-            </div>
-          `;
-        }
-        return '';
-      })()}
-    </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;color:#999;">
+            <span>${fp.distFlown} nm flown</span>
+            <span>${fp.distRem} nm remaining</span>
+          </div>
+        </div>`;
+      } else if (data.takeoffTime) {
+        return `<div style="margin-top:14px;padding-top:14px;border-top:1px solid #f0f0f0;">
+          <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Takeoff</div>
+          <div style="font-size:15px;font-weight:700;color:#111;">${escapeHtml(data.takeoffTime.substring(11,19))} UTC</div>
+        </div>`;
+      }
+      return '';
+    })()}
+  </div>
 
-    <!-- Expandable Toggle -->
-    <button id="expandBtn" style="width:100%;background:#fff;border:none;border-bottom:1px solid #e0e0e0;
-            padding:12px 16px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer;
-            color:#0066cc;font-size:13px;font-weight:600;">
-      <span style="font-size:20px;">✈</span>
-      More ${escapeHtml(data.flightNo || data.callsign)} information
-      <span id="expandIcon">▼</span>
+  <!-- ④ Live Stats (dark row) -->
+  <div style="background:#1c2431;padding:14px 16px;display:grid;
+              grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
+    ${[
+      ['ALTITUDE', Math.round(data.alt || 0).toLocaleString() + ' ft'],
+      ['SPEED',    formatSpeed(data.speed) + ' kt'],
+      ['HEADING',  Math.round(data.heading || 0) + '°'],
+      ['SQUAWK',   data.squawk || '—'],
+    ].map(([label, val]) => `
+      <div style="text-align:center;">
+        <div style="font-size:9px;color:#4e6070;text-transform:uppercase;font-weight:700;
+                    letter-spacing:0.5px;margin-bottom:4px;">${label}</div>
+        <div style="font-size:14px;font-weight:700;color:${label==='SQUAWK'&&isEmergency?'#ff4444':'#e8edf2'};">
+          ${val}
+        </div>
+      </div>`).join('')}
+  </div>
+
+  <!-- ⑤ More info expandable -->
+  <div style="background:#fff;">
+    <button id="expandBtn"
+      style="width:100%;background:#fff;border:none;border-top:1px solid #f0f0f0;
+             padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
+             cursor:pointer;color:#3b82f6;font-size:13px;font-weight:600;">
+      <span style="display:flex;align-items:center;gap:6px;">
+        <span>✈</span> More ${escapeHtml(data.flightNo || data.callsign || '')} information
+      </span>
+      <span id="expandIcon" style="font-size:12px;color:#aaa;">▼</span>
     </button>
 
-    <!-- Expanded Content -->
-    <div id="expandedContent" style="display:none;background:#fff;padding:20px 16px;">
-      <div style="margin-bottom:24px;">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;color:#666;font-size:12px;
-                    text-transform:uppercase;font-weight:600;">
-          <span style="font-size:16px;">✈</span>
-          AIRCRAFT TYPE (${escapeHtml(data.type || '??')})
+    <div id="expandedContent" style="display:${wasExpanded ? 'block' : 'none'};
+         padding:16px;border-top:1px solid #f0f0f0;">
+
+      <!-- Aircraft type -->
+      <div style="margin-bottom:16px;">
+        <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:4px;">
+          Aircraft type
         </div>
-        <div style="font-size:18px;font-weight:600;color:#000;">
-          ${escapeHtml(data.type || 'Unknown Aircraft')}
+        <div style="font-size:15px;font-weight:600;color:#111;">
+          ${escapeHtml(data.type || 'Unknown')}
+        </div>
+      </div>
+
+      <!-- Airline row with logo -->
+      <div style="margin-bottom:16px;display:flex;align-items:center;gap:10px;">
+        ${airlineLogoUrl ? `
+          <div style="width:38px;height:38px;border-radius:8px;background:#f5f5f5;
+                      display:flex;align-items:center;justify-content:center;
+                      border:1px solid #eee;overflow:hidden;">
+            <img src="${airlineLogoUrl}" style="width:30px;height:30px;object-fit:contain;">
+          </div>` : ''}
+        <div>
+          <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:2px;">
+            Airline
+          </div>
+          <div style="font-size:14px;font-weight:600;color:#111;display:flex;align-items:center;gap:5px;">
+            ${airlineFlag ? `<span>${airlineFlag}</span>` : ''}
+            ${escapeHtml(airlineName)}
+          </div>
+          ${airlineCountry ? `<div style="font-size:11px;color:#999;">${escapeHtml(airlineCountry)}</div>` : ''}
         </div>
       </div>
 
       ${data.userId ? `
-        <div style="margin-bottom:24px;">
-          <div style="font-size:12px;color:#666;text-transform:uppercase;font-weight:600;margin-bottom:8px;">
-            user ID
-          </div>
-          <div style="font-size:16px;color:#000;">${escapeHtml(data.userId)}</div>
-        </div>
-      ` : ''}
+        <div style="margin-bottom:16px;">
+          <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:4px;">User ID</div>
+          <div style="font-size:13px;color:#333;">${escapeHtml(data.userId)}</div>
+        </div>` : ''}
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
-        <div>
-          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">ALTITUDE</div>
-          <div style="font-size:18px;font-weight:600;color:#000;">${Math.round(data.alt || 0).toLocaleString()} ft</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">SPEED</div>
-          <div style="font-size:18px;font-weight:600;color:#000;">${formatSpeed(data.speed)} kt</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">HEADING</div>
-          <div style="font-size:18px;font-weight:600;color:#000;">${Math.round(data.heading || 0)}°</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:#999;text-transform:uppercase;margin-bottom:4px;">SQUAWK</div>
-          <div style="font-size:18px;font-weight:600;color:${isEmergency ? '#ff4444' : '#000'};">
-            ${escapeHtml(data.squawk || '—')}
+      <!-- Vertical speed if available -->
+      ${data.vspeed ? `
+        <div style="margin-bottom:16px;">
+          <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Vertical speed</div>
+          <div style="font-size:15px;font-weight:600;color:${data.vspeed > 200 ? '#22c55e' : data.vspeed < -200 ? '#ef4444' : '#111'};">
+            ${data.vspeed > 0 ? '↑' : '↓'} ${Math.abs(Math.round(data.vspeed))} ft/min
           </div>
-        </div>
-      </div>
+        </div>` : ''}
+
     </div>
+  </div>
   `;
 
 // 照片輪播功能 - 完整版
