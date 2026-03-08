@@ -11,7 +11,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="/aircraft-icons.js"></script>
 <!-- 右下角自訂地圖控制列 -->
-<div id="customMapBar" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;">
+<div id="customMapBar" style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;transition:right 0.3s cubic-bezier(.4,0,.2,1);">
 
   <!-- 縮放按鈕 -->
   <div style="display:flex;flex-direction:column;gap:4px;">
@@ -532,7 +532,7 @@ setTimeout(renderFlightList, 1500);
 </div>
 
 <!-- UTC Time Box with Clocks -->
-<div id="utcTime" style="position: fixed; bottom: 130px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.5);">
+<div id="utcTime" style="position: fixed; bottom: 130px; right: 20px; background: rgba(0, 0, 0, 0.85); color: white; padding: 12px; border-radius: 8px; font-size: 14px; font-family: Arial, sans-serif; z-index: 9999; box-shadow: 0 2px 8px rgba(0,0,0,0.5); transition: right 0.3s cubic-bezier(.4,0,.2,1);">
   <div style="margin-bottom: 8px; font-weight: bold;">UTC Time: <span id="utcTimeText">--</span></div>
   <div id="clockContainer" style="display: flex; gap: 15px; justify-content: center;">
     <!-- Clocks will be inserted here -->
@@ -1035,7 +1035,7 @@ function clearFlightPlanMarkers() {
   }
 }
 
-function makeDivIcon(data){
+function makeDivIcon(data, isFocused){
   if (atcMode) return makeAtcBlip(data);
   const imgW=32,imgH=32,labelW=150,labelH=60,iconW=imgW+labelW,iconH=Math.max(imgH,labelH);
   const color=getAltitudeColor(data.alt);
@@ -1048,7 +1048,7 @@ function makeDivIcon(data){
   return L.divIcon({
   html:`
     <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
-      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);filter:brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%);" onerror="this.src='/icons/c0.svg'"/>
+      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading||0}deg);filter:${isFocused ? 'brightness(0) saturate(100%) invert(18%) sepia(99%) saturate(3000%) hue-rotate(350deg) brightness(110%)' : 'brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%)'};" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
@@ -1158,7 +1158,7 @@ function toggleAtcMode() {
   // 重新渲染所有飛機圖示（切換雷達 blip / 一般圖示）
   aircrafts.forEach((obj, id) => {
     if (obj.marker) {
-      obj.marker.setIcon(makeDivIcon(obj.data));
+      obj.marker.setIcon(makeDivIcon(obj.data, id === focusedAircraftId));
       updateAtcLabel(obj, atcMode);
     }
   });
@@ -1467,12 +1467,19 @@ function updateAircraft(id, data, trackPoint = null) {
   if (!aircrafts.has(id)) {
     isNew = true;
     // 新飛機：直接建立 Marker
-    const marker = L.marker([data.lat, data.lon], {icon: makeDivIcon(data)}).addTo(map);
+    const marker = L.marker([data.lat, data.lon], {icon: makeDivIcon(data, id === focusedAircraftId)}).addTo(map);
     
     // 點擊事件
     marker.on('click', async () => {
       clearAllAircraftTracks();
+      const prevFocused = focusedAircraftId;
       focusedAircraftId = id;
+      // Refresh previous and current marker icons
+      if (prevFocused && prevFocused !== id && aircrafts.has(prevFocused)) {
+        const prev = aircrafts.get(prevFocused);
+        if (prev && prev.marker) prev.marker.setIcon(makeDivIcon(prev.data, false));
+      }
+      marker.setIcon(makeDivIcon(data, true));
       showAircraftTrack(id);
       showAircraftPanel(data, id);
       
@@ -1866,6 +1873,13 @@ async function showAircraftPanel(data, id) {
     document.body.appendChild(p);
   }
 
+  // Shift right-side UI to avoid overlap (panel is 360px + 16px left + 16px gap)
+  const panelShift = '396px';
+  const bar = document.getElementById('customMapBar');
+  const utc = document.getElementById('utcTime');
+  if (bar) bar.style.right = panelShift;
+  if (utc) utc.style.right = panelShift;
+
   const depShort = (data.departure || '').substring(0, 4) || '—';
   const arrShort = (data.arrival || '').substring(0, 4) || '—';
   const isEmergency = data.squawk === '7700';
@@ -1969,7 +1983,15 @@ async function showAircraftPanel(data, id) {
 
       <!-- Close -->
       <button onclick="document.getElementById('aircraftPanel').remove();
-                       clearAllAircraftTracks();focusedAircraftId=null;clearFlightPlanMarkers();"
+                       clearAllAircraftTracks();
+        if(focusedAircraftId && aircrafts.has(focusedAircraftId)){
+          const o=aircrafts.get(focusedAircraftId);
+          if(o&&o.marker) o.marker.setIcon(makeDivIcon(o.data,false));
+        }
+        focusedAircraftId=null;
+        clearFlightPlanMarkers();
+        document.getElementById('customMapBar').style.right='20px';
+        document.getElementById('utcTime').style.right='20px';"
         style="background:rgba(255,255,255,0.08);border:none;color:#8a9db0;
                width:30px;height:30px;border-radius:8px;cursor:pointer;
                font-size:18px;line-height:1;flex-shrink:0;
