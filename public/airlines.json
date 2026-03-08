@@ -439,5 +439,12 @@
     "iata": "PA",
     "logo": "https://images.kiwi.com/airlines/64/PA.png",
     "country": "Pakistan"
+  },
+  "SBI": {
+    "name": "S7 Airlines",
+    "icao": "SBI",
+    "iata": "S7",
+    "logo": "https://images.kiwi.com/airlines/64/S7.png",
+    "country": "Russia"
   }
 }
