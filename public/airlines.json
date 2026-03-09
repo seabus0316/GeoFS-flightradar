@@ -607,5 +607,12 @@
     "iata": "BT",
     "country": "Latvia",
     "logo": "https://images.kiwi.com/airlines/64/BT.png"
+  },
+    "RBA": {
+    "name": "Royal Burnei Airline",
+    "icao": "RBA",
+    "iata": "BI",
+    "country": "Brunei",
+    "logo": "https://images.kiwi.com/airlines/64/BI.png"
   }
 }
