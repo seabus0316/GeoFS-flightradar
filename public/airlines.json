@@ -516,5 +516,12 @@
     "iata": "SU",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/SU.png"
+  },
+    "TYA": {
+    "name": "NordStar",
+    "icao": "TYA",
+    "iata": "Y7",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/Y7.png"
   }
 }
