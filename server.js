@@ -406,7 +406,7 @@ wss.on('connection', (ws, req) => {
 // 在 .env 加入：AIRLINE_WEBHOOK_URL=https://discord.com/api/webhooks/...
 const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
 
-app.post('/api/airline', async (req, res) => {
+app.post('/api/airline', express.json(), async (req, res) => {
   try {
     if (!AIRLINE_WEBHOOK_URL) {
       return res.status(500).json({ error: 'Webhook not configured on server' });
