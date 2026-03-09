@@ -428,7 +428,7 @@ app.post('/api/airline', express.json(), async (req, res) => {
     // 傳送到 Discord
     const discordBody = {
       username: 'Airline Registry',
-      avatar_url: 'https://cdn-icons-png.flaticon.com/512/984/984233.png',
+      avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
       embeds: [{
         title: `✈ New Airline — ${name}`,
         color: 0xf0a500,
