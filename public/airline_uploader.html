@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Airline Registry</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Barlow+Condensed:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #080c10;
+      --panel: #0d1520;
+      --panel2: #111c2b;
+      --amber: #f0a500;
+      --amber-dim: #b87a00;
+      --amber-glow: rgba(240, 165, 0, 0.15);
+      --cyan: #00d4ff;
+      --red: #ff4c4c;
+      --green: #00e676;
+      --border: rgba(240, 165, 0, 0.25);
+      --text: #d6e4f0;
+      --muted: #4a6080;
+      --mono: 'Share Tech Mono', monospace;
+      --sans: 'Barlow Condensed', sans-serif;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 30px 20px 60px;
+      overflow-x: hidden;
+    }
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background-image:
+        linear-gradient(rgba(0,212,255,0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0,212,255,0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.04) 2px, rgba(0,0,0,0.04) 4px);
+      pointer-events: none; z-index: 0;
+    }
+    .wrap { position: relative; z-index: 1; width: 100%; max-width: 860px; display: flex; flex-direction: column; gap: 24px; }
+    header { display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 24px 0 8px; }
+    .logo-row { display: flex; align-items: center; gap: 14px; }
+    .logo-icon {
+      width: 52px; height: 52px;
+      border: 2px solid var(--amber); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 26px; background: var(--amber-glow);
+      box-shadow: 0 0 20px rgba(240,165,0,0.3);
+      animation: pulse 3s ease-in-out infinite;
+    }
+    @keyframes pulse {
+      0%, 100% { box-shadow: 0 0 20px rgba(240,165,0,0.3); }
+      50% { box-shadow: 0 0 35px rgba(240,165,0,0.6); }
+    }
+    h1 { font-family: var(--sans); font-weight: 700; font-size: 2.4rem; letter-spacing: 0.1em; text-transform: uppercase; color: var(--amber); text-shadow: 0 0 30px rgba(240,165,0,0.5); }
+    .tagline { font-family: var(--mono); font-size: 0.75rem; color: var(--muted); letter-spacing: 0.2em; text-transform: uppercase; }
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    @media (max-width: 640px) { .main-grid { grid-template-columns: 1fr; } }
+    .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+    .panel-header { background: var(--panel2); border-bottom: 1px solid var(--border); padding: 10px 18px; display: flex; align-items: center; gap: 10px; font-family: var(--mono); font-size: 0.72rem; color: var(--amber); text-transform: uppercase; letter-spacing: 0.15em; }
+    .panel-header .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+    .panel-body { padding: 20px; display: flex; flex-direction: column; gap: 16px; }
+    .field { display: flex; flex-direction: column; gap: 6px; }
+    .field label { font-family: var(--mono); font-size: 0.68rem; color: var(--amber-dim); text-transform: uppercase; letter-spacing: 0.12em; display: flex; justify-content: space-between; align-items: center; }
+    .field label .req { color: var(--red); font-size: 0.9em; }
+    .field input { background: var(--bg); border: 1px solid rgba(240,165,0,0.2); border-radius: 4px; padding: 10px 12px; color: var(--text); font-family: var(--sans); font-size: 1rem; font-weight: 400; letter-spacing: 0.03em; outline: none; transition: border-color 0.2s, box-shadow 0.2s; width: 100%; }
+    .field input:focus { border-color: var(--amber); box-shadow: 0 0 0 3px rgba(240,165,0,0.1); }
+    .field input::placeholder { color: var(--muted); font-size: 0.9rem; }
+    .field.row { flex-direction: row; gap: 10px; }
+    .field.row .sub { flex: 1; display: flex; flex-direction: column; gap: 6px; }
+    .logo-preview-wrap { display: flex; align-items: center; gap: 10px; }
+    .logo-preview-wrap input { flex: 1; }
+    #logoPreview { width: 40px; height: 40px; object-fit: contain; border-radius: 4px; border: 1px solid var(--border); background: var(--bg); display: none; }
+    .json-panel { display: flex; flex-direction: column; }
+    .json-body { flex: 1; padding: 16px; font-family: var(--mono); font-size: 0.82rem; line-height: 1.7; overflow-x: auto; min-height: 280px; white-space: pre; }
+    .jk { color: #79b8ff; } .js { color: #9ecbff; } .jb { color: var(--amber); } .jm { color: var(--muted); }
+    .airline-card { margin: 0 16px 16px; background: var(--bg); border: 1px solid rgba(0,212,255,0.15); border-radius: 6px; padding: 14px; display: flex; align-items: center; gap: 14px; transition: opacity 0.3s; }
+    .airline-card.empty { opacity: 0.3; }
+    .card-logo { width: 48px; height: 48px; object-fit: contain; border-radius: 4px; background: #fff; flex-shrink: 0; }
+    .card-logo.placeholder { background: var(--panel2); display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 22px; }
+    .card-info { flex: 1; min-width: 0; }
+    .card-name { font-size: 1.15rem; font-weight: 700; color: var(--cyan); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .card-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
+    .card-badges { display: flex; gap: 6px; margin-top: 6px; }
+    .badge { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.25); border-radius: 3px; padding: 2px 7px; font-family: var(--mono); font-size: 0.7rem; color: var(--cyan); }
+    .submit-row { display: flex; gap: 12px; }
+    .btn { flex: 1; padding: 14px; border: none; border-radius: 6px; font-family: var(--sans); font-weight: 700; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
+    .btn-primary { background: var(--amber); color: #000; box-shadow: 0 0 20px rgba(240,165,0,0.25); }
+    .btn-primary:hover:not(:disabled) { background: #ffc62b; transform: translateY(-2px); box-shadow: 0 0 30px rgba(240,165,0,0.5); }
+    .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn-secondary { background: transparent; color: var(--muted); border: 1px solid rgba(255,255,255,0.1); }
+    .btn-secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.2); }
+    #toast { position: fixed; bottom: 30px; left: 50%; transform: translateX(-50%) translateY(80px); background: var(--panel2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 24px; font-family: var(--mono); font-size: 0.85rem; transition: transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1); z-index: 100; max-width: 90vw; text-align: center; }
+    #toast.show { transform: translateX(-50%) translateY(0); }
+    #toast.success { border-color: rgba(0,230,118,0.4); color: var(--green); }
+    #toast.error { border-color: rgba(255,76,76,0.4); color: var(--red); }
+    .history-panel { grid-column: 1 / -1; }
+    .history-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 8px; max-height: 200px; overflow-y: auto; }
+    .history-list:empty::before { content: 'No submissions yet this session.'; font-family: var(--mono); font-size: 0.75rem; color: var(--muted); display: block; text-align: center; padding: 20px 0; }
+    .history-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; background: var(--bg); border-radius: 4px; font-size: 0.88rem; animation: slideIn 0.3s ease; }
+    @keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+    .hi-icao { font-family: var(--mono); font-size: 0.8rem; color: var(--amber); min-width: 45px; }
+    .hi-name { flex: 1; color: var(--text); }
+    .hi-time { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
+    .hi-ok { color: var(--green); } .hi-err { color: var(--red); }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
+  </style>
+</head>
+<body>
+<div class="wrap">
+
+  <header>
+    <div class="logo-row">
+      <div class="logo-icon">✈</div>
+      <h1>Airline Registry</h1>
+    </div>
+    <p class="tagline">// submit airline data · broadcast to discord</p>
+  </header>
+
+  <div class="main-grid">
+
+    <div class="panel">
+      <div class="panel-header"><div class="dot"></div>Airline Data Input</div>
+      <div class="panel-body">
+        <div class="field row">
+          <div class="sub">
+            <label>ICAO Code <span class="req">*</span></label>
+            <input id="icao" type="text" placeholder="BRU" maxlength="4" oninput="this.value=this.value.toUpperCase(); update()">
+          </div>
+          <div class="sub">
+            <label>IATA Code <span class="req">*</span></label>
+            <input id="iata" type="text" placeholder="B2" maxlength="3" oninput="this.value=this.value.toUpperCase(); update()">
+          </div>
+        </div>
+        <div class="field">
+          <label>Airline Name <span class="req">*</span></label>
+          <input id="name" type="text" placeholder="Belavia" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Country <span class="req">*</span></label>
+          <input id="country" type="text" placeholder="Russia" oninput="update()">
+        </div>
+        <div class="field">
+          <label>Logo URL <span style="color:var(--muted); font-size:0.85em;">(optional)</span></label>
+          <div class="logo-preview-wrap">
+            <input id="logo" type="text" placeholder="https://images.kiwi.com/airlines/64/B2.png" oninput="updateLogo(); update()">
+            <img id="logoPreview" alt="logo preview">
+          </div>
+        </div>
+        <div class="field">
+          <label style="margin-bottom:2px;">Auto-fill Logo</label>
+          <button class="btn btn-secondary" style="padding:9px; font-size:0.82rem; flex:none; width:100%;" onclick="autoLogo()">⚡ Generate from IATA</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel json-panel">
+      <div class="panel-header"><div class="dot"></div>JSON Preview</div>
+      <div class="airline-card empty" id="airlineCard">
+        <div class="card-logo placeholder" id="cardLogoPlaceholder">✈</div>
+        <img class="card-logo" id="cardLogo" style="display:none" alt="">
+        <div class="card-info">
+          <div class="card-name" id="cardName">Airline Name</div>
+          <div class="card-meta" id="cardMeta">ICAO · IATA · Country</div>
+          <div class="card-badges">
+            <span class="badge" id="badgeIcao">ICAO</span>
+            <span class="badge" id="badgeIata">IATA</span>
+          </div>
+        </div>
+      </div>
+      <div class="json-body" id="jsonOut"></div>
+    </div>
+
+    <div class="panel history-panel">
+      <div class="panel-header">
+        <div class="dot"></div>Session Log
+        <span style="margin-left:auto; cursor:pointer; color:var(--muted);" onclick="document.getElementById('historyList').innerHTML=''">⌫ Clear</span>
+      </div>
+      <div class="history-list" id="historyList"></div>
+    </div>
+
+  </div>
+
+  <div class="submit-row">
+    <button class="btn btn-secondary" onclick="resetForm()">↺ Reset</button>
+    <button class="btn btn-primary" id="submitBtn" onclick="submit()"><span>▶</span> Send to Discord</button>
+  </div>
+
+</div>
+<div id="toast"></div>
+
+<script>
+  const $ = id => document.getElementById(id);
+
+  function buildPayload() {
+    const icao = $('icao').value.trim(), iata = $('iata').value.trim();
+    const name = $('name').value.trim(), country = $('country').value.trim();
+    const logo = $('logo').value.trim();
+    if (!icao) return null;
+    const entry = { name, icao, iata, logo, country };
+    if (!logo) delete entry.logo;
+    return { [icao]: entry };
+  }
+
+  function highlight(obj) {
+    return JSON.stringify(obj, null, 2)
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
+      .replace(/"([^"]+)":/g, '<span class="jk">"$1"</span>:')
+      .replace(/: "([^"]*)"/g, ': <span class="js">"$1"</span>')
+      .replace(/[{}[\]]/g, m => `<span class="jb">${m}</span>`);
+  }
+
+  function update() {
+    const payload = buildPayload();
+    const icao = $('icao').value.trim(), iata = $('iata').value.trim();
+    const name = $('name').value.trim(), country = $('country').value.trim();
+    const logo = $('logo').value.trim();
+    $('jsonOut').innerHTML = payload ? highlight(payload) : '<span class="jm">// Fill in the fields to preview JSON</span>';
+    const card = $('airlineCard');
+    if (name || icao) {
+      card.classList.remove('empty');
+      $('cardName').textContent = name || '—';
+      $('cardMeta').textContent = [icao||'?', iata||'?', country||'?'].join(' · ');
+      $('badgeIcao').textContent = icao || 'ICAO';
+      $('badgeIata').textContent = iata || 'IATA';
+      if (logo) {
+        $('cardLogo').src = logo; $('cardLogo').style.display = 'block';
+        $('cardLogoPlaceholder').style.display = 'none';
+      } else {
+        $('cardLogo').style.display = 'none'; $('cardLogoPlaceholder').style.display = 'flex';
+      }
+    } else { card.classList.add('empty'); }
+  }
+
+  function updateLogo() {
+    const url = $('logo').value.trim(), prev = $('logoPreview');
+    if (url) { prev.src = url; prev.style.display = 'block'; prev.onerror = () => { prev.style.display = 'none'; }; }
+    else { prev.style.display = 'none'; }
+  }
+
+  function autoLogo() {
+    const iata = $('iata').value.trim();
+    if (!iata) { toast('Enter an IATA code first', 'error'); return; }
+    $('logo').value = `https://images.kiwi.com/airlines/64/${iata}.png`;
+    updateLogo(); update();
+  }
+
+  async function submit() {
+    const icao = $('icao').value.trim(), iata = $('iata').value.trim();
+    const name = $('name').value.trim(), country = $('country').value.trim();
+    const logo = $('logo').value.trim();
+    if (!icao || !iata || !name || !country) { toast('⚠ Fill in all required fields', 'error'); return; }
+
+    const btn = $('submitBtn');
+    btn.disabled = true; btn.innerHTML = '<span>⏳</span> Sending...';
+
+    try {
+      const res = await fetch('/api/airline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ icao, iata, name, country, ...(logo && { logo }) })
+      });
+      const data = await res.json();
+      if (res.ok) {
+        toast(`✅ ${name} (${icao}) sent to Discord!`, 'success');
+        addHistory(icao, name, true); resetForm();
+      } else {
+        toast(`❌ ${data.error || 'Unknown error'}`, 'error');
+        addHistory(icao, name, false);
+      }
+    } catch (err) {
+      toast('❌ Network error: ' + err.message, 'error');
+      addHistory(icao, '', false);
+    }
+
+    btn.disabled = false; btn.innerHTML = '<span>▶</span> Send to Discord';
+  }
+
+  function toast(msg, type = 'info') {
+    const el = $('toast'); el.textContent = msg; el.className = `show ${type}`;
+    setTimeout(() => { el.className = ''; }, 4000);
+  }
+
+  function addHistory(icao, name, ok) {
+    const list = $('historyList'), time = new Date().toLocaleTimeString();
+    const item = document.createElement('div'); item.className = 'history-item';
+    item.innerHTML = `<span class="${ok?'hi-ok':'hi-err'}">${ok?'✔':'✖'}</span><span class="hi-icao">${icao}</span><span class="hi-name">${name}</span><span class="hi-time">${time}</span>`;
+    list.prepend(item);
+  }
+
+  function resetForm() {
+    ['icao','iata','name','country','logo'].forEach(id => $(id).value = '');
+    $('logoPreview').style.display = 'none'; update();
+  }
+
+  document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') submit(); });
+  update();
+</script>
+</body>
+</html>

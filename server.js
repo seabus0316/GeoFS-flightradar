@@ -402,7 +402,65 @@ wss.on('connection', (ws, req) => {
 
   ws.on('error', (e) => console.warn('WebSocket error', e));
 });
+// ============ Airline Registry API ============
+// 在 .env 加入：AIRLINE_WEBHOOK_URL=https://discord.com/api/webhooks/...
+const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
 
+app.post('/api/airline', async (req, res) => {
+  try {
+    if (!AIRLINE_WEBHOOK_URL) {
+      return res.status(500).json({ error: 'Webhook not configured on server' });
+    }
+
+    const { icao, iata, name, country, logo } = req.body;
+
+    // 驗證必填欄位
+    if (!icao || !iata || !name || !country) {
+      return res.status(400).json({ error: 'Missing required fields: icao, iata, name, country' });
+    }
+
+    // 建立 JSON payload
+    const entry = { name, icao, iata, country };
+    if (logo) entry.logo = logo;
+    const payload = { [icao]: entry };
+    const jsonStr = JSON.stringify(payload, null, 2);
+
+    // 傳送到 Discord
+    const discordBody = {
+      username: 'Airline Registry',
+      avatar_url: 'https://cdn-icons-png.flaticon.com/512/984/984233.png',
+      embeds: [{
+        title: `✈ New Airline — ${name}`,
+        color: 0xf0a500,
+        fields: [
+          { name: 'ICAO', value: `\`${icao}\``, inline: true },
+          { name: 'IATA', value: `\`${iata}\``, inline: true },
+          { name: 'Country', value: country, inline: true },
+          { name: 'JSON Payload', value: `\`\`\`json\n${jsonStr}\n\`\`\`` }
+        ],
+        ...(logo && { thumbnail: { url: logo } }),
+        footer: { text: `Airline Registry · ${new Date().toISOString()}` }
+      }]
+    };
+
+    const webhookRes = await fetch(AIRLINE_WEBHOOK_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(discordBody)
+    });
+
+    if (!webhookRes.ok) {
+      const errText = await webhookRes.text();
+      console.error('Discord webhook error:', webhookRes.status, errText);
+      return res.status(502).json({ error: `Discord error: ${webhookRes.status}` });
+    }
+
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Airline API error:', err);
+    res.status(500).json({ error: err.message || 'server error' });
+  }
+});
 // ============ Express Routes ============
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -413,6 +471,7 @@ app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public'
 app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
 app.get('/photomap.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
 app.get('/health', (req, res) => res.send('ok'));
+app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
 app.get('/airlines.json', (req, res) => {
   res.sendFile(path.join(__dirname, 'airlines.json'));
 });
