@@ -370,9 +370,9 @@
     "logo": "https://images.kiwi.com/airlines/64/LO.png",
     "country": "Poland"
   },
-  "AFL": {
+  "AAW": {
     "name": "Afriqiyah Airways",
-    "icao": "AFL",
+    "icao": "AAW",
     "iata": "8U",
     "logo": "https://images.kiwi.com/airlines/64/8U.png",
     "country": "Libya"
@@ -481,5 +481,40 @@
     "iata": "B2",
     "logo": "https://images.kiwi.com/airlines/64/B2.png",
     "country": "Russia"
+  },
+    "UTR": {
+    "name": "Utair",
+    "icao": "UTR",
+    "iata": "UT",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/UT.png"
+  },
+    "AUL": {
+    "name": "Smartavia",
+    "icao": "AUL",
+    "iata": "N6",
+    "country": "Russia",
+    "logo": "https://habrastorage.org/getpro/moikrug/uploads/company/100/008/123/0/logo/medium_83b5009e040969ee7b60362ad7426573.jpeg"
+  },
+    "NWS": {
+    "name": "Nordwind",
+    "icao": "NWS",
+    "iata": "N4",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/N4.png"
+  },
+    "SDM": {
+    "name": "Rossiya",
+    "icao": "SDM",
+    "iata": "FV",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/FV.png"
+  },
+    "AFL": {
+    "name": "Aeroflot",
+    "icao": "AFL",
+    "iata": "SU",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/SU.png"
   }
 }
