@@ -523,5 +523,47 @@
     "iata": "Y7",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/Y7.png"
+  },
+  "BSX": {
+    "name": "BlueSky's Airways",
+    "icao": "BSX",
+    "iata": "XK",
+    "logo": "https://cdn.discordapp.com/attachments/1442018596598317130/1480545376544100483/BSX_new_logo.webp?ex=69b010d4&is=69aebf54&hm=745644a897a8292a6ec8f0a43b7e4fafa8df6db79b8327876b48c25faf1e6047&",
+    "country": "Philippines"
+  },
+    "SHU": {
+    "name": "Aurora",
+    "icao": "SHU",
+    "iata": "HZ",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/HZ.png"
+  },
+    "LLM": {
+    "name": "Yamal airlines",
+    "icao": "LLM",
+    "iata": "YC",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/YC.png"
+  },
+    "SYL": {
+    "name": "Yakutia Airlines",
+    "icao": "SYL",
+    "iata": "R3",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/R3.png"
+  },
+  "AUI": {
+    "name": "Ukraine International Airlines",
+    "icao": "AUI",
+    "iata": "PS",
+    "country": "Ukraine",
+    "logo": "https://images.kiwi.com/airlines/64/PS.png"
+  },
+    "SQP": {
+    "name": "SkyUp Airlines",
+    "icao": "SQP",
+    "iata": "PQ",
+    "country": "Ukraine",
+    "logo": "https://images.kiwi.com/airlines/64/PQ.png"
   }
 }
