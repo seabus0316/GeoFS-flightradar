@@ -565,5 +565,47 @@
     "iata": "PQ",
     "country": "Ukraine",
     "logo": "https://images.kiwi.com/airlines/64/PQ.png"
+  },
+    "UZB": {
+    "name": "Uzbekistan Airways",
+    "icao": "UZB",
+    "iata": "HY",
+    "country": "Uzbekistan",
+    "logo": "https://images.kiwi.com/airlines/64/HY.png"
+  },
+    "KZR": {
+    "name": "Air Astana",
+    "icao": "KZR",
+    "iata": "KC",
+    "country": "Kazakhstan",
+    "logo": "https://images.kiwi.com/airlines/64/KC.png"
+  },
+    "VSV": {
+    "name": "SCAT Airlines",
+    "icao": "VSV",
+    "iata": "DV",
+    "country": "Kazakhstan",
+    "logo": "https://images.kiwi.com/airlines/64/DV.png"
+  },
+    "RLU": {
+    "name": "RusLine",
+    "icao": "RLU",
+    "iata": "7R",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/7R.png"
+  },
+    "SSF": {
+    "name": "Severstal",
+    "icao": "SSF",
+    "iata": "D2",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/D2.png"
+  },
+    "BTI": {
+    "name": "airBaltic",
+    "icao": "BTI",
+    "iata": "BT",
+    "country": "Latvia",
+    "logo": "https://images.kiwi.com/airlines/64/BT.png"
   }
 }
