@@ -614,5 +614,33 @@
     "iata": "BI",
     "country": "Brunei",
     "logo": "https://images.kiwi.com/airlines/64/BI.png"
+  },
+    "CFG": {
+    "name": "Condor Airlines",
+    "icao": "CFG",
+    "iata": "DE",
+    "country": "German",
+    "logo": "https://images.kiwi.com/airlines/64/DE.png"
+  },
+    "IGO": {
+    "name": "IndiGo",
+    "icao": "IGO",
+    "iata": "6E",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/6E.png"
+  },
+    "SJX": {
+    "name": "Starlux Airline",
+    "icao": "SJX",
+    "iata": "JX",
+    "country": "Taiwan",
+    "logo": "https://images.kiwi.com/airlines/64/JX.png"
+  },
+    "TTW": {
+    "name": "Tiger air",
+    "icao": "TTW",
+    "iata": "IT",
+    "country": "Singapore",
+    "logo": "https://images.kiwi.com/airlines/64/IT.png"
   }
 }
