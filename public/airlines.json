@@ -642,5 +642,54 @@
     "iata": "IT",
     "country": "Singapore",
     "logo": "https://images.kiwi.com/airlines/64/IT.png"
+  },
+    "AXB": {
+    "name": "Air India Xpress",
+    "icao": "AXB",
+    "iata": "IX",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/IX.png"
+  },
+    "TSO": {
+    "name": "Transaero",
+    "icao": "TSO",
+    "iata": "UN",
+    "country": "Russia",
+    "logo": "https://logos-world.net/wp-content/uploads/2023/06/Transaero-Airlines-Logo.png"
+  },
+    "AIC": {
+    "name": "Air india",
+    "icao": "AIC",
+    "iata": "AI",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/AI.png"
+  },
+    "AIQ": {
+    "name": "Airasia Thai",
+    "icao": "AIQ",
+    "iata": "FD",
+    "country": "Thailand",
+    "logo": "https://images.kiwi.com/airlines/64/FD.png"
+  },
+    "CYZ": {
+    "name": "China Postal Airlines",
+    "icao": "CYZ",
+    "iata": "CF",
+    "country": "China",
+    "logo": "https://logo800.cn/uploads/logoxinshang/37/logo800_16491600052243695.png"
+  },
+    "CKK": {
+    "name": "China Cargo Airlines LTD",
+    "icao": "CKK",
+    "iata": "CK",
+    "country": "China",
+    "logo": "https://www.ip138.com/hangkong/images/CK_L.jpg"
+  },
+    "CSSS": {
+    "name": "SF Airlines",
+    "icao": "CSSS",
+    "iata": "O3",
+    "country": "China",
+    "logo": "https://gd-hbimg.huaban.com/a57db67da6f6f6c6e6de8dde65a44dd504dd1543dbec-v3FnQB_fw658"
   }
 }
