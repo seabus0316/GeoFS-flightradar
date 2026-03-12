@@ -691,5 +691,26 @@
     "iata": "O3",
     "country": "China",
     "logo": "https://gd-hbimg.huaban.com/a57db67da6f6f6c6e6de8dde65a44dd504dd1543dbec-v3FnQB_fw658"
+  },
+    "TUP": {
+    "name": "Aviastar-TU",
+    "icao": "TUP",
+    "iata": "4B",
+    "country": "Russia",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSh69PtPA1TAVZBc1pJFCOAoOgAH-Imz5OoA&s"
+  },
+    "RWZ": {
+    "name": "Red Wings",
+    "icao": "RWZ",
+    "iata": "WZ",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/WZ.png"
+  },
+    "WZZ": {
+    "name": "Wizz Air",
+    "icao": "WZZ",
+    "iata": "W6",
+    "country": "Hungary",
+    "logo": "https://images.kiwi.com/airlines/64/W6.png"
   }
 }

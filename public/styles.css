@@ -87,47 +87,39 @@
 #aircraftPanel button {
   transition: all 0.2s ease;
 }
-/* Photo Map Toggle */
+/* 以 Photo Map Toggle 為例，其他如 #metarToggle, #photoToggle 也可套用此邏輯 */
+/* Photo Map Toggle — iOS 26 Light Liquid Glass */
 #photoMapToggle {
-  position: fixed;
-  left: 10px;
-  top: 100px;
-  background: rgba(10, 15, 25, 0.28);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: rgba(210, 225, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  padding: 10px 15px;
-  cursor: pointer;
-  z-index: 99996;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: bold;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255,255,255,0.07) inset;
-  transition: all 0.2s ease;
-  position: relative;
-}
-
-#photoMapToggle::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 10%; right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(35px) saturate(150%);
+  -webkit-backdrop-filter: blur(35px) saturate(150%);
+  color: #1c1c1e; /* 深色字體 */
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  border-radius: 14px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 #photoMapToggle:hover {
-  background: rgba(102, 126, 234, 0.32);
-  border-color: rgba(102, 126, 234, 0.35);
-  box-shadow: 0 6px 24px rgba(102, 126, 234, 0.25), 0 1px 0 rgba(255,255,255,0.1) inset;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.15), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transform: scale(1.02);
 }
 
 #photoMapToggle.active {
-  background: rgba(118, 75, 162, 0.32);
-  border-color: rgba(118, 75, 162, 0.4);
-  box-shadow: 0 4px 20px rgba(118, 75, 162, 0.3), 0 1px 0 rgba(255,255,255,0.08) inset;
+  background: rgba(200, 200, 255, 0.4); /* 啟動時變成淡淡的透亮藍紫色 */
+  border-color: rgba(200, 200, 255, 0.7);
+  color: #2b2b6c;
+  box-shadow: 
+    0 8px 32px rgba(100, 100, 255, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
+/* 注意：舊的 #photoMapToggle::before 請務必刪除 */
     /* 側邊照片面板 */
 #photoSidebar {
   position: fixed;
@@ -147,30 +139,36 @@
   right: 0;
 }
 
+/* Photo Toggle Button — iOS 26 Light Liquid Glass */
 #photoToggle {
   position: fixed;
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(10, 15, 25, 0.28);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: rgba(210, 225, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(35px) saturate(150%);
+  -webkit-backdrop-filter: blur(35px) saturate(150%);
+  color: #1c1c1e; /* 改深色字 */
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-right: none;
   padding: 20px 10px;
   cursor: pointer;
   z-index: 99998;
-  border-radius: 10px 0 0 10px;
+  border-radius: 14px 0 0 14px;
   font-size: 18px;
-  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255,255,255,0.07) inset;
-  transition: all 0.2s ease;
+  box-shadow: 
+    -4px 0 20px rgba(0, 0, 0, 0.12), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2);
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 #photoToggle:hover {
-  background: rgba(35, 134, 54, 0.28);
-  border-color: rgba(35, 134, 54, 0.35);
-  box-shadow: -4px 0 24px rgba(35, 134, 54, 0.25), 0 1px 0 rgba(255,255,255,0.1) inset;
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    -6px 0 24px rgba(0, 0, 0, 0.15), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 .photo-item {
@@ -376,32 +374,38 @@ html,body {
       text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
     }
     /* METAR Toggle Button */
+/* METAR Toggle Button — iOS 26 Light Liquid Glass */
 #metarToggle {
   position: fixed;
   left: 0;
   top: 60%;
   transform: translateY(-50%);
-  background: rgba(10, 15, 25, 0.28);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: rgba(210, 225, 255, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(35px) saturate(150%);
+  -webkit-backdrop-filter: blur(35px) saturate(150%);
+  color: #1c1c1e; /* 改深色字 */
+  border: 1px solid rgba(255, 255, 255, 0.4);
   border-left: none;
   padding: 20px 10px;
   cursor: pointer;
   z-index: 99998;
-  border-radius: 0 10px 10px 0;
+  border-radius: 0 14px 14px 0; /* 配合新風格稍微圓潤一點 */
   font-size: 18px;
-  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.3), 0 1px 0 rgba(255,255,255,0.07) inset;
+  box-shadow: 
+    4px 0 20px rgba(0, 0, 0, 0.12), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.8),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2);
   writing-mode: vertical-rl;
   text-orientation: mixed;
-  transition: all 0.2s ease;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
 }
 
 #metarToggle:hover {
-  background: rgba(88, 101, 242, 0.28);
-  border-color: rgba(88, 101, 242, 0.35);
-  box-shadow: 4px 0 24px rgba(88, 101, 242, 0.25), 0 1px 0 rgba(255,255,255,0.1) inset;
+  background: rgba(255, 255, 255, 0.45);
+  border-color: rgba(255, 255, 255, 0.7);
+  box-shadow: 
+    6px 0 24px rgba(0, 0, 0, 0.15), 
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
 }
 
 /* METAR Widget 側邊欄樣式 */
@@ -577,44 +581,36 @@ input:checked + .slider:before {
   transform: scale(1.05);
 }
 
-/* ＋ － tileBtn wxBtn — Dark Liquid Glass */
+/* ＋ － tileBtn wxBtn — iOS 26 Light Liquid Glass */
 .map-control-btn {
   width: 44px;
   height: 44px;
-  border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 15, 25, 0.28);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: rgba(210, 225, 255, 0.9);
+  border-radius: 16px; /* 稍微加大圓角更貼近 iOS 風格 */
+  border: 1px solid rgba(255, 255, 255, 0.4); /* 更明顯的半透明白邊 */
+  background: rgba(255, 255, 255, 0.25); /* 更透明、更白的基底 */
+  backdrop-filter: blur(35px) saturate(150%);
+  -webkit-backdrop-filter: blur(35px) saturate(150%);
+  color: #1c1c1e; /* 因為背景變白，建議將 icon 顏色調深，或保留白色但加上文字陰影 */
   font-size: 22px;
   cursor: pointer;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12), /* 柔和的外部陰影 */
+    inset 0 1px 1px rgba(255, 255, 255, 0.8), /* 頂部強烈的高光 */
+    inset 0 -1px 1px rgba(255, 255, 255, 0.2); /* 底部微弱的反光 */
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
-  position: relative;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 更滑順的蘋果動畫曲線 */
   overflow: hidden;
 }
 
-.map-control-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 10%; right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-}
-
 .map-control-btn:hover {
-  background: rgba(20, 30, 50, 0.42);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow:
-    0 6px 30px rgba(0, 0, 0, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.1) inset;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.4); /* 懸停時變得更白、更實體 */
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transform: scale(1.03); /* 輕微的放大效果取代單純上移 */
 }
 /* ===== ATC Mode Radar Blip ===== */
 .atc-radar-blip {
@@ -635,49 +631,44 @@ input:checked + .slider:before {
 }
 .leaflet-tooltip.atc-target-label::before { display: none !important; }
 
-/* ATC 模式按鈕 — Liquid Glass Dark */
+/* ATC 模式按鈕 — iOS 26 Light Liquid Glass */
 .atc-mode-btn {
-  width: 44px; height: 44px; border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  background: rgba(10, 15, 25, 0.28);
-  backdrop-filter: blur(20px) saturate(180%);
-  -webkit-backdrop-filter: blur(20px) saturate(180%);
-  color: rgba(210, 225, 255, 0.9);
+  width: 44px; 
+  height: 44px; 
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(35px) saturate(150%);
+  -webkit-backdrop-filter: blur(35px) saturate(150%);
+  color: #1c1c1e;
   font-size: 18px;
   cursor: pointer;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    0 1px 0 rgba(255, 255, 255, 0.07) inset,
-    0 -1px 0 rgba(0, 0, 0, 0.2) inset;
-  display: flex; align-items: center; justify-content: center;
-  transition: all 0.2s ease;
-  position: relative;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.12),
+    inset 0 1px 1px rgba(255, 255, 255, 0.8);
+  display: flex; 
+  align-items: center; 
+  justify-content: center;
+  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
   overflow: hidden;
 }
 
-.atc-mode-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 10%; right: 10%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.18), transparent);
-}
-
 .atc-mode-btn:hover {
-  background: rgba(20, 30, 50, 0.42);
-  border-color: rgba(255, 255, 255, 0.15);
-  box-shadow:
-    0 6px 30px rgba(0, 0, 0, 0.35),
-    0 1px 0 rgba(255, 255, 255, 0.1) inset;
-  transform: translateY(-1px);
+  background: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    inset 0 1px 1px rgba(255, 255, 255, 0.9);
+  transform: scale(1.03);
 }
 
+/* 啟動狀態：使用 iOS 經典的半透明螢光綠 */
 .atc-mode-btn.active {
-  background: rgba(15, 50, 35, 0.35);
-  border-color: rgba(53, 245, 155, 0.3);
-  color: #35f59b;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.3),
-    0 0 16px rgba(53, 245, 155, 0.18),
-    0 1px 0 rgba(53, 245, 155, 0.1) inset;
+  background: rgba(52, 199, 89, 0.25); 
+  border-color: rgba(52, 199, 89, 0.6);
+  color: #157933; /* 深綠色文字/Icon，或者改為純白搭配文字陰影 */
+  box-shadow: 
+    0 8px 32px rgba(52, 199, 89, 0.2),
+    inset 0 1px 1px rgba(255, 255, 255, 0.7),
+    inset 0 0 20px rgba(52, 199, 89, 0.15);
 }
