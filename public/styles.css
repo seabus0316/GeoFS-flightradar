@@ -583,34 +583,20 @@ input:checked + .slider:before {
 
 /* ＋ － tileBtn wxBtn — iOS 26 Light Liquid Glass */
 .map-control-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: 16px; /* 稍微加大圓角更貼近 iOS 風格 */
-  border: 1px solid rgba(255, 255, 255, 0.4); /* 更明顯的半透明白邊 */
-  background: rgba(255, 255, 255, 0.25); /* 更透明、更白的基底 */
-  backdrop-filter: blur(35px) saturate(150%);
-  -webkit-backdrop-filter: blur(35px) saturate(150%);
-  color: #1c1c1e; /* 因為背景變白，建議將 icon 顏色調深，或保留白色但加上文字陰影 */
-  font-size: 22px;
-  cursor: pointer;
+  background: rgba(255, 255, 255, 0.15); /* 低透明度 */
+  backdrop-filter: blur(40px) saturate(180%);
+  -webkit-backdrop-filter: blur(40px) saturate(180%);
+  color: #ffffff !important; /* 強制白色圖標 */
+  text-shadow: 0 1px 3px rgba(0, 0, 0, 0.4); /* 圖標陰影 */
+  border: 1px solid rgba(255, 255, 255, 0.25);
   box-shadow: 
-    0 8px 32px rgba(0, 0, 0, 0.12), /* 柔和的外部陰影 */
-    inset 0 1px 1px rgba(255, 255, 255, 0.8), /* 頂部強烈的高光 */
-    inset 0 -1px 1px rgba(255, 255, 255, 0.2); /* 底部微弱的反光 */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1); /* 更滑順的蘋果動畫曲線 */
-  overflow: hidden;
+    0 8px 24px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.4);
 }
 
 .map-control-btn:hover {
-  background: rgba(255, 255, 255, 0.4); /* 懸停時變得更白、更實體 */
-  border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 
-    0 12px 40px rgba(0, 0, 0, 0.15),
-    inset 0 1px 1px rgba(255, 255, 255, 0.9);
-  transform: scale(1.03); /* 輕微的放大效果取代單純上移 */
+  background: rgba(255, 255, 255, 0.3);
+  color: #ffffff;
 }
 /* ===== ATC Mode Radar Blip ===== */
 .atc-radar-blip {
