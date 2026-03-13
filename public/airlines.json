@@ -712,5 +712,26 @@
     "iata": "W6",
     "country": "Hungary",
     "logo": "https://images.kiwi.com/airlines/64/W6.png"
-  }
+  },
+    "DRU": {
+    "name": "Alrosa",
+    "icao": "DRU",
+    "iata": "6R",
+    "country": "Russia",
+    "logo": "https://images.kiwi.com/airlines/64/6R.png"
+  },
+   "WUK": {
+    "name": "Wizz Air UK",
+    "icao": "WUK",
+    "iata": "W9",
+    "country": "United Kingdom",
+    "logo": "https://images.kiwi.com/airlines/64/W9.png"
+  },
+    "WMT": {
+    "name": "Wizz Air Malta",
+    "icao": "WMT",
+    "iata": "W4",
+    "country": "Malta",
+    "logo": "https://images.kiwi.com/airlines/64/W4.png"
+  } 
 }
