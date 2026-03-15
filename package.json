@@ -28,7 +28,8 @@
     "compression": "^1.7.4",
     "socket.io": "^4.7.5",
     "cookie-parser": "^1.4.6",
-    "jsonwebtoken": "^9.0.2"
+    "jsonwebtoken": "^9.0.2",
+    "discord.js": "^14.0.0"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
