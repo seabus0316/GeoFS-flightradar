@@ -1238,34 +1238,43 @@ function crossesIDL(lon1, lon2) {
 }
 // 把任意範圍的 longitude 正規化回 [-180, 180]
 function normalizeLon(lon) {
-  return ((lon + 180) % 360 + 360) % 360 - 180;
+  lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  return lon;
 }
 /**
- * 把一系列 [lat, lon, ...] 點轉成 Leaflet 可連續渲染的 unwrapped 座標。
- * 每個點的 lon 相對於前一點做最短路徑 unwrap（dLon 限 ±180），
- * 結果可能超出 ±180，但 Leaflet 原生支援，會正確跨換日線顯示。
- * @param {Array} points  - [[lat, lon, ...], ...]
- * @param {number} startIndex - rawPath 中第一個有效點的 index
- * @returns {Array} [[lat, unwrappedLon], ...]
+ * 換日線切段：把一條線段（lat1,lon1）→（lat2,lon2）在換日線處切成 1 或 2 條子段。
+ * 輸入座標會先被正規化到 [-180, 180]。
+ * 用「最短路徑 dLon」判斷是否真的跨越換日線。
  */
-function buildUnwrappedPath(points) {
-  if (!points.length) return [];
-  const result = [];
-  let prevLon = normalizeLon(points[0][1]);
-  result.push([points[0][0], prevLon]);
-  for (let i = 1; i < points.length; i++) {
-    const curLon = normalizeLon(points[i][1]);
-    let dLon = curLon - prevLon;
-    if (dLon > 180)  dLon -= 360;
-    if (dLon < -180) dLon += 360;
-    prevLon = prevLon + dLon;
-    result.push([points[i][0], prevLon]);
-  }
-  return result;
-}
-// splitSegmentAtAntimeridian 不再需要，保留空函式避免其他地方報錯
 function splitSegmentAtAntimeridian(lat1, lon1, lat2, lon2) {
-  return [[[lat1, lon1], [lat2, lon2]]];
+  // 先正規化，防止 GeoFS 傳入 0~360 範圍的 lon
+  lon1 = normalizeLon(lon1);
+  lon2 = normalizeLon(lon2);
+
+  // 求最短方向的 dLon（-180 ~ +180）
+  let dLon = lon2 - lon1;
+  if (dLon > 180)  dLon -= 360;
+  if (dLon < -180) dLon += 360;
+  const lon2UW = lon1 + dLon; // 展開後的 lon2（可能超出 ±180）
+
+  if (lon2UW > 180) {
+    // 向東跨越換日線：插值換日線上的緯度
+    const t = (180 - lon1) / (lon2UW - lon1);
+    const crossLat = lat1 + t * (lat2 - lat1);
+    return [
+      [[lat1, lon1], [crossLat,  180]],
+      [[crossLat, -180], [lat2, lon2]]
+    ];
+  } else if (lon2UW < -180) {
+    // 向西跨越換日線：插值換日線上的緯度
+    const t = (-180 - lon1) / (lon2UW - lon1);
+    const crossLat = lat1 + t * (lat2 - lat1);
+    return [
+      [[lat1, lon1], [crossLat, -180]],
+      [[crossLat,  180], [lat2, lon2]]
+    ];
+  }
+  return [[[lat1, lon1], [lat2, lon2]]]; // 未跨越，直接回傳
 }
 function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
@@ -1581,39 +1590,29 @@ function showAircraftTrack(id) {
   clearAllAircraftTracks();
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
+  for (let i = 1; i < obj.displayPath.length; i++) {
+    const prev = obj.displayPath[i - 1];
+    const curr = obj.displayPath[i];
+    const alt = curr[2] || 0;
 
-  // 先把所有點做 unwrap，確保座標連續（跨換日線也不斷線）
-  // crossesTooFar 的跳躍點作為切斷點，分段 unwrap
-  const segments = []; // 每個元素是一組連續的 unwrapped 點
-  let currentGroup = [simplified[0]];
-
-  for (let i = 1; i < simplified.length; i++) {
-    const prev = simplified[i - 1];
-    const curr = simplified[i];
+    // 跳過資料跳躍（距離太遠）
     if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 2000)) {
-      // 資料跳躍：切斷，重新開始新的一組
-      segments.push(currentGroup);
-      currentGroup = [curr];
-    } else {
-      currentGroup.push(curr);
+      continue;
     }
-  }
-  segments.push(currentGroup);
 
-  // 對每組做 unwrap 並逐段畫（按高度著色）
-  segments.forEach(group => {
-    if (group.length < 2) return;
-    const unwrapped = buildUnwrappedPath(group);
-    for (let i = 1; i < unwrapped.length; i++) {
-      const alt = group[i][2] || 0;
-      const seg = L.polyline(
-        [unwrapped[i - 1], unwrapped[i]],
-        { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
-      ).addTo(map);
+    // 用 splitSegmentAtAntimeridian 處理換日線（會正確插值交叉緯度，coords 也會被 normalize）
+    const subSegs = splitSegmentAtAntimeridian(prev[0], prev[1], curr[0], curr[1]);
+    subSegs.forEach(pts => {
+      const seg = L.polyline(pts, {
+        renderer: canvasRenderer,
+        color: getAltitudeColor(alt),
+        weight: 2,
+        opacity: 0.8
+      }).addTo(map);
       seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
       obj.segments.push(seg);
-    }
-  });
+    });
+  }
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
@@ -2041,20 +2040,27 @@ async function showAircraftPanel(data, id) {
         offset: [0, -12]
       });
       flightPlanMarkers.push(m);
-      latlngs.push([lat, lon]);
+      latlngs.push([lat, lon]); // 儲存原始座標，切段由 splitSegmentAtAntimeridian 處理
     });
-
+    
     if (latlngs.length > 1) {
-      // buildUnwrappedPath 讓 flight plan 跨換日線也連續渲染，不斷線
-      const unwrapped = buildUnwrappedPath(latlngs);
-      const route = L.polyline(unwrapped, {
+      // 逐段用 splitSegmentAtAntimeridian 處理換日線，不再用單一 polyline
+      const routeOptions = {
         color: '#CEA5D5',
         weight: 4,
         opacity: 1,
         dashArray: '8 8',
         pane: 'waypointPane'
-      }).addTo(map);
-      flightPlanMarkers.push(route);
+      };
+      for (let i = 1; i < latlngs.length; i++) {
+        const [lat1, lon1] = latlngs[i-1];
+        const [lat2, lon2] = latlngs[i];
+        const subSegs = splitSegmentAtAntimeridian(lat1, lon1, lat2, lon2);
+        subSegs.forEach(pts => {
+          const seg = L.polyline(pts, routeOptions).addTo(map);
+          flightPlanMarkers.push(seg);
+        });
+      }
     }
   }
 
