@@ -1582,24 +1582,57 @@ function showAircraftTrack(id) {
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
   for (let i = 1; i < obj.displayPath.length; i++) {
-    const prev = obj.displayPath[i-1];
-    const curr = obj.displayPath[i];
-    const alt = curr[2] || 0;
-    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
-    // 用 splitSegmentAtAntimeridian 切段，確保換日線兩側都正確，不繞地球
-    const subSegs = splitSegmentAtAntimeridian(prev[0], prev[1], curr[0], curr[1]);
-    subSegs.forEach(pts => {
-      const seg = L.polyline(pts,
-        { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
-      ).addTo(map);
-      seg.bindTooltip(`${Math.round(alt)} ft`, {
-        sticky: true,
-        direction: 'right',
-        offset: [10, 0]
-      });
-      obj.segments.push(seg);
-    });
+  const prev = obj.displayPath[i - 1];
+  const curr = obj.displayPath[i];
+  const alt = curr[2] || 0;
+
+  // 1. 保留你的防呆機制，但建議稍微放大距離（避免高緯度或延遲誤判）
+  if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 2000)) {
+    continue;
   }
+
+  // 2. 核心邏輯：判斷是否跨越換日線
+  if (Math.abs(curr[1] - prev[1]) > 180) {
+    // 跨越換日線時，我們不直接畫一條線，而是畫兩條「連向邊緣」的短線
+    // 這樣可以確保在 Leaflet 地圖兩端都能看到銜接感
+    
+    let movingEast = (curr[1] - prev[1]) < 0; 
+    let edge1 = movingEast ? 180 : -180;
+    let edge2 = movingEast ? -180 : 180;
+
+    // 畫到地圖右/左邊緣的線
+    const segEdge1 = L.polyline([[prev[0], prev[1]], [curr[0], edge1]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2,
+      opacity: 0.8
+    }).addTo(map);
+    obj.segments.push(segEdge1);
+
+    // 從地圖另一側邊緣開始的線
+    const segEdge2 = L.polyline([[prev[0], edge2], [curr[0], curr[1]]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2,
+      opacity: 0.8
+    }).addTo(map);
+    obj.segments.push(segEdge2);
+
+  } else {
+    // 3. 正常情況：直接連線
+    const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2,
+      opacity: 0.8
+    }).addTo(map);
+    
+    if (seg.bindTooltip) {
+      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+    }
+    obj.segments.push(seg);
+  }
+}
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
