@@ -1558,16 +1558,23 @@ function showAircraftTrack(id) {
   clearAllAircraftTracks();
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
+  // 跨段維護 unwrapped 經度，確保換日線後的每一段都能正確銜接
+  let chainLon = obj.displayPath[0][1]; // 起始參考經度
   for (let i = 1; i < obj.displayPath.length; i++) {
     const prev = obj.displayPath[i-1];
     const curr = obj.displayPath[i];
     const alt = curr[2] || 0;
-    // 跳過距離異常的點（資料跳躍），但換日線用 unwrap 處理而不是 skip
-    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
-    // unwrap 換日線：讓經度連續，Leaflet 能正確畫跨換日線軌跡
-    const unwrappedLon = unwrapLon(curr[1], prev[1]);
+    // 跳過距離異常的點（資料跳躍），重置 chain
+    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1])) {
+      chainLon = curr[1]; // 重置到新的起始點
+      continue;
+    }
+    // unwrap：相對於上一段末端的 unwrapped 經度，確保跨段連續
+    const prevUnwrapped = chainLon;
+    const currUnwrapped = unwrapLon(curr[1], prevUnwrapped);
+    chainLon = currUnwrapped; // 傳遞給下一段
     const seg = L.polyline(
-      [ [prev[0], prev[1]], [curr[0], unwrappedLon] ],
+      [ [prev[0], prevUnwrapped], [curr[0], currUnwrapped] ],
       { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
     ).addTo(map);
     seg.bindTooltip(`${Math.round(alt)} ft`, {
