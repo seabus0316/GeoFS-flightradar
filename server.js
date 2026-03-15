@@ -1,8 +1,9 @@
 // server.js (混合版 - Socket.IO + WebSocket)
+// ✅ v2 新增：FlightSession 歷史紀錄 + Discord OAuth + 緊急 Squawk 警報
 require('dotenv').config();
 const express = require('express');
-const http = require('http');  // ← 改用 https
-const fs = require('fs');        // ← 讀取證書
+const http = require('http');
+const fs = require('fs');
 const WebSocket = require('ws');
 const path = require('path');
 const mongoose = require('mongoose');
@@ -11,106 +12,161 @@ const mime = require('mime-types');
 const FormData = require('form-data');
 const fetch = require('node-fetch');
 const compression = require('compression');
-const { Server: IOServer } = require("socket.io");
+const cookieParser = require('cookie-parser');
+const jwt = require('jsonwebtoken');
+const { Server: IOServer } = require('socket.io');
 
 const app = express();
-
-// ← 加這段:讀取 SSL 證書
-const SSL_KEY = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/privkey.pem';
-const SSL_CERT = '/etc/letsencrypt/live/geofs-flightradar.duckdns.org/fullchain.pem';
-
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
 
-const PORT = process.env.PORT || 3000;
-const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
-const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || 'mysecret';
+// ============ 環境變數 ============
+const PORT                = process.env.PORT                || 3000;
+const MONGODB_URI         = process.env.MONGODB_URI         || 'mongodb://localhost:27017/geofs_flightradar';
+const IMGBB_API_KEY       = process.env.IMGBB_API_KEY       || '';
+const ADMIN_PASSWORD      = process.env.ADMIN_PASS          || 'mysecret';
+const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
+const FLIGHT_WEBHOOK_URL  = process.env.FLIGHT_WEBHOOK_URL  || ''; // 飛行完成通報
+const ALERT_WEBHOOK_URL   = process.env.ALERT_WEBHOOK_URL   || ''; // 緊急 Squawk 警報
+// Discord OAuth
+const DISCORD_CLIENT_ID     = process.env.DISCORD_CLIENT_ID     || '';
+const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
+const DISCORD_REDIRECT_URI  = process.env.DISCORD_REDIRECT_URI  || ''; // e.g. https://geofs-flightradar.duckdns.org/auth/discord/callback
+const JWT_SECRET            = process.env.JWT_SECRET            || 'change_this_secret';
 
-// ============ 共用變數 (必須先定義) ============
-const aircrafts = new Map();
+// ============ 共用變數 ============
+const aircrafts    = new Map();
 const RETENTION_MS = 12 * 60 * 60 * 1000;
 
-// WebSocket 客戶端
-const clients = new Set();
-const atcClients = new Set();
-const playerClients = new Set();
-
-// Socket.IO 客戶端
-const ioAtcClients = new Set();
+const clients         = new Set();
+const atcClients      = new Set();
+const playerClients   = new Set();
+const ioAtcClients    = new Set();
 const ioPlayerClients = new Set();
 
-// ============ 啟用壓縮 ============
+const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
+
+// ============ Middleware ============
 app.use(compression());
+app.use(cookieParser());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
-mongoose.connect(MONGODB_URI)
-  .then(() => {
-    console.log('MongoDB connected');
-    // 新增索引
-    FlightPoint.collection.createIndex({ aircraftId: 1, ts: 1 });
-    FlightPoint.collection.createIndex({ ts: 1 });
-    console.log('✅ MongoDB indexes created');
-  })
-  .catch(err => console.error('MongoDB connection error:', err));
+// ============ Schemas ============
 
-// Schemas
 const photoSchema = new mongoose.Schema({
-  file: String,
-  thumb: String,
-  photographer: String,
-  caption: String,
-  tags: [String],
-  lat: Number,
-  userId: String,
-  lon: Number,
+  file: String, thumb: String, photographer: String, caption: String,
+  tags: [String], lat: Number, userId: String, lon: Number,
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 }, { versionKey: false });
-
 const Photo = mongoose.model('Photo', photoSchema);
 
 const flightPointSchema = new mongoose.Schema({
   aircraftId: { type: String, index: true },
-  callsign: String,
-  type: String,
-  lat: Number,
-  lon: Number,
-  alt: Number,
-  userId: String,
-  speed: Number,
-  heading: Number,
+  callsign: String, type: String,
+  lat: Number, lon: Number, alt: Number,
+  userId: String, speed: Number, heading: Number,
   ts: { type: Number, index: true }
 }, { versionKey: false });
-
 const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
 
-// ============ 工具函數 (必須先定義) ============
+// ✅ 新增：已完成飛行存檔
+const flightSessionSchema = new mongoose.Schema({
+  aircraftId:    { type: String, index: true },
+  discordId:     { type: String, index: true, sparse: true },
+  geofsUserId:   { type: String, sparse: true },
+  callsign:      String,
+  type:          String,
+  departure:     String,
+  arrival:       String,
+  startTime:     { type: Number, index: true },
+  endTime:       Number,
+  duration:      Number,    // 秒
+  maxAlt:        Number,    // 英尺
+  maxSpeed:      Number,    // 節
+  distanceNm:    Number,    // 海里
+  trackSnapshot: [{ lat: Number, lon: Number, alt: Number, ts: Number }],
+  status:        { type: String, default: 'completed' } // 'completed' | 'aborted'
+}, { versionKey: false, timestamps: true });
+const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
+
+// ✅ 新增：Discord 用戶帳號
+const userSchema = new mongoose.Schema({
+  discordId:        { type: String, unique: true, index: true },
+  username:         String,
+  displayName:      String,   // 顯示名稱（Discord global_name 或 username）
+  discriminator:    String,
+  photos:           [String], // Discord avatar URL 陣列
+  geofsUserId:      { type: String, index: true, sparse: true },
+  apiKey:           { type: String, index: true, sparse: true },
+  // 管理員權限
+  isSuperAdmin:     { type: Boolean, default: false },
+  managedAirlines:  { type: [String], default: [] }, // e.g. ['EVA', 'CAL']
+  accessToken:      String,
+  refreshToken:     String,
+  linkedAt:         Date,
+  createdAt:        { type: Date, default: Date.now }
+}, { versionKey: false });
+const User = mongoose.model('User', userSchema);
+
+// 產生隨機 API Key
+function generateApiKey() {
+  return require('crypto').randomBytes(24).toString('hex');
+}
+
+// 把 User document 轉成前端期望的格式
+function formatUserForClient(user) {
+  return {
+    authenticated: true,
+    user: {
+      discordId:   user.discordId,
+      displayName: user.displayName || user.username,
+      username:    user.username,
+      photos:      user.photos || [],
+      apiKey:      user.apiKey || null,
+      geofsUserId: user.geofsUserId || null
+    },
+    admin: {
+      isSuperAdmin:     user.isSuperAdmin || false,
+      managedAirlines:  user.managedAirlines || []
+    }
+  };
+}
+
+// ============ MongoDB 連線 ============
+mongoose.connect(MONGODB_URI)
+  .then(async () => {
+    console.log('✅ MongoDB connected');
+    await FlightPoint.collection.createIndex({ aircraftId: 1, ts: 1 });
+    await FlightPoint.collection.createIndex({ ts: 1 });
+    await FlightSession.collection.createIndex({ startTime: -1 });
+    await FlightSession.collection.createIndex({ discordId: 1 });
+    await User.collection.createIndex({ discordId: 1 }, { unique: true });
+    await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
+    console.log('✅ MongoDB indexes created');
+  })
+  .catch(err => console.error('MongoDB connection error:', err));
+
+// ============ 工具函數 ============
+
 function simplifyTrack(track, maxPoints = 1000) {
   if (track.length <= maxPoints) return track;
-  
-  // 使用時間間隔簡化，而不是單純的步進
   const timeSpan = track[track.length - 1].ts - track[0].ts;
   const targetInterval = timeSpan / maxPoints;
-  
-  const simplified = [track[0]]; // 保留第一個點
+  const simplified = [track[0]];
   let lastTime = track[0].ts;
-  
   for (let i = 1; i < track.length - 1; i++) {
     const point = track[i];
-    
-    // 如果時間間隔足夠，或是高度/速度變化明顯，就保留這個點
     const timeDiff = point.ts - lastTime;
-    const altChange = i > 0 ? Math.abs(point.alt - track[i-1].alt) : 0;
-    const speedChange = i > 0 ? Math.abs(point.speed - track[i-1].speed) : 0;
-    
+    const altChange = Math.abs(point.alt - track[i - 1].alt);
+    const speedChange = Math.abs(point.speed - track[i - 1].speed);
     if (timeDiff >= targetInterval || altChange > 500 || speedChange > 50) {
       simplified.push(point);
       lastTime = point.ts;
     }
   }
-  
-  simplified.push(track[track.length - 1]); // 保留最後一個點
-  
+  simplified.push(track[track.length - 1]);
   return simplified;
 }
 
@@ -126,13 +182,8 @@ async function saveFlightPoint(pt) {
 
 async function loadHistoryForAircraft(aircraftId, limit = 10000) {
   try {
-    const docs = await FlightPoint.find({ aircraftId })
-      .sort({ ts: 1 })
-      .limit(limit)
-      .lean();
-    const fullTrack = docs.map(d => ({
-      lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts
-    }));
+    const docs = await FlightPoint.find({ aircraftId }).sort({ ts: 1 }).limit(limit).lean();
+    const fullTrack = docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt, speed: d.speed, ts: d.ts }));
     return simplifyTrack(fullTrack, 2000);
   } catch (err) {
     console.error('loadHistoryForAircraft error', err);
@@ -142,150 +193,269 @@ async function loadHistoryForAircraft(aircraftId, limit = 10000) {
 
 function broadcastToATC(obj) {
   const msg = JSON.stringify(obj);
-  // WebSocket 廣播
   for (const ws of atcClients) {
-    if (ws.readyState === WebSocket.OPEN) {
-      ws.send(msg);
-    }
+    if (ws.readyState === WebSocket.OPEN) ws.send(msg);
   }
-  // Socket.IO 廣播
-  ioAtcClients.forEach((socket) => {
-    socket.emit(obj.type, obj.payload || obj);
-  });
+  ioAtcClients.forEach(socket => socket.emit(obj.type, obj.payload || obj));
 }
 
-// ============ Socket.IO 設定 ============
+// Haversine 距離（海里）
+function haversineNm(lat1, lon1, lat2, lon2) {
+  const R = 3440.065;
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2
+    + Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) * Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+
+// ✅ 存檔飛行紀錄（斷線時呼叫）
+async function finalizeFlightSession(aircraftId, status = 'completed') {
+  try {
+    const docs = await FlightPoint.find({ aircraftId }).sort({ ts: 1 }).lean();
+    if (docs.length < 5) return; // 太少點，略過
+
+    const aircraft = aircrafts.get(aircraftId);
+    const payload  = aircraft?.payload || {};
+
+    // 找對應的 Discord 用戶
+    const user = payload.userId
+      ? await User.findOne({ geofsUserId: String(payload.userId) }).lean()
+      : null;
+
+    // 計算飛行統計
+    let distanceNm = 0, maxAlt = 0, maxSpeed = 0;
+    for (let i = 1; i < docs.length; i++) {
+      distanceNm += haversineNm(docs[i - 1].lat, docs[i - 1].lon, docs[i].lat, docs[i].lon);
+      if (docs[i].alt)   maxAlt   = Math.max(maxAlt,   docs[i].alt);
+      if (docs[i].speed) maxSpeed = Math.max(maxSpeed, docs[i].speed);
+    }
+    distanceNm = Math.round(distanceNm);
+
+    const startTime     = docs[0].ts;
+    const endTime       = docs[docs.length - 1].ts;
+    const duration      = Math.round((endTime - startTime) / 1000);
+    const trackSnapshot = simplifyTrack(
+      docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, ts: d.ts })), 500
+    );
+
+    const session = await FlightSession.create({
+      aircraftId,
+      discordId:   user?.discordId  || null,
+      geofsUserId: payload.userId   ? String(payload.userId) : null,
+      callsign:    payload.callsign || docs[0].callsign || 'UNK',
+      type:        payload.type     || docs[0].type     || '',
+      departure:   payload.departure || '',
+      arrival:     payload.arrival   || '',
+      startTime, endTime, duration,
+      maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
+      trackSnapshot, status
+    });
+
+    console.log(`[FlightSession] ${status} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
+
+    // Discord 飛行完成通報（飛行時間 > 2 分鐘才通報）
+    if (FLIGHT_WEBHOOK_URL && duration >= 120) {
+      const durationStr = `${Math.floor(duration / 3600)}h ${Math.floor((duration % 3600) / 60)}m`;
+      const pilot = user
+        ? `<@${user.discordId}> (${user.username})`
+        : (payload.userId ? `GeoFS #${payload.userId}` : 'Unknown');
+
+      fetch(FLIGHT_WEBHOOK_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          username: 'Flight Logger',
+          avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
+          embeds: [{
+            title: `${status === 'completed' ? '🛬' : '⚠️'} Flight ${status === 'completed' ? 'Completed' : 'Aborted'} — ${session.callsign}`,
+            color: status === 'completed' ? 0x00b4d8 : 0x888888,
+            fields: [
+              { name: '✈ Aircraft',   value: session.type     || 'Unknown', inline: true },
+              { name: '📡 Callsign',  value: session.callsign || 'N/A',     inline: true },
+              { name: '👤 Pilot',     value: pilot,                          inline: true },
+              { name: '🛫 Departure', value: session.departure || 'N/A',    inline: true },
+              { name: '🛬 Arrival',   value: session.arrival  || 'N/A',     inline: true },
+              { name: '⏱ Duration',  value: durationStr,                   inline: true },
+              { name: '📏 Distance',  value: `${distanceNm} nm`,            inline: true },
+              { name: '🔝 Max Alt',   value: `${Math.round(maxAlt)} ft`,    inline: true },
+              { name: '💨 Max Speed', value: `${Math.round(maxSpeed)} kts`, inline: true }
+            ],
+            footer: { text: `Flight Logger · ${new Date().toISOString()}` }
+          }]
+        })
+      }).catch(e => console.error('Flight webhook error', e));
+    }
+
+    return session;
+  } catch (err) {
+    console.error('finalizeFlightSession error', err);
+  }
+}
+
+// ✅ 緊急 Squawk 警報（7700 / 7500 / 7600）
+async function sendSquawkAlert(payload) {
+  if (!ALERT_WEBHOOK_URL) return;
+  if (!['7700', '7500', '7600'].includes(payload.squawk)) {
+    // 如果 squawk 恢復正常，重置警報狀態
+    if (alertedSquawks.has(payload.id)) alertedSquawks.delete(payload.id);
+    return;
+  }
+  if (alertedSquawks.get(payload.id) === payload.squawk) return; // 已通報
+
+  alertedSquawks.set(payload.id, payload.squawk);
+
+  const info = {
+    '7700': { emoji: '🆘', label: 'GENERAL EMERGENCY', color: 0xff0000 },
+    '7500': { emoji: '🔫', label: 'HIJACK',            color: 0xff4500 },
+    '7600': { emoji: '📻', label: 'RADIO FAILURE',     color: 0xffa500 }
+  }[payload.squawk];
+
+  fetch(ALERT_WEBHOOK_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      content: '@here',
+      username: 'ATC Alert',
+      avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
+      embeds: [{
+        title: `${info.emoji} SQUAWK ${payload.squawk} — ${info.label}`,
+        color: info.color,
+        fields: [
+          { name: 'Callsign', value: payload.callsign || 'N/A',                                  inline: true },
+          { name: 'Aircraft', value: payload.type     || 'Unknown',                              inline: true },
+          { name: 'Altitude', value: `${Math.round(payload.alt)} ft`,                           inline: true },
+          { name: 'Speed',    value: `${Math.round(payload.speed)} kts`,                        inline: true },
+          { name: 'Position', value: `${payload.lat.toFixed(4)}, ${payload.lon.toFixed(4)}`,    inline: true }
+        ],
+        footer: { text: new Date().toISOString() }
+      }]
+    })
+  }).catch(e => console.error('Alert webhook error', e));
+}
+
+// ============ JWT Middleware ============
+function authMiddleware(req, res, next) {
+  const token = req.cookies.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return res.status(401).json({ error: 'Not authenticated' });
+  try {
+    req.jwtUser = jwt.verify(token, JWT_SECRET);
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+function checkAdminPass(req, res, next) {
+  if (req.headers['x-admin-pass'] === ADMIN_PASSWORD) next();
+  else res.status(401).json({ error: 'Unauthorized' });
+}
+
+// ============ Socket.IO ============
 const io = new IOServer(server, {
-  cors: { 
-    origin: ["https://www.geo-fs.com", "https://geo-fs.com"],  // ← 明確指定來源
-    methods: ["GET", "POST"],
+  cors: {
+    origin: ['https://www.geo-fs.com', 'https://geo-fs.com'],
+    methods: ['GET', 'POST'],
     credentials: true
   },
   pingInterval: 25000,
   pingTimeout: 60000
 });
 
-io.on("connection", (socket) => {
-  console.log("Socket.IO client connected:", socket.id);
+io.on('connection', async (socket) => {
+  console.log('Socket.IO client connected:', socket.id);
 
-  socket.on("hello", async (msg) => {
-    socket.role = msg.role || "unknown";
+  // 如果 client 帶了 JWT（query 或 cookie），推送用戶資料
+  try {
+    const token = socket.handshake.auth?.token
+      || socket.handshake.query?.token
+      || (socket.handshake.headers?.cookie || '').match(/auth_token=([^;]+)/)?.[1];
+    if (token) {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      const user = await User.findOne({ discordId: decoded.discordId })
+        .select('-accessToken -refreshToken').lean();
+      if (user) socket.emit('user_data', formatUserForClient(user));
+    }
+  } catch { /* 未登入，忽略 */ }
 
-    if (socket.role === "atc") {
+  socket.on('hello', async (msg) => {
+    socket.role = msg.role || 'unknown';
+    if (socket.role === 'atc') {
       ioAtcClients.add(socket);
-      const snapshot = Array.from(aircrafts.values()).map((x) => x.payload);
-      socket.emit("aircraft_snapshot", snapshot);
-
+      socket.emit('aircraft_snapshot', Array.from(aircrafts.values()).map(x => x.payload));
       for (const [aircraftId] of aircrafts) {
         const tracks = await loadHistoryForAircraft(aircraftId);
-        if (tracks?.length) {
-          socket.emit("aircraft_track_history", { aircraftId, tracks });
-        }
+        if (tracks?.length) socket.emit('aircraft_track_history', { aircraftId, tracks });
       }
     }
-
-    if (socket.role === "player") {
+    if (socket.role === 'player') {
       ioPlayerClients.add(socket);
       socket.aircraftId = null;
     }
   });
 
-  socket.on("position_update", async (p) => {
-    const id = p.id || (p.callsign ? p.callsign + ":" + (p.playerId || "p") : null);
+  socket.on('position_update', async (p) => {
+    const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
     if (!id) return;
-
-    if (socket.role === "player") socket.aircraftId = id;
+    if (socket.role === 'player') socket.aircraftId = id;
 
     const payload = {
-      id,
-      callsign: p.callsign || "UNK",
-      type: p.type || "",
-      lat: +p.lat || 0,
-      lon: +p.lon || 0,
-      alt: +p.alt || 0,
-      heading: +p.heading || 0,
-      speed: +p.speed || 0,
-      flightNo: p.flightNo || "",
-      userId: p.userId || null,
-      departure: p.departure || "",
-      arrival: p.arrival || "",
-      takeoffTime: p.takeoffTime || "",
-      squawk: p.squawk || "",
-      flightPlan: p.flightPlan || [],
-      ts: Date.now()
+      id, callsign: p.callsign || 'UNK', type: p.type || '',
+      lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
+      heading: +p.heading || 0, speed: +p.speed || 0,
+      flightNo: p.flightNo || '', userId: p.userId || null,
+      departure: p.departure || '', arrival: p.arrival || '',
+      takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+      flightPlan: p.flightPlan || [], ts: Date.now()
     };
 
     aircrafts.set(id, { payload, lastSeen: Date.now() });
-    
-    await saveFlightPoint({
-      aircraftId: id,
-      callsign: payload.callsign,
-      type: payload.type,
-      lat: payload.lat,
-      lon: payload.lon,
-      alt: payload.alt,
-      speed: payload.speed,
-      heading: payload.heading,
-      ts: payload.ts
-    });
-
-    broadcastToATC({ type: "aircraft_update", payload });
+    await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
+      lat: payload.lat, lon: payload.lon, alt: payload.alt,
+      speed: payload.speed, heading: payload.heading, ts: payload.ts });
+    broadcastToATC({ type: 'aircraft_update', payload });
+    await sendSquawkAlert(payload);
   });
 
-  socket.on("disconnect", async () => {
+  socket.on('disconnect', async () => {
     ioAtcClients.delete(socket);
     ioPlayerClients.delete(socket);
-
-    if (socket.role === "player" && socket.aircraftId) {
+    if (socket.role === 'player' && socket.aircraftId) {
+      await finalizeFlightSession(socket.aircraftId, 'completed');
       await FlightPoint.deleteMany({ aircraftId: socket.aircraftId });
-      broadcastToATC({ type: "aircraft_track_clear", payload: { aircraftId: socket.aircraftId } });
+      alertedSquawks.delete(socket.aircraftId);
+      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: socket.aircraftId } });
     }
-    console.log("Socket.IO client disconnected:", socket.id);
+    console.log('Socket.IO client disconnected:', socket.id);
   });
 });
 
-// ✅ 新增這個函數
+// ============ WebSocket 分塊發送 ============
 function sendInChunks(ws, aircraftId, tracks, chunkSize = 200) {
-  if (tracks.length === 0) return;
-  
+  if (!tracks.length) return;
   const totalChunks = Math.ceil(tracks.length / chunkSize);
-  
   for (let i = 0; i < totalChunks; i++) {
-    const start = i * chunkSize;
-    const end = Math.min(start + chunkSize, tracks.length);
-    const chunk = tracks.slice(start, end);
-    
+    const chunk = tracks.slice(i * chunkSize, (i + 1) * chunkSize);
     ws.send(JSON.stringify({
       type: 'aircraft_track_history',
-      payload: { 
-        aircraftId, 
-        tracks: chunk,
-        chunkInfo: {
-          current: i + 1,
-          total: totalChunks,
-          isLast: i === totalChunks - 1
-        }
-      }
+      payload: { aircraftId, tracks: chunk,
+        chunkInfo: { current: i + 1, total: totalChunks, isLast: i === totalChunks - 1 } }
     }));
   }
-  
-  console.log(`[ATC] Sent ${tracks.length} history points in ${totalChunks} chunks for ${aircraftId}`);
+  console.log(`[ATC] Sent ${tracks.length} history points (${totalChunks} chunks) for ${aircraftId}`);
 }
 
-// ============ WebSocket 設定 ============
+// ============ WebSocket ============
 server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
-  
   if (pathname === '/ws' || pathname === '/') {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit('connection', ws, request);
-    });
+    wss.handleUpgrade(request, socket, head, (ws) => wss.emit('connection', ws, request));
   } else {
     socket.destroy();
   }
 });
 
-wss.on('connection', (ws, req) => {
+wss.on('connection', (ws) => {
   clients.add(ws);
   ws.role = 'unknown';
   console.log('WebSocket connected. total clients:', clients.size);
@@ -296,20 +466,14 @@ wss.on('connection', (ws, req) => {
 
       if (msg.type === 'hello') {
         ws.role = msg.role || 'unknown';
-
         if (ws.role === 'atc') {
-  atcClients.add(ws);
-  const payload = Array.from(aircrafts.values()).map(x => x.payload);
-  ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload }));
-
-  // ✅ 使用分批發送
-  for (const [aircraftId] of aircrafts) {
-    const tracks = await loadHistoryForAircraft(aircraftId, 10000);
-    if (tracks && tracks.length > 0) {
-      sendInChunks(ws, aircraftId, tracks, 200); // ✅ 新的
-    }
-  }
-}else if (ws.role === 'player') {
+          atcClients.add(ws);
+          ws.send(JSON.stringify({ type: 'aircraft_snapshot', payload: Array.from(aircrafts.values()).map(x => x.payload) }));
+          for (const [aircraftId] of aircrafts) {
+            const tracks = await loadHistoryForAircraft(aircraftId, 10000);
+            if (tracks?.length) sendInChunks(ws, aircraftId, tracks, 200);
+          }
+        } else if (ws.role === 'player') {
           playerClients.add(ws);
           ws.aircraftId = null;
         }
@@ -320,47 +484,26 @@ wss.on('connection', (ws, req) => {
         const p = msg.payload;
         const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
         if (!id) return;
-
         if (ws.role === 'player') ws.aircraftId = id;
 
         const payload = {
-          id,
-          callsign: p.callsign || 'UNK',
-          type: p.type || '',
-          lat: +p.lat || 0,
-          lon: +p.lon || 0,
-          alt: +p.alt || 0,
+          id, callsign: p.callsign || 'UNK', type: p.type || '',
+          lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
           heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
           speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
-          userId: p.userId || null,
-          flightNo: p.flightNo || '',
-          departure: p.departure || '',
-          arrival: p.arrival || '',
-          takeoffTime: p.takeoffTime || '',
-          squawk: p.squawk || '',
-          ts: Date.now(),
-          flightPlan: p.flightPlan || []
+          userId: p.userId || null, flightNo: p.flightNo || '',
+          departure: p.departure || '', arrival: p.arrival || '',
+          takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+          ts: Date.now(), flightPlan: p.flightPlan || []
         };
 
         aircrafts.set(id, { payload, lastSeen: Date.now() });
-
-        await saveFlightPoint({
-          aircraftId: id,
-          callsign: payload.callsign,
-          type: payload.type,
-          lat: payload.lat,
-          lon: payload.lon,
-          alt: payload.alt,
-          speed: payload.speed,
-          heading: payload.heading,
-          ts: payload.ts
-        });
-
-        broadcastToATC({
-          type: 'aircraft_update',
-          payload,
-          trackPoint: { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts }
-        });
+        await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
+          lat: payload.lat, lon: payload.lon, alt: payload.alt,
+          speed: payload.speed, heading: payload.heading, ts: payload.ts });
+        broadcastToATC({ type: 'aircraft_update', payload,
+          trackPoint: { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } });
+        await sendSquawkAlert(payload);
         return;
       }
 
@@ -371,7 +514,9 @@ wss.on('connection', (ws, req) => {
       }
 
       if (msg.type === 'disconnect' && msg.aircraftId) {
+        await finalizeFlightSession(msg.aircraftId, 'completed');
         await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
+        alertedSquawks.delete(msg.aircraftId);
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
         return;
       }
@@ -385,256 +530,369 @@ wss.on('connection', (ws, req) => {
     clients.delete(ws);
     atcClients.delete(ws);
     playerClients.delete(ws);
-
     if (ws.role === 'player' && ws.aircraftId) {
       try {
+        await finalizeFlightSession(ws.aircraftId, 'completed');
         await FlightPoint.deleteMany({ aircraftId: ws.aircraftId });
+        alertedSquawks.delete(ws.aircraftId);
       } catch (err) {
-        console.error('Error deleting on close', err);
+        console.error('Error finalizing on close', err);
       }
-      broadcastToATC({
-        type: 'aircraft_track_clear',
-        payload: { aircraftId: ws.aircraftId }
-      });
+      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: ws.aircraftId } });
     }
     console.log('WebSocket closed. total clients:', clients.size);
   });
 
   ws.on('error', (e) => console.warn('WebSocket error', e));
 });
-// ============ Airline Registry API ============
-// 在 .env 加入：AIRLINE_WEBHOOK_URL=https://discord.com/api/webhooks/...
-const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
 
-app.post('/api/airline', express.json(), async (req, res) => {
+// ============ Discord OAuth Routes ============
+
+// Step 1：導向 Discord 授權頁
+app.get('/auth/discord', (req, res) => {
+  if (!DISCORD_CLIENT_ID) return res.status(500).send('Discord OAuth not configured');
+  const state = Math.random().toString(36).slice(2);
+  res.cookie('discord_oauth_state', state, { httpOnly: true, maxAge: 300_000 });
+  const params = new URLSearchParams({
+    client_id: DISCORD_CLIENT_ID,
+    redirect_uri: DISCORD_REDIRECT_URI,
+    response_type: 'code',
+    scope: 'identify',
+    state
+  });
+  res.redirect(`https://discord.com/api/oauth2/authorize?${params}`);
+});
+
+// Step 2：OAuth Callback
+app.get('/auth/discord/callback', async (req, res) => {
   try {
-    if (!AIRLINE_WEBHOOK_URL) {
-      return res.status(500).json({ error: 'Webhook not configured on server' });
-    }
+    const { code, state } = req.query;
+    if (!code) return res.status(400).send('No code provided');
+    if (state !== req.cookies.discord_oauth_state) return res.status(400).send('State mismatch');
 
+    // 兌換 Token
+    const tokenRes = await fetch('https://discord.com/api/oauth2/token', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: new URLSearchParams({
+        client_id: DISCORD_CLIENT_ID,
+        client_secret: DISCORD_CLIENT_SECRET,
+        grant_type: 'authorization_code',
+        code, redirect_uri: DISCORD_REDIRECT_URI
+      })
+    });
+    const tokenData = await tokenRes.json();
+    if (!tokenData.access_token) return res.status(400).send('Token exchange failed');
+
+    // 取得 Discord 用戶資料
+    const userRes = await fetch('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${tokenData.access_token}` }
+    });
+    const du = await userRes.json();
+
+    const avatarUrl = du.avatar
+      ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.png`
+      : `https://cdn.discordapp.com/embed/avatars/${Number(du.discriminator || 0) % 5}.png`;
+
+    // 查是否已有此用戶（保留原有 apiKey、admin 設定）
+    const existing = await User.findOne({ discordId: du.id });
+
+    const user = await User.findOneAndUpdate(
+      { discordId: du.id },
+      {
+        $set: {
+          discordId:     du.id,
+          username:      du.username,
+          displayName:   du.global_name || du.username,
+          discriminator: du.discriminator || '0',
+          photos:        [avatarUrl],
+          accessToken:   tokenData.access_token,
+          refreshToken:  tokenData.refresh_token || null
+        },
+        // 首次登入才產生 API Key
+        $setOnInsert: { apiKey: generateApiKey() }
+      },
+      { upsert: true, new: true }
+    );
+
+    // 發放 JWT
+    const token = jwt.sign(
+      { discordId: user.discordId, username: user.username },
+      JWT_SECRET,
+      { expiresIn: '30d' }
+    );
+    res.clearCookie('discord_oauth_state');
+    res.cookie('auth_token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.redirect('/?discord_linked=1');
+  } catch (err) {
+    console.error('Discord OAuth error', err);
+    res.status(500).send('OAuth error: ' + err.message);
+  }
+});
+
+// 登出
+// GET 跳轉登出（前端用 <a href="/auth/logout"> ）
+app.get('/auth/logout', (req, res) => {
+  res.clearCookie('auth_token');
+  res.redirect('/');
+});
+// POST 登出（API 呼叫用）
+app.post('/auth/logout', (req, res) => {
+  res.clearCookie('auth_token');
+  res.json({ ok: true });
+});
+
+// ============ User API Routes ============
+
+// 取得目前登入用戶（前端呼叫 /api/user/me）
+app.get('/api/user/me', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findOne({ discordId: req.jwtUser.discordId })
+      .select('-accessToken -refreshToken').lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    res.json(formatUserForClient(user));
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 重新產生 API Key
+app.post('/api/user/regenerate-key', authMiddleware, async (req, res) => {
+  try {
+    const newKey = generateApiKey();
+    await User.findOneAndUpdate(
+      { discordId: req.jwtUser.discordId },
+      { apiKey: newKey }
+    );
+    res.json({ apiKey: newKey });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 綁定 GeoFS userId ↔ Discord 帳號
+app.post('/api/user/link', authMiddleware, async (req, res) => {
+  try {
+    const { geofsUserId } = req.body;
+    if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
+    await User.findOneAndUpdate(
+      { discordId: req.jwtUser.discordId },
+      { geofsUserId: String(geofsUserId), linkedAt: new Date() }
+    );
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 取得個人飛行紀錄（需登入）
+app.get('/api/my-flights', authMiddleware, async (req, res) => {
+  try {
+    const user = await User.findOne({ discordId: req.jwtUser.discordId }).lean();
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    const limit = Math.min(parseInt(req.query.limit) || 50, 200);
+    const flights = await FlightSession.find({ discordId: user.discordId })
+      .sort({ startTime: -1 }).limit(limit).lean();
+    res.json(flights);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 取得任一用戶公開資料
+app.get('/api/users/:discordId', async (req, res) => {
+  try {
+    const user = await User.findOne({ discordId: req.params.discordId })
+      .select('discordId username displayName photos geofsUserId createdAt').lean();
+    if (!user) return res.status(404).json({ error: 'not found' });
+    res.json(user);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// ============ Flight History API Routes ============
+
+// 所有歷史飛行（含分頁 & 篩選）
+app.get('/api/flights/history', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const page  = Math.max(parseInt(req.query.page)  || 0,  0);
+    const filter = {};
+    if (req.query.callsign)  filter.callsign  = new RegExp(req.query.callsign, 'i');
+    if (req.query.discordId) filter.discordId = req.query.discordId;
+    if (req.query.departure) filter.departure = req.query.departure.toUpperCase();
+    if (req.query.arrival)   filter.arrival   = req.query.arrival.toUpperCase();
+
+    const [flights, total] = await Promise.all([
+      FlightSession.find(filter).sort({ startTime: -1 }).skip(page * limit).limit(limit).select('-trackSnapshot').lean(),
+      FlightSession.countDocuments(filter)
+    ]);
+    res.json({ flights, total, page, limit, pages: Math.ceil(total / limit) });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 特定用戶的歷史飛行（by discordId）
+app.get('/api/flights/user/:discordId', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const flights = await FlightSession.find({ discordId: req.params.discordId })
+      .sort({ startTime: -1 }).limit(limit).select('-trackSnapshot').lean();
+    res.json(flights);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 特定用戶的歷史飛行（by geofsUserId）
+app.get('/api/flights/geofs/:geofsUserId', async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit) || 20, 100);
+    const flights = await FlightSession.find({ geofsUserId: req.params.geofsUserId })
+      .sort({ startTime: -1 }).limit(limit).select('-trackSnapshot').lean();
+    res.json(flights);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 單次飛行詳情（含完整軌跡）
+app.get('/api/flights/:sessionId', async (req, res) => {
+  try {
+    const flight = await FlightSession.findById(req.params.sessionId).lean();
+    if (!flight) return res.status(404).json({ error: 'not found' });
+    res.json(flight);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 飛行統計（by discordId）
+app.get('/api/flights/stats/:discordId', async (req, res) => {
+  try {
+    const stats = await FlightSession.aggregate([
+      { $match: { discordId: req.params.discordId } },
+      { $group: {
+        _id: '$discordId',
+        totalFlights:    { $sum: 1 },
+        totalDistanceNm: { $sum: '$distanceNm' },
+        totalDuration:   { $sum: '$duration' },
+        maxAlt:          { $max: '$maxAlt' },
+        maxSpeed:        { $max: '$maxSpeed' }
+      }}
+    ]);
+    res.json(stats[0] || { totalFlights: 0, totalDistanceNm: 0, totalDuration: 0 });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// 刪除飛行紀錄（管理員）
+app.delete('/admin/flights/:sessionId', checkAdminPass, async (req, res) => {
+  try {
+    await FlightSession.findByIdAndDelete(req.params.sessionId);
+    res.json({ ok: true });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+// ============ Airline Registry API ============
+app.post('/api/airline', async (req, res) => {
+  try {
+    if (!AIRLINE_WEBHOOK_URL) return res.status(500).json({ error: 'Webhook not configured' });
     const { icao, iata, name, country, logo } = req.body;
-
-    // 驗證必填欄位
-    if (!icao || !iata || !name || !country) {
+    if (!icao || !iata || !name || !country)
       return res.status(400).json({ error: 'Missing required fields: icao, iata, name, country' });
-    }
 
-    // 建立 JSON payload
     const entry = { name, icao, iata, country };
     if (logo) entry.logo = logo;
-    const payload = { [icao]: entry };
-    const jsonStr = JSON.stringify(payload, null, 2);
-
-    // 傳送到 Discord
-    const discordBody = {
-      username: 'Airline Registry',
-      avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
-      embeds: [{
-        title: `✈ New Airline — ${name}`,
-        color: 0xf0a500,
-        fields: [
-          { name: 'ICAO', value: `\`${icao}\``, inline: true },
-          { name: 'IATA', value: `\`${iata}\``, inline: true },
-          { name: 'Country', value: country, inline: true },
-          { name: 'JSON Payload', value: `\`\`\`json\n${jsonStr}\n\`\`\`` }
-        ],
-        ...(logo && { thumbnail: { url: logo } }),
-        footer: { text: `Airline Registry · ${new Date().toISOString()}` }
-      }]
-    };
+    const jsonStr = JSON.stringify({ [icao]: entry }, null, 2);
 
     const webhookRes = await fetch(AIRLINE_WEBHOOK_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(discordBody)
+      body: JSON.stringify({
+        username: 'Airline Registry',
+        avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
+        embeds: [{
+          title: `✈ New Airline — ${name}`,
+          color: 0xf0a500,
+          fields: [
+            { name: 'ICAO', value: `\`${icao}\``, inline: true },
+            { name: 'IATA', value: `\`${iata}\``, inline: true },
+            { name: 'Country', value: country, inline: true },
+            { name: 'JSON Payload', value: `\`\`\`json\n${jsonStr}\n\`\`\`` }
+          ],
+          ...(logo && { thumbnail: { url: logo } }),
+          footer: { text: `Airline Registry · ${new Date().toISOString()}` }
+        }]
+      })
     });
-
     if (!webhookRes.ok) {
       const errText = await webhookRes.text();
-      console.error('Discord webhook error:', webhookRes.status, errText);
-      return res.status(502).json({ error: `Discord error: ${webhookRes.status}` });
+      return res.status(502).json({ error: `Discord error: ${webhookRes.status} ${errText}` });
     }
-
     res.json({ ok: true });
   } catch (err) {
     console.error('Airline API error:', err);
     res.status(500).json({ error: err.message || 'server error' });
   }
 });
-// ============ Express Routes ============
-app.use(express.json());
-app.use(express.urlencoded({ extended: true }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
-app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
-app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
-app.get('/photomap.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
-app.get('/health', (req, res) => res.send('ok'));
-app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
-app.get('/airlines.json', (req, res) => {
-  res.sendFile(path.join(__dirname, 'airlines.json'));
-});
-function checkAdminPass(req, res, next) {
-  const pass = req.headers['x-admin-pass'];
-  if (pass === ADMIN_PASSWORD) next();
-  else res.status(401).json({ error: 'Unauthorized' });
-}
 
+// ============ Photo Admin Routes ============
 app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
-  try {
-    const photos = await Photo.find({ status: 'pending' }).sort({ createdAt: -1 });
-    res.json(photos);
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+  try { res.json(await Photo.find({ status: 'pending' }).sort({ createdAt: -1 })); }
+  catch { res.status(500).json({ error: 'server error' }); }
 });
-
 app.post('/admin/photos/:id/approve', checkAdminPass, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
-    photo.status = 'approved';
-    await photo.save();
-    res.json({ message: 'approved' });
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+    photo.status = 'approved'; await photo.save(); res.json({ message: 'approved' });
+  } catch { res.status(500).json({ error: 'server error' }); }
 });
-
 app.post('/admin/photos/:id/reject', checkAdminPass, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
-    photo.status = 'rejected';
-    await photo.save();
-    res.json({ message: 'rejected' });
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+    photo.status = 'rejected'; await photo.save(); res.json({ message: 'rejected' });
+  } catch { res.status(500).json({ error: 'server error' }); }
 });
-
 app.delete('/admin/photos/:id', checkAdminPass, async (req, res) => {
-  try {
-    await Photo.findByIdAndDelete(req.params.id);
-    res.json({ message: 'deleted' });
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+  try { await Photo.findByIdAndDelete(req.params.id); res.json({ message: 'deleted' }); }
+  catch { res.status(500).json({ error: 'server error' }); }
 });
 
+// ============ Photo Public Routes ============
 app.get('/api/photos', async (req, res) => {
-  try {
-    const photos = await Photo.find({ status: 'approved' }).sort({ createdAt: -1 });
-    res.json(photos);
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+  try { res.json(await Photo.find({ status: 'approved' }).sort({ createdAt: -1 })); }
+  catch { res.status(500).json({ error: 'server error' }); }
 });
 app.get('/api/photos/user/:userId', async (req, res) => {
   try {
-    const { userId } = req.params;
-    const photos = await Photo.find({ 
-      userId: userId, 
-      status: 'approved' 
-    })
-    .sort({ createdAt: -1 })
-    .limit(10);
-    res.json(photos);
-  } catch (err) {
-    res.status(500).json({ error: 'server error' });
-  }
+    res.json(await Photo.find({ userId: req.params.userId, status: 'approved' }).sort({ createdAt: -1 }).limit(10));
+  } catch { res.status(500).json({ error: 'server error' }); }
 });
+
+// ============ Live Track Routes ============
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
-    const { aircraftId } = req.params;
-    await FlightPoint.deleteMany({ aircraftId });
-    broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } });
+    await FlightPoint.deleteMany({ aircraftId: req.params.aircraftId });
+    broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: req.params.aircraftId } });
     res.sendStatus(200);
-  } catch (err) {
-    res.status(500).json({ error: 'server' });
-  }
+  } catch { res.status(500).json({ error: 'server error' }); }
 });
-// 新增：單一飛機的歷史軌跡 API
-// 單一飛機的歷史軌跡 API
+
 app.get('/api/tracks/:aircraftId', async (req, res) => {
   try {
     const { aircraftId } = req.params;
     const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
-    
-    const docs = await FlightPoint.find({
-      aircraftId: aircraftId,
-      ts: { $gte: startTime }
-    })
-    .sort({ ts: 1 })
-    .limit(20000)  // ← 改成 20000
-    .lean();
-    
-    const tracks = docs.map(d => ({
-      lat: d.lat,
-      lon: d.lon,
-      alt: d.alt || 0,
-      speed: d.speed || 0,
-      ts: d.ts
-    }));
-    
-    const simplified = simplifyTrack(tracks, 3000);
-
+    const docs = await FlightPoint.find({ aircraftId, ts: { $gte: startTime } })
+      .sort({ ts: 1 }).limit(20000).lean();
+    const tracks = docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, speed: d.speed || 0, ts: d.ts }));
     res.json({ tracks });
-  } catch (err) {
-    console.error('Error fetching tracks:', err);
-    res.status(500).json({ error: 'Failed to fetch tracks' });
-  }
+  } catch { res.status(500).json({ error: 'Failed to fetch tracks' }); }
 });
 
-// 新增：所有當前飛機的歷史軌跡 API
 app.get('/api/tracks/all', async (req, res) => {
   try {
     const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
-    
-    // 取得所有當前連線的飛機 ID
     const currentAircraftIds = Array.from(aircrafts.keys());
-    
-    if (currentAircraftIds.length === 0) {
-      return res.json({});
-    }
-    
-    // 查詢這些飛機的歷史軌跡
-    const docs = await FlightPoint.find({
-      aircraftId: { $in: currentAircraftIds },
-      ts: { $gte: startTime }
-    })
-    .sort({ ts: 1 })
-    .lean();
-    
-    // 按飛機 ID 分組
+    if (!currentAircraftIds.length) return res.json({});
+    const docs = await FlightPoint.find({ aircraftId: { $in: currentAircraftIds }, ts: { $gte: startTime } })
+      .sort({ ts: 1 }).lean();
     const grouped = {};
     docs.forEach(d => {
-      if (!grouped[d.aircraftId]) {
-        grouped[d.aircraftId] = [];
-      }
-      grouped[d.aircraftId].push({
-        lat: d.lat,
-        lon: d.lon,
-        alt: d.alt || 0,
-        speed: d.speed || 0,
-        ts: d.ts
-      });
+      if (!grouped[d.aircraftId]) grouped[d.aircraftId] = [];
+      grouped[d.aircraftId].push({ lat: d.lat, lon: d.lon, alt: d.alt || 0, speed: d.speed || 0, ts: d.ts });
     });
-    
-     //對每個飛機的軌跡進行簡化（避免資料過大）
-    Object.keys(grouped).forEach(aircraftId => {
-      grouped[aircraftId] = simplifyTrack(grouped[aircraftId], 2000);
-    });
-    
-    
+    Object.keys(grouped).forEach(id => { grouped[id] = simplifyTrack(grouped[id], 2000); });
     res.json(grouped);
-  } catch (err) {
-    console.error('Error fetching all tracks:', err);
-    res.status(500).json({ error: 'Failed to fetch all tracks' });
-  }
+  } catch { res.status(500).json({ error: 'Failed to fetch all tracks' }); }
 });
-// Upload
+
+// ============ Upload ============
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR);
 
@@ -642,8 +900,7 @@ const storage = multer.diskStorage({
   destination: UPLOAD_DIR,
   filename: (req, file, cb) => {
     const ext = mime.extension(file.mimetype) || 'jpg';
-    const name = Date.now() + '-' + Math.random().toString(36).slice(2, 9) + '.' + ext;
-    cb(null, name);
+    cb(null, Date.now() + '-' + Math.random().toString(36).slice(2, 9) + '.' + ext);
   }
 });
 const upload = multer({ storage, limits: { fileSize: 30 * 1024 * 1024 } });
@@ -654,38 +911,21 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     if (!file) return res.status(400).json({ error: 'no file' });
     if (!IMGBB_API_KEY) return res.status(500).json({ error: 'ImgBB API key not configured' });
 
-    const imageBuffer = fs.readFileSync(file.path);
-    const base64Image = imageBuffer.toString('base64');
     const formData = new FormData();
-    formData.append('image', base64Image);
-
-    const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, {
-      method: 'POST',
-      body: formData
-    });
-
+    formData.append('image', fs.readFileSync(file.path).toString('base64'));
+    const imgbbResponse = await fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData });
     const imgbbData = await imgbbResponse.json();
-    if (!imgbbData.success) {
-      throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown error'));
-    }
-
+    if (!imgbbData.success) throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown'));
     fs.unlinkSync(file.path);
 
-    // ← 修改這裡：添加 userId 到解構中
     const { photographer = 'anon', caption = '', tags = '', lat, lon, userId } = req.body;
-    
     const photo = await Photo.create({
-      file: imgbbData.data.url,
-      thumb: imgbbData.data.url,
-      photographer,
-      caption,
+      file: imgbbData.data.url, thumb: imgbbData.data.url,
+      photographer, caption,
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
-      lat: lat ? Number(lat) : null,
-      lon: lon ? Number(lon) : null,
-      userId: userId || null,  // ← 現在這個變數已經定義了
-      status: 'pending'
+      lat: lat ? Number(lat) : null, lon: lon ? Number(lon) : null,
+      userId: userId || null, status: 'pending'
     });
-
     res.json({ ok: true, photo });
   } catch (err) {
     console.error('Upload error:', err);
@@ -693,42 +933,58 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
   }
 });
 
-// 清理逾時飛機
+// ============ Static Routes ============
+app.use(express.static(path.join(__dirname, 'public')));
+app.get('/',             (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
+app.get('/admin.html',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/upload.html',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
+app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
+app.get('/photomap.html',(req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
+app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
+app.get('/airlines.json',(req, res) => res.sendFile(path.join(__dirname, 'airlines.json')));
+app.get('/health',       (req, res) => res.send('ok'));
+
+// ============ 定期清理 ============
+
+// 清理逾時飛機（30 秒）
 setInterval(async () => {
   const now = Date.now();
-  const timeout = 30000;
-  let removed = [];
+  const removed = [];
   for (const [id, v] of aircrafts.entries()) {
-    if (now - v.lastSeen > timeout) {
+    if (now - v.lastSeen > 30_000) {
       aircrafts.delete(id);
       removed.push(id);
       try {
+        await finalizeFlightSession(id, 'aborted');
         await FlightPoint.deleteMany({ aircraftId: id });
+        alertedSquawks.delete(id);
       } catch (err) {
-        console.error('cleanup delete error', err);
+        console.error('cleanup error', err);
       }
     }
   }
   if (removed.length) {
     broadcastToATC({ type: 'aircraft_remove', payload: removed });
-    removed.forEach(aircraftId => {
-      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } });
-    });
+    removed.forEach(aircraftId =>
+      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } })
+    );
   }
 }, 5000);
 
-// 定期清理舊資料
+// 清理過期 FlightPoint（每 6 小時）
 setInterval(async () => {
   try {
-    const cutoff = Date.now() - RETENTION_MS;
-    await FlightPoint.deleteMany({ ts: { $lt: cutoff } });
+    await FlightPoint.deleteMany({ ts: { $lt: Date.now() - RETENTION_MS } });
   } catch (err) {
     console.error('Prune error', err);
   }
 }, 6 * 60 * 60 * 1000);
 
+// ============ 啟動 ============
 server.listen(PORT, '0.0.0.0', () => {
-  console.log(`✅ HTTPS Server listening on port ${PORT}`);
-  console.log(`✅ WebSocket: wss://geofs-flightradar.duckdns.org/ws`);
-  console.log(`✅ Socket.IO: https://geofs-flightradar.duckdns.org/socket.io/`);
+  console.log(`✅ Server listening on port ${PORT}`);
+  console.log(`✅ WebSocket:      wss://geofs-flightradar.duckdns.org/ws`);
+  console.log(`✅ Socket.IO:      https://geofs-flightradar.duckdns.org/socket.io/`);
+  console.log(`✅ Discord OAuth:  /auth/discord`);
+  console.log(`✅ Flight History: /api/flights/history`);
 });

@@ -733,5 +733,12 @@
     "iata": "W4",
     "country": "Malta",
     "logo": "https://images.kiwi.com/airlines/64/W4.png"
-  } 
+  },
+    "TGZ": {
+    "name": "Georgian Airways",
+    "icao": "TGZ",
+    "iata": "A9",
+    "country": "Georgia",
+    "logo": "https://images.kiwi.com/airlines/64/A9.png"
+  }
 }

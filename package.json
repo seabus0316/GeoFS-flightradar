@@ -26,7 +26,9 @@
     "form-data": "^4.0.0",
     "node-fetch": "^2.7.0",
     "compression": "^1.7.4",
-    "socket.io": "^4.7.5"
+    "socket.io": "^4.7.5",
+    "cookie-parser": "^1.4.6",
+    "jsonwebtoken": "^9.0.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"
