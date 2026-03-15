@@ -3,7 +3,7 @@
 // 跟 server.js 共用同一個 MongoDB
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, InteractionResponseFlags } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
 const mongoose = require('mongoose');
 
 // ============ 環境變數 ============
@@ -112,7 +112,7 @@ client.on('interactionCreate', async interaction => {
 
   // ── /link ──────────────────────────────────────────────────
   if (commandName === 'link') {
-    await interaction.deferReply({ flags: InteractionResponseFlags.Ephemeral });
+    await interaction.deferReply({ ephemeral: true });
     const geofsId = interaction.options.getString('geofs_id').trim();
 
     if (!/^\d+$/.test(geofsId)) {

@@ -740,5 +740,12 @@
     "iata": "A9",
     "country": "Georgia",
     "logo": "https://images.kiwi.com/airlines/64/A9.png"
+  },
+    "ICE": {
+    "name": "Icelandair",
+    "icao": "ICE",
+    "iata": "FI",
+    "country": "Iceland",
+    "logo": "https://images.kiwi.com/airlines/64/FI.png"
   }
 }
