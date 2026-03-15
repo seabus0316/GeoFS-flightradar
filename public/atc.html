@@ -1236,6 +1236,14 @@ function makeDivIcon(data, isFocused){
 function crossesIDL(lon1, lon2) {
   return Math.abs(lon1 - lon2) > 180;
 }
+// 換日線 unwrap：讓經度連續，避免 Leaflet 畫橫跨地圖的錯誤折線
+// Leaflet 支援超出 ±180 的經度（如 185、-190），會正確渲染
+function unwrapLon(lon, prevLon) {
+  let result = lon;
+  while (result - prevLon > 180)  result -= 360;
+  while (result - prevLon < -180) result += 360;
+  return result;
+}
 function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
   return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
 }
@@ -1554,9 +1562,12 @@ function showAircraftTrack(id) {
     const prev = obj.displayPath[i-1];
     const curr = obj.displayPath[i];
     const alt = curr[2] || 0;
-    if (crossesIDL(prev[1], curr[1]) || crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
+    // 跳過距離異常的點（資料跳躍），但換日線用 unwrap 處理而不是 skip
+    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1])) continue;
+    // unwrap 換日線：讓經度連續，Leaflet 能正確畫跨換日線軌跡
+    const unwrappedLon = unwrapLon(curr[1], prev[1]);
     const seg = L.polyline(
-      [ [prev[0], prev[1]], [curr[0], curr[1]] ],
+      [ [prev[0], prev[1]], [curr[0], unwrappedLon] ],
       { renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: 0.8 }
     ).addTo(map);
     seg.bindTooltip(`${Math.round(alt)} ft`, {
@@ -1993,7 +2004,9 @@ async function showAircraftPanel(data, id) {
         offset: [0, -12]
       });
       flightPlanMarkers.push(m);
-      latlngs.push([lat, lon]);
+      // unwrap longitude 以避免換日線 bug（Leaflet 支援超出 ±180 的經度）
+      const prevLon = latlngs.length > 0 ? latlngs[latlngs.length - 1][1] : lon;
+      latlngs.push([lat, unwrapLon(lon, prevLon)]);
     });
     
     if (latlngs.length > 1) {
