@@ -1591,28 +1591,57 @@ function showAircraftTrack(id) {
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
   for (let i = 1; i < obj.displayPath.length; i++) {
-    const prev = obj.displayPath[i - 1];
-    const curr = obj.displayPath[i];
-    const alt = curr[2] || 0;
+  const prev = obj.displayPath[i - 1];
+  const curr = obj.displayPath[i];
+  const alt = curr[2] || 0;
 
-    // 跳過資料跳躍（距離太遠）
-    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 2000)) {
-      continue;
-    }
-
-    // 用 splitSegmentAtAntimeridian 處理換日線（會正確插值交叉緯度，coords 也會被 normalize）
-    const subSegs = splitSegmentAtAntimeridian(prev[0], prev[1], curr[0], curr[1]);
-    subSegs.forEach(pts => {
-      const seg = L.polyline(pts, {
-        renderer: canvasRenderer,
-        color: getAltitudeColor(alt),
-        weight: 2,
-        opacity: 0.8
-      }).addTo(map);
-      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
-      obj.segments.push(seg);
-    });
+  // 1. 先判斷是否為異常的「瞬間移動」（例如伺服器跳格），這種才需要 continue
+  if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 1500) && Math.abs(curr[1] - prev[1]) <= 180) {
+    continue;
   }
+
+  // 2. 核心：處理換日線跨越 (經度差大於 180)
+  if (Math.abs(curr[1] - prev[1]) > 180) {
+    let pLat = prev[0], pLon = prev[1];
+    let cLat = curr[0], cLon = curr[1];
+    
+    // 判斷飛行方向：是往東還是往西跨過邊界
+    let movingEast = (cLon - pLon) < 0; 
+    let edge1 = movingEast ? 180 : -180; // 第一段連向的邊界
+    let edge2 = movingEast ? -180 : 180; // 第二段出發的邊界
+
+    // 第一段：從前一點畫到地圖邊緣 (180 或 -180)
+    const seg1 = L.polyline([[pLat, pLon], [cLat, edge1]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2, opacity: 0.8
+    }).addTo(map);
+    obj.segments.push(seg1);
+
+    // 第二段：從地圖另一側邊緣出發到當前點
+    const seg2 = L.polyline([[pLat, edge2], [cLat, cLon]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2, opacity: 0.8
+    }).addTo(map);
+    obj.segments.push(seg2);
+
+  } else {
+    // 3. 正常情況：直接連線
+    const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
+      renderer: canvasRenderer,
+      color: getAltitudeColor(alt),
+      weight: 2,
+      opacity: 0.8
+    }).addTo(map);
+    
+    // 保留你原本的 Tooltip 邏輯
+    if (seg.bindTooltip) {
+      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+    }
+    obj.segments.push(seg);
+  }
+}
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
