@@ -120,56 +120,7 @@ document.addEventListener('click', e => {
   <h3 style="color: #ffd500; margin-top: 0; font-size: 20px; border-bottom: 2px solid #444; padding-bottom: 12px;">
     ⚙️ Settings
   </h3>
-
-  <!-- Discord 登入區塊 -->
-  <div id="discordUserBlock" style="margin-bottom: 20px; padding: 14px; background: rgba(88,101,242,0.12); border: 1px solid rgba(88,101,242,0.3); border-radius: 10px;">
-    <!-- 未登入狀態（預設顯示） -->
-    <div id="discordLoginView">
-      <div style="color: #aaa; font-size: 13px; margin-bottom: 10px;">Login to track your flights & link your callsign.</div>
-      <a href="/auth/discord" style="display: flex; align-items: center; justify-content: center; gap: 10px;
-         background: #5865F2; color: #fff; text-decoration: none; border-radius: 8px;
-         padding: 10px 14px; font-size: 14px; font-weight: 600; transition: background 0.2s;">
-        <img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg"
-             style="width: 20px; height: 20px;" alt="Discord">
-        Login with Discord
-      </a>
-    </div>
-
-    <!-- 已登入狀態（JS 填入） -->
-    <div id="discordProfileView" style="display: none;">
-      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-        <img id="discordAvatar" src="" alt="avatar"
-             style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2;">
-        <div>
-          <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
-          <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
-        </div>
-      </div>
-      <!-- GeoFS 綁定 -->
-      <div id="discordLinkRow" style="margin-bottom: 10px;">
-        <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;">
-          ✅ GeoFS ID Linked
-        </div>
-        <div id="discordLinkForm" style="display:flex; gap:6px;">
-          <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID"
-                 style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
-                        border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; outline: none;"/>
-          <button onclick="linkGeofsId()"
-                  style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
-                         padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">
-            Link
-          </button>
-        </div>
-      </div>
-      <a href="/auth/logout"
-         style="display: block; text-align: center; color: #f87171; font-size: 13px;
-                text-decoration: none; padding: 7px; border-radius: 6px;
-                border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;">
-        Logout
-      </a>
-    </div>
-  </div>
-
+  
   <!-- Photo Map 開關 -->
   <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
     <div style="display: flex; justify-content: space-between; align-items: center;">
@@ -414,8 +365,101 @@ function switchFlTab(tab, btn) {
   flCurrentTab = tab;
   document.querySelectorAll(".fl-tab").forEach(b => b.classList.remove("active"));
   btn.classList.add("active");
-  renderFlightList();
+  if (tab === "history") {
+    loadHistoryTab(0);
+  } else {
+    renderFlightList();
+  }
 }
+
+// ── History Tab ────────────────────────────────────────
+let _histPage = 0;
+let _histTotal = 0;
+const _HIST_LIMIT = 15;
+
+async function loadHistoryTab(page = 0) {
+  _histPage = page;
+  const body = document.getElementById("flpBody");
+  if (!body) return;
+  body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon" style="font-size:24px">⏳</div>Loading...</div>`;
+
+  try {
+    // 如果已登入，預設顯示自己的紀錄
+    let discordId = window._myDiscordId || null;
+    const params = new URLSearchParams({ limit: _HIST_LIMIT, page });
+    if (discordId) params.set("discordId", discordId);
+
+    const res = await fetch("/api/flights/history?" + params);
+    const data = await res.json();
+    _histTotal = data.total || 0;
+    renderHistoryTab(data.flights || [], page, _histTotal);
+  } catch(e) {
+    body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">⚠️</div>Failed to load</div>`;
+  }
+}
+
+function renderHistoryTab(flights, page, total) {
+  const body = document.getElementById("flpBody");
+  const pages = Math.ceil(total / _HIST_LIMIT);
+
+  if (!flights.length) {
+    body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">📋</div>No history yet</div>`;
+    return;
+  }
+
+  const fmtDur = s => { if (!s) return "—"; const h = Math.floor(s/3600), m = Math.floor((s%3600)/60); return h > 0 ? h+"h "+m+"m" : m+"m"; };
+  const fmtDate = ts => ts ? new Date(ts).toLocaleDateString(undefined, {month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"}) : "—";
+
+  let html = flights.map(f => {
+    const dep = (f.departure || "—").substring(0, 4);
+    const arr = (f.arrival   || "—").substring(0, 4);
+    const logoUrl = (typeof getAirlineLogo === "function") ? getAirlineLogo(f.callsign, f.flightNo) : null;
+    const logoHtml = logoUrl
+      ? `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="fl-logo-fb" style="display:none">📋</span>`
+      : `<span class="fl-logo-fb">📋</span>`;
+    const statusColor = f.status === "aborted" ? "#f87171" : "#00ff85";
+    return `
+      <div class="fl-item" style="cursor:default; opacity:${f.status==='aborted'?'0.65':'1'}">
+        <div class="fl-logo">${logoHtml}</div>
+        <div class="fl-info">
+          <div class="fl-row1">
+            <span class="fl-callsign">${f.callsign || "N/A"}</span>
+            ${f.type ? `<span class="fl-badge type">${f.type}</span>` : ""}
+            <span style="font-size:10px;color:${statusColor};margin-left:auto;font-weight:700">${f.status==="aborted"?"ABORTED":"✓"}</span>
+          </div>
+          <div class="fl-row2">
+            <span class="fl-dep">${dep}</span>
+            <span class="fl-arrow"> → </span>
+            <span class="fl-arr">${arr}</span>
+          </div>
+          <div class="fl-row3" style="color:rgba(180,210,230,0.5);font-size:11px">
+            ${fmtDate(f.startTime)} · ${fmtDur(f.duration)} · ${f.distanceNm ? f.distanceNm+"nm" : "—"}
+          </div>
+        </div>
+      </div>`;
+  }).join("");
+
+  // Pagination
+  if (pages > 1) {
+    html += `<div style="display:flex;justify-content:space-between;align-items:center;padding:10px 12px;border-top:1px solid rgba(255,255,255,0.06)">
+      <button onclick="loadHistoryTab(${page-1})" ${page===0?"disabled":""} style="background:none;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">‹</button>
+      <span style="font-size:12px;color:rgba(180,210,230,0.5)">${page+1} / ${pages}</span>
+      <button onclick="loadHistoryTab(${page+1})" ${page>=pages-1?"disabled":""} style="background:none;border:1px solid rgba(255,255,255,0.15);color:#fff;padding:4px 10px;border-radius:6px;cursor:pointer;font-size:12px">›</button>
+    </div>`;
+  }
+
+  // Link to full page
+  html += `<div style="padding:10px 12px;text-align:center">
+    <a href="/history.html" style="font-size:12px;color:#00ff85;text-decoration:none;opacity:0.7">View full history →</a>
+  </div>`;
+
+  body.innerHTML = html;
+}
+
+// 嘗試取得登入用戶，讓 history tab 預設顯示自己的紀錄
+fetch("/api/user/me").then(r => r.ok ? r.json() : null).then(u => {
+  if (u && u.authenticated) window._myDiscordId = u.user.discordId;
+}).catch(()=>{});
 
 // Get logo URL directly from airlines.json "logo" field
 function getAirlineLogo(callsign, flightNo) {
@@ -474,6 +518,8 @@ function renderFlightList() {
     </div>`;
     return;
   }
+  // history tab 交由 loadHistoryTab 處理，不走這裡
+  if (flCurrentTab === "history") return;
 
   // 移除空狀態 div
   const emptyEl = body.querySelector(".fl-empty");
@@ -3338,71 +3384,6 @@ function toggleDayNight() {
 }
 lucide.createIcons();
 toggleDayNight();
-
-// ============ Discord OAuth 登入 ============
-(function() {
-  const loginView   = document.getElementById('discordLoginView');
-  const profileView = document.getElementById('discordProfileView');
-  const avatar      = document.getElementById('discordAvatar');
-  const displayName = document.getElementById('discordDisplayName');
-  const username    = document.getElementById('discordUsername');
-  const linkedBadge = document.getElementById('discordLinked');
-  const linkForm    = document.getElementById('discordLinkForm');
-  const geofsInput  = document.getElementById('discordGeofsInput');
-
-  function showProfile(u) {
-    loginView.style.display   = 'none';
-    profileView.style.display = 'block';
-    avatar.src        = (u.user.photos && u.user.photos[0]) || 'https://cdn.discordapp.com/embed/avatars/0.png';
-    displayName.textContent = u.user.displayName || u.user.username;
-    username.textContent    = '@' + u.user.username;
-    if (u.user.geofsUserId) {
-      linkedBadge.textContent   = '\u2705 GeoFS ID: ' + u.user.geofsUserId;
-      linkedBadge.style.display = 'block';
-      linkForm.style.display    = 'none';
-    } else {
-      linkedBadge.style.display = 'none';
-      linkForm.style.display    = 'flex';
-    }
-  }
-
-  // 讀取目前登入狀態
-  fetch('/api/user/me')
-    .then(r => r.ok ? r.json() : null)
-    .then(u => { if (u && u.authenticated) showProfile(u); })
-    .catch(() => {});
-
-  // 登入後從 URL 參數偵測並刷新
-  if (location.search.includes('discord_linked=1')) {
-    history.replaceState(null, '', location.pathname);
-    fetch('/api/user/me')
-      .then(r => r.ok ? r.json() : null)
-      .then(u => { if (u && u.authenticated) showProfile(u); })
-      .catch(() => {});
-  }
-
-  // 綁定 GeoFS ID
-  window.linkGeofsId = function() {
-    const id = geofsInput.value.trim();
-    if (!id) return;
-    fetch('/api/user/link', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ geofsUserId: id })
-    }).then(r => r.json()).then(data => {
-      if (data.ok) {
-        linkedBadge.textContent   = '\u2705 GeoFS ID: ' + id;
-        linkedBadge.style.display = 'block';
-        linkForm.style.display    = 'none';
-      }
-    }).catch(() => alert('Link failed, please try again.'));
-  };
-
-  // Enter 鍵送出綁定
-  if (geofsInput) {
-    geofsInput.addEventListener('keydown', e => { if (e.key === 'Enter') window.linkGeofsId(); });
-  }
-})();
 </script>
 </body>
 </html>
