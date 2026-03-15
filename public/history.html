@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Flight History — GeoFS Radar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  :root {
+    --bg:       #080d12;
+    --panel:    rgba(10, 18, 28, 0.92);
+    --border:   rgba(0, 255, 133, 0.15);
+    --accent:   #00ff85;
+    --accent2:  #5865F2;
+    --text:     #e2eef7;
+    --muted:    rgba(180, 210, 230, 0.5);
+    --red:      #f87171;
+    --font:     'Rajdhani', sans-serif;
+    --mono:     'Share Tech Mono', monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: var(--font); }
+
+  /* Animated radar grid background */
+  body::before {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background-image:
+      linear-gradient(rgba(0,255,133,0.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(0,255,133,0.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+  }
+  body::after {
+    content: '';
+    position: fixed; inset: 0; z-index: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(0,255,133,0.06) 0%, transparent 60%);
+    pointer-events: none;
+  }
+
+  /* ── Header ── */
+  header {
+    position: sticky; top: 0; z-index: 100;
+    background: rgba(8, 13, 18, 0.95);
+    border-bottom: 1px solid var(--border);
+    backdrop-filter: blur(20px);
+    padding: 0 24px;
+    display: flex; align-items: center; gap: 20px; height: 60px;
+  }
+  .header-back {
+    display: flex; align-items: center; gap: 8px;
+    color: var(--accent); text-decoration: none;
+    font-size: 14px; font-weight: 600; letter-spacing: 0.5px;
+    transition: opacity 0.2s;
+  }
+  .header-back:hover { opacity: 0.7; }
+  .header-title {
+    font-size: 22px; font-weight: 700; letter-spacing: 2px;
+    color: var(--text);
+  }
+  .header-title span { color: var(--accent); }
+  .header-sep { flex: 1; }
+  .header-count {
+    font-family: var(--mono); font-size: 13px; color: var(--muted);
+    background: rgba(0,255,133,0.06); border: 1px solid var(--border);
+    padding: 4px 12px; border-radius: 20px;
+  }
+
+  /* ── Layout ── */
+  .page { position: relative; z-index: 1; max-width: 1100px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  /* ── Filter Bar ── */
+  .filters {
+    display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 24px;
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; padding: 14px 16px;
+  }
+  .filter-input {
+    background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 8px; padding: 8px 14px; color: var(--text);
+    font-family: var(--font); font-size: 14px; outline: none;
+    transition: border-color 0.2s;
+    min-width: 140px;
+  }
+  .filter-input:focus { border-color: var(--accent); }
+  .filter-input::placeholder { color: var(--muted); }
+  .filter-btn {
+    background: var(--accent); color: #000; border: none;
+    border-radius: 8px; padding: 8px 18px; font-family: var(--font);
+    font-size: 14px; font-weight: 700; cursor: pointer;
+    letter-spacing: 0.5px; transition: opacity 0.2s;
+  }
+  .filter-btn:hover { opacity: 0.85; }
+  .filter-btn.secondary {
+    background: transparent; color: var(--muted);
+    border: 1px solid rgba(255,255,255,0.1);
+  }
+  .filter-btn.secondary:hover { color: var(--text); border-color: rgba(255,255,255,0.3); }
+
+  /* ── Stats Row ── */
+  .stats-row {
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 24px;
+  }
+  @media(max-width: 700px) { .stats-row { grid-template-columns: repeat(2, 1fr); } }
+  .stat-card {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; padding: 14px 16px;
+  }
+  .stat-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-bottom: 4px; }
+  .stat-value { font-family: var(--mono); font-size: 22px; color: var(--accent); }
+
+  /* ── Table ── */
+  .table-wrap {
+    background: var(--panel); border: 1px solid var(--border);
+    border-radius: 12px; overflow: hidden;
+  }
+  table { width: 100%; border-collapse: collapse; }
+  thead th {
+    font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); padding: 12px 16px; text-align: left;
+    border-bottom: 1px solid var(--border);
+    background: rgba(0,0,0,0.2);
+  }
+  tbody tr {
+    border-bottom: 1px solid rgba(255,255,255,0.04);
+    cursor: pointer; transition: background 0.15s;
+  }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: rgba(0,255,133,0.04); }
+  td { padding: 13px 16px; font-size: 14px; vertical-align: middle; }
+
+  .badge-callsign {
+    font-family: var(--mono); font-size: 14px; font-weight: 700;
+    color: var(--accent); letter-spacing: 1px;
+  }
+  .route {
+    display: flex; align-items: center; gap: 8px;
+    font-family: var(--mono); font-size: 13px;
+  }
+  .route-arrow { color: var(--muted); font-size: 11px; }
+  .airport { font-weight: 700; }
+  .airport.missing { color: var(--muted); font-style: italic; }
+  .stat-pill {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-family: var(--mono); font-size: 12px; color: var(--muted);
+  }
+  .stat-pill i { font-size: 10px; }
+  .status-pill {
+    display: inline-block; font-size: 11px; font-weight: 700;
+    padding: 2px 8px; border-radius: 20px; letter-spacing: 0.5px;
+  }
+  .status-completed { background: rgba(0,255,133,0.12); color: var(--accent); }
+  .status-aborted   { background: rgba(248,113,113,0.12); color: var(--red); }
+
+  /* ── Pagination ── */
+  .pagination {
+    display: flex; justify-content: center; align-items: center;
+    gap: 8px; margin-top: 24px;
+  }
+  .page-btn {
+    background: var(--panel); border: 1px solid var(--border);
+    color: var(--text); border-radius: 8px; padding: 7px 14px;
+    font-family: var(--font); font-size: 14px; cursor: pointer;
+    transition: border-color 0.2s, color 0.2s;
+  }
+  .page-btn:hover, .page-btn.active { border-color: var(--accent); color: var(--accent); }
+  .page-btn:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── Empty / Loading ── */
+  .placeholder {
+    text-align: center; padding: 60px 20px; color: var(--muted);
+  }
+  .placeholder i { font-size: 40px; margin-bottom: 14px; display: block; opacity: 0.4; }
+
+  /* ── Modal (flight detail) ── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    z-index: 1000; display: flex; align-items: center; justify-content: center;
+    backdrop-filter: blur(4px); opacity: 0; pointer-events: none;
+    transition: opacity 0.2s;
+  }
+  .modal-overlay.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: #0c1520; border: 1px solid var(--border);
+    border-radius: 16px; width: 100%; max-width: 520px;
+    max-height: 85vh; overflow-y: auto;
+    box-shadow: 0 24px 60px rgba(0,0,0,0.8);
+    transform: translateY(20px); transition: transform 0.2s;
+  }
+  .modal-overlay.open .modal { transform: translateY(0); }
+  .modal-header {
+    display: flex; justify-content: space-between; align-items: center;
+    padding: 20px 24px; border-bottom: 1px solid var(--border);
+  }
+  .modal-title { font-size: 18px; font-weight: 700; }
+  .modal-close {
+    background: none; border: none; color: var(--muted);
+    font-size: 18px; cursor: pointer; transition: color 0.2s;
+  }
+  .modal-close:hover { color: var(--text); }
+  .modal-body { padding: 20px 24px; }
+  .modal-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 16px; }
+  .modal-field label { font-size: 11px; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; display: block; margin-bottom: 4px; }
+  .modal-field value { font-family: var(--mono); font-size: 15px; }
+
+  /* scroll style */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(0,255,133,0.2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<header>
+  <a href="/" class="header-back"><i class="fa-solid fa-chevron-left"></i> Radar</a>
+  <div class="header-title">FLIGHT <span>HISTORY</span></div>
+  <div class="header-sep"></div>
+  <div class="header-count" id="totalCount">— flights</div>
+</header>
+
+<div class="page">
+
+  <!-- Stats -->
+  <div class="stats-row" id="statsRow">
+    <div class="stat-card"><div class="stat-label">Total Flights</div><div class="stat-value" id="sTotalFlights">—</div></div>
+    <div class="stat-card"><div class="stat-label">Total Distance</div><div class="stat-value" id="sTotalDist">—</div></div>
+    <div class="stat-card"><div class="stat-label">Total Airtime</div><div class="stat-value" id="sTotalTime">—</div></div>
+    <div class="stat-card"><div class="stat-label">Max Altitude</div><div class="stat-value" id="sMaxAlt">—</div></div>
+  </div>
+
+  <!-- Filters -->
+  <div class="filters">
+    <input class="filter-input" id="fCallsign" placeholder="🔍 Callsign" maxlength="10">
+    <input class="filter-input" id="fDeparture" placeholder="✈ Departure (ICAO)" maxlength="4">
+    <input class="filter-input" id="fArrival" placeholder="🛬 Arrival (ICAO)" maxlength="4">
+    <button class="filter-btn" onclick="applyFilters()">Search</button>
+    <button class="filter-btn secondary" onclick="clearFilters()">Clear</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr>
+          <th>Callsign</th>
+          <th>Route</th>
+          <th>Date</th>
+          <th>Duration</th>
+          <th>Distance</th>
+          <th>Max Alt</th>
+          <th>Status</th>
+        </tr>
+      </thead>
+      <tbody id="flightTableBody">
+        <tr><td colspan="7"><div class="placeholder"><i class="fa-solid fa-spinner fa-spin"></i>Loading flights...</div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Pagination -->
+  <div class="pagination" id="pagination"></div>
+</div>
+
+<!-- Detail Modal -->
+<div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modalTitle">Flight Detail</div>
+      <button class="modal-close" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button>
+    </div>
+    <div class="modal-body" id="modalBody"></div>
+  </div>
+</div>
+
+<script>
+  let currentPage = 0;
+  let currentFilters = {};
+  const LIMIT = 20;
+
+  // ── Helpers ──
+  function fmtDuration(secs) {
+    if (!secs) return '—';
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return h > 0 ? `${h}h ${m}m` : `${m}m`;
+  }
+  function fmtDate(ts) {
+    if (!ts) return '—';
+    return new Date(ts).toLocaleString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+  }
+  function fmtAlt(ft) { return ft ? ft.toLocaleString() + ' ft' : '—'; }
+  function fmtDist(nm) { return nm ? nm.toLocaleString() + ' nm' : '—'; }
+
+  // ── Load Flights ──
+  async function loadFlights(page = 0, filters = {}) {
+    currentPage = page;
+    currentFilters = filters;
+    const params = new URLSearchParams({ limit: LIMIT, page, ...filters });
+    const tbody = document.getElementById('flightTableBody');
+    tbody.innerHTML = `<tr><td colspan="7"><div class="placeholder"><i class="fa-solid fa-spinner fa-spin"></i>Loading...</div></td></tr>`;
+
+    try {
+      const res = await fetch('/api/flights/history?' + params);
+      const data = await res.json();
+      renderTable(data.flights || []);
+      renderPagination(data.total || 0, page);
+      document.getElementById('totalCount').textContent = (data.total || 0).toLocaleString() + ' flights';
+    } catch(e) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="placeholder"><i class="fa-solid fa-circle-exclamation"></i>Failed to load flights.</div></td></tr>`;
+    }
+  }
+
+  function renderTable(flights) {
+    const tbody = document.getElementById('flightTableBody');
+    if (!flights.length) {
+      tbody.innerHTML = `<tr><td colspan="7"><div class="placeholder"><i class="fa-solid fa-plane-slash"></i>No flights found.</div></td></tr>`;
+      return;
+    }
+    tbody.innerHTML = flights.map(f => {
+      const dep = f.departure || null;
+      const arr = f.arrival   || null;
+      const statusClass = f.status === 'aborted' ? 'status-aborted' : 'status-completed';
+      const statusText  = f.status  === 'aborted' ? 'ABORTED' : 'COMPLETED';
+      return `
+        <tr onclick="openModal('${f._id}')">
+          <td><span class="badge-callsign">${f.callsign || '—'}</span><br>
+              <span style="font-size:12px;color:var(--muted)">${f.type || ''}</span></td>
+          <td><div class="route">
+            <span class="airport ${dep ? '' : 'missing'}">${dep || 'N/A'}</span>
+            <span class="route-arrow">→</span>
+            <span class="airport ${arr ? '' : 'missing'}">${arr || 'N/A'}</span>
+          </div></td>
+          <td style="font-size:13px;color:var(--muted)">${fmtDate(f.startTime)}</td>
+          <td><span class="stat-pill"><i class="fa-regular fa-clock"></i>${fmtDuration(f.duration)}</span></td>
+          <td><span class="stat-pill"><i class="fa-solid fa-route"></i>${fmtDist(f.distanceNm)}</span></td>
+          <td><span class="stat-pill"><i class="fa-solid fa-arrow-up"></i>${fmtAlt(f.maxAlt)}</span></td>
+          <td><span class="status-pill ${statusClass}">${statusText}</span></td>
+        </tr>`;
+    }).join('');
+  }
+
+  function renderPagination(total, page) {
+    const pages = Math.ceil(total / LIMIT);
+    const el = document.getElementById('pagination');
+    if (pages <= 1) { el.innerHTML = ''; return; }
+    let html = `<button class="page-btn" onclick="loadFlights(${page-1}, currentFilters)" ${page===0?'disabled':''}>‹ Prev</button>`;
+    const start = Math.max(0, page - 2);
+    const end   = Math.min(pages - 1, page + 2);
+    for (let i = start; i <= end; i++) {
+      html += `<button class="page-btn ${i===page?'active':''}" onclick="loadFlights(${i}, currentFilters)">${i+1}</button>`;
+    }
+    html += `<button class="page-btn" onclick="loadFlights(${page+1}, currentFilters)" ${page>=pages-1?'disabled':''}>Next ›</button>`;
+    el.innerHTML = html;
+  }
+
+  // ── Filters ──
+  function applyFilters() {
+    const f = {};
+    const c = document.getElementById('fCallsign').value.trim();
+    const d = document.getElementById('fDeparture').value.trim().toUpperCase();
+    const a = document.getElementById('fArrival').value.trim().toUpperCase();
+    if (c) f.callsign = c;
+    if (d) f.departure = d;
+    if (a) f.arrival = a;
+    loadFlights(0, f);
+  }
+  function clearFilters() {
+    document.getElementById('fCallsign').value = '';
+    document.getElementById('fDeparture').value = '';
+    document.getElementById('fArrival').value = '';
+    loadFlights(0, {});
+  }
+  ['fCallsign','fDeparture','fArrival'].forEach(id => {
+    document.getElementById(id).addEventListener('keydown', e => { if (e.key === 'Enter') applyFilters(); });
+  });
+
+  // ── Personal Stats (if logged in) ──
+  async function loadMyStats() {
+    try {
+      const me = await fetch('/api/user/me').then(r => r.ok ? r.json() : null);
+      if (!me || !me.authenticated) return;
+      const stats = await fetch(`/api/flights/stats/${me.user.discordId}`).then(r => r.json());
+      document.getElementById('sTotalFlights').textContent = (stats.totalFlights || 0).toLocaleString();
+      document.getElementById('sTotalDist').textContent    = (stats.totalDistanceNm || 0).toLocaleString() + ' nm';
+      const h = Math.floor((stats.totalDuration||0) / 3600);
+      const m = Math.floor(((stats.totalDuration||0) % 3600) / 60);
+      document.getElementById('sTotalTime').textContent = h + 'h ' + m + 'm';
+      document.getElementById('sMaxAlt').textContent    = (stats.maxAlt || 0).toLocaleString() + ' ft';
+      // Auto-filter to my flights
+      loadFlights(0, { discordId: me.user.discordId });
+    } catch(e) {}
+  }
+
+  // ── Flight Detail Modal ──
+  async function openModal(sessionId) {
+    const overlay = document.getElementById('modalOverlay');
+    const body    = document.getElementById('modalBody');
+    const title   = document.getElementById('modalTitle');
+    body.innerHTML = '<div class="placeholder"><i class="fa-solid fa-spinner fa-spin"></i>Loading...</div>';
+    overlay.classList.add('open');
+
+    try {
+      const f = await fetch(`/api/flights/${sessionId}`).then(r => r.json());
+      title.textContent = f.callsign || 'Flight Detail';
+      const dur = fmtDuration(f.duration);
+      const start = fmtDate(f.startTime);
+      const end   = fmtDate(f.endTime);
+      body.innerHTML = `
+        <div class="modal-grid">
+          <div class="modal-field"><label>Callsign</label><value style="font-family:var(--mono);color:var(--accent);font-size:18px">${f.callsign||'—'}</value></div>
+          <div class="modal-field"><label>Aircraft</label><value>${f.type||'—'}</value></div>
+          <div class="modal-field"><label>Departure</label><value style="font-family:var(--mono)">${f.departure||'N/A'}</value></div>
+          <div class="modal-field"><label>Arrival</label><value style="font-family:var(--mono)">${f.arrival||'N/A'}</value></div>
+          <div class="modal-field"><label>Takeoff</label><value style="font-size:13px">${start}</value></div>
+          <div class="modal-field"><label>Landing</label><value style="font-size:13px">${end}</value></div>
+          <div class="modal-field"><label>Duration</label><value>${dur}</value></div>
+          <div class="modal-field"><label>Distance</label><value>${fmtDist(f.distanceNm)}</value></div>
+          <div class="modal-field"><label>Max Altitude</label><value>${fmtAlt(f.maxAlt)}</value></div>
+          <div class="modal-field"><label>Max Speed</label><value>${f.maxSpeed ? f.maxSpeed + ' kts' : '—'}</value></div>
+        </div>
+        <div style="margin-top:8px;padding:10px 14px;background:rgba(0,255,133,0.05);border-radius:8px;border:1px solid var(--border)">
+          <span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Track Points</span>
+          <span style="font-family:var(--mono);font-size:14px;margin-left:10px">${(f.trackSnapshot||[]).length} pts stored</span>
+        </div>`;
+    } catch(e) {
+      body.innerHTML = '<div class="placeholder"><i class="fa-solid fa-circle-exclamation"></i>Failed to load details.</div>';
+    }
+  }
+
+  function closeModal(e) {
+    if (e && e.target !== document.getElementById('modalOverlay')) return;
+    document.getElementById('modalOverlay').classList.remove('open');
+  }
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') document.getElementById('modalOverlay').classList.remove('open'); });
+
+  // ── Init ──
+  loadMyStats();
+  loadFlights(0, {});
+</script>
+</body>
+</html>

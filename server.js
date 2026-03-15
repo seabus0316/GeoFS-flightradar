@@ -942,6 +942,7 @@ app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public
 app.get('/photomap.html',(req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
 app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
 app.get('/airlines.json',(req, res) => res.sendFile(path.join(__dirname, 'airlines.json')));
+app.get('/history.html',(req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
 app.get('/health',       (req, res) => res.send('ok'));
 
 // ============ 定期清理 ============
