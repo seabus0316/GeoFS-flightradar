@@ -1236,12 +1236,21 @@ function makeDivIcon(data, isFocused){
 function crossesIDL(lon1, lon2) {
   return Math.abs(lon1 - lon2) > 180;
 }
+// 把任意範圍的 longitude 正規化回 [-180, 180]
+function normalizeLon(lon) {
+  lon = ((lon + 180) % 360 + 360) % 360 - 180;
+  return lon;
+}
 /**
  * 換日線切段：把一條線段（lat1,lon1）→（lat2,lon2）在換日線處切成 1 或 2 條子段。
- * 用「最短路徑」方向判斷是否真的跨越換日線，避免 unwrap 累積導致路線繞地球一圈的 bug。
- * 輸出的所有座標均在 [-180, 180] 以內，不會有超出範圍的值。
+ * 輸入座標會先被正規化到 [-180, 180]。
+ * 用「最短路徑 dLon」判斷是否真的跨越換日線。
  */
 function splitSegmentAtAntimeridian(lat1, lon1, lat2, lon2) {
+  // 先正規化，防止 GeoFS 傳入 0~360 範圍的 lon
+  lon1 = normalizeLon(lon1);
+  lon2 = normalizeLon(lon2);
+
   // 求最短方向的 dLon（-180 ~ +180）
   let dLon = lon2 - lon1;
   if (dLon > 180)  dLon -= 360;
@@ -1249,20 +1258,20 @@ function splitSegmentAtAntimeridian(lat1, lon1, lat2, lon2) {
   const lon2UW = lon1 + dLon; // 展開後的 lon2（可能超出 ±180）
 
   if (lon2UW > 180) {
-    // 向東跨越 +180（換日線東→西）
+    // 向東跨越換日線：插值換日線上的緯度
     const t = (180 - lon1) / (lon2UW - lon1);
     const crossLat = lat1 + t * (lat2 - lat1);
     return [
-      [[lat1, lon1], [crossLat, 180]],
+      [[lat1, lon1], [crossLat,  180]],
       [[crossLat, -180], [lat2, lon2]]
     ];
   } else if (lon2UW < -180) {
-    // 向西跨越 -180（換日線西→東）
+    // 向西跨越換日線：插值換日線上的緯度
     const t = (-180 - lon1) / (lon2UW - lon1);
     const crossLat = lat1 + t * (lat2 - lat1);
     return [
       [[lat1, lon1], [crossLat, -180]],
-      [[crossLat, 180], [lat2, lon2]]
+      [[crossLat,  180], [lat2, lon2]]
     ];
   }
   return [[[lat1, lon1], [lat2, lon2]]]; // 未跨越，直接回傳
@@ -1582,57 +1591,28 @@ function showAircraftTrack(id) {
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
   for (let i = 1; i < obj.displayPath.length; i++) {
-  const prev = obj.displayPath[i - 1];
-  const curr = obj.displayPath[i];
-  const alt = curr[2] || 0;
+    const prev = obj.displayPath[i - 1];
+    const curr = obj.displayPath[i];
+    const alt = curr[2] || 0;
 
-  // 1. 保留你的防呆機制，但建議稍微放大距離（避免高緯度或延遲誤判）
-  if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 2000)) {
-    continue;
-  }
-
-  // 2. 核心邏輯：判斷是否跨越換日線
-  if (Math.abs(curr[1] - prev[1]) > 180) {
-    // 跨越換日線時，我們不直接畫一條線，而是畫兩條「連向邊緣」的短線
-    // 這樣可以確保在 Leaflet 地圖兩端都能看到銜接感
-    
-    let movingEast = (curr[1] - prev[1]) < 0; 
-    let edge1 = movingEast ? 180 : -180;
-    let edge2 = movingEast ? -180 : 180;
-
-    // 畫到地圖右/左邊緣的線
-    const segEdge1 = L.polyline([[prev[0], prev[1]], [curr[0], edge1]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2,
-      opacity: 0.8
-    }).addTo(map);
-    obj.segments.push(segEdge1);
-
-    // 從地圖另一側邊緣開始的線
-    const segEdge2 = L.polyline([[prev[0], edge2], [curr[0], curr[1]]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2,
-      opacity: 0.8
-    }).addTo(map);
-    obj.segments.push(segEdge2);
-
-  } else {
-    // 3. 正常情況：直接連線
-    const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2,
-      opacity: 0.8
-    }).addTo(map);
-    
-    if (seg.bindTooltip) {
-      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+    // 跳過資料跳躍（距離太遠）
+    if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 2000)) {
+      continue;
     }
-    obj.segments.push(seg);
+
+    // 用 splitSegmentAtAntimeridian 處理換日線（會正確插值交叉緯度，coords 也會被 normalize）
+    const subSegs = splitSegmentAtAntimeridian(prev[0], prev[1], curr[0], curr[1]);
+    subSegs.forEach(pts => {
+      const seg = L.polyline(pts, {
+        renderer: canvasRenderer,
+        color: getAltitudeColor(alt),
+        weight: 2,
+        opacity: 0.8
+      }).addTo(map);
+      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+      obj.segments.push(seg);
+    });
   }
-}
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
@@ -2035,7 +2015,7 @@ async function showAircraftPanel(data, id) {
   if (plan && Array.isArray(plan) && plan.length) {
     const latlngs = [];
     plan.forEach((wp, i) => {
-      const lat = Number(wp.lat), lon = Number(wp.lon);
+      const lat = Number(wp.lat), lon = normalizeLon(Number(wp.lon));
       if (isNaN(lat) || isNaN(lon)) return;
       const label = wp.ident || wp.name || ('WP' + (i + 1));
       const isNextWaypoint = data.nextWaypoint && 
