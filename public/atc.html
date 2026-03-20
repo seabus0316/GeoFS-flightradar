@@ -46,7 +46,7 @@
     </div>
   </div>
 <button id="atcBtn" class="atc-mode-btn" onclick="toggleAtcMode()" title="ATC Mode"><i data-lucide="radio"></i></button>
-<button id="dayNightBtn" class="atc-mode-btn" onclick="toggleDayNight()" title="晝夜地圖">
+<button id="dayNightBtn" class="atc-mode-btn" onclick="toggleDayNight()" title="Day/Night Map">
   <i data-lucide="moon"></i>
 </button>
 
@@ -72,7 +72,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
         <span style="font-size:12px;color:#cdd;">
           <i data-lucide="panel-right" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-          Panel 透明度
+          Panel Opacity
         </span>
         <span id="panelOpacityVal" style="font-size:12px;color:#00cfff;font-weight:700;min-width:38px;text-align:right;">100%</span>
       </div>
@@ -118,7 +118,7 @@
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
         <span style="font-size:12px;color:#cdd;">
           <i data-lucide="route" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-          Trail 透明度
+          Trail Opacity
         </span>
         <span id="trailOpacityVal" style="font-size:12px;color:#ffd500;font-weight:700;min-width:38px;text-align:right;">100%</span>
       </div>
@@ -156,11 +156,13 @@ let currentBase;
 function togglePanel(id, btn) {
   const panel = document.getElementById(id);
   const isOpen = panel.style.display === 'block';
-  // 關掉所有面板
-  document.getElementById('wxPanel').style.display = 'none';
-  document.getElementById('tilePanel').style.display = 'none';
-  document.getElementById('settingsPanel').style.display = 'none';
-  if (!isOpen) { panel.style.display = 'block'; lucide.createIcons(); }
+  // Close all panels first
+  ['wxPanel','tilePanel','settingsPanel'].forEach(pid => {
+    const el = document.getElementById(pid);
+    if (el) el.style.display = 'none';
+  });
+  // Toggle: only open if it wasn't already open
+  if (!isOpen) panel.style.display = 'block';
 }
 
 function toggleLayer(layer, btn) {
@@ -879,14 +881,14 @@ setTimeout(renderFlightList, 1500);
 <div id="map"></div>
 <div class="legend">GeoFS ATC — connected: <span id="connCount">0</span></div>
 <div class="altitude-legend">
-  <div style="font-weight:bold;margin-bottom:4px;">高度圖例</div>
+  <div style="font-weight:bold;margin-bottom:4px;">Altitude Legend</div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffffff;"></div><span>&lt;100m</span></div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ffff00;"></div><span>100m+</span></div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00ff00;"></div><span>~1000m</span></div>
   <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#00bfff;"></div><span>2500m+</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#0000ff;"></div><span>高空</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>極高空</span></div>
-  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>最高空</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#0000ff;"></div><span>High</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#800080;"></div><span>Very High</span></div>
+  <div class="altitude-legend-item"><div class="altitude-color-box" style="background:#ff0000;"></div><span>Max Alt</span></div>
 </div>
 
 <!-- UTC Time Box with Clocks -->
