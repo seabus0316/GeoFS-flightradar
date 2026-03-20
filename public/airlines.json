@@ -768,5 +768,12 @@
     "iata": "TR",
     "country": "Singapore",
     "logo": "https://images.kiwi.com/airlines/64/TR.png"
+  },
+    "ETD": {
+    "name": "Etihad Airways",
+    "icao": "ETD",
+    "iata": "EY",
+    "country": "United Arab Emirates",
+    "logo": "https://images.kiwi.com/airlines/64/EY.png"
   }
 }

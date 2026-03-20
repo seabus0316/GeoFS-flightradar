@@ -49,6 +49,94 @@
 <button id="dayNightBtn" class="atc-mode-btn" onclick="toggleDayNight()" title="晝夜地圖">
   <i data-lucide="moon"></i>
 </button>
+
+<!-- Settings 按鈕 -->
+<div style="position:relative;">
+  <button id="settingsBtn" onclick="togglePanel('settingsPanel',this)" class="atc-mode-btn" title="Display Settings">
+    <i data-lucide="settings-2"></i>
+  </button>
+  <div id="settingsPanel" style="display:none;position:absolute;bottom:54px;right:0;
+       background:rgba(10,15,25,0.6);backdrop-filter:blur(20px) saturate(180%);
+       -webkit-backdrop-filter:blur(20px) saturate(180%);
+       border:1px solid rgba(255,255,255,0.12);border-radius:14px;
+       padding:10px 8px;min-width:230px;
+       box-shadow:0 4px 28px rgba(0,0,0,0.5);">
+
+    <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;
+                padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:6px;">
+      ⚙ Display Settings
+    </div>
+
+    <!-- Panel Opacity -->
+    <div style="padding:8px 10px 4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="panel-right" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Panel 透明度
+        </span>
+        <span id="panelOpacityVal" style="font-size:12px;color:#00cfff;font-weight:700;min-width:38px;text-align:right;">100%</span>
+      </div>
+      <input type="range" id="panelOpacitySlider" min="15" max="100" value="100" step="5"
+             style="width:100%;accent-color:#00cfff;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
+    <!-- Panel Blur -->
+    <div style="padding:4px 10px 4px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="blend" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Panel Blur
+        </span>
+        <span id="panelBlurVal" style="font-size:12px;color:#a78bfa;font-weight:700;min-width:38px;text-align:right;">0px</span>
+      </div>
+      <input type="range" id="panelBlurSlider" min="0" max="20" value="0" step="1"
+             style="width:100%;accent-color:#a78bfa;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
+    <!-- Aircraft Labels toggle -->
+    <div style="padding:8px 10px;display:flex;justify-content:space-between;align-items:center;
+                border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
+      <span style="font-size:12px;color:#cdd;">
+        <i data-lucide="tag" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+        Aircraft Labels
+      </span>
+      <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;">
+        <input type="checkbox" id="labelsToggle" checked style="opacity:0;width:0;height:0;"
+               onchange="applySettings()">
+        <span id="labelsTrack" style="position:absolute;inset:0;border-radius:20px;
+              background:#00cfff;cursor:pointer;transition:background .2s;">
+          <span id="labelsThumb" style="position:absolute;left:2px;top:2px;width:16px;height:16px;
+                border-radius:50%;background:#fff;transition:transform .2s;transform:translateX(16px);"></span>
+        </span>
+      </label>
+    </div>
+
+    <!-- Trail Opacity -->
+    <div style="padding:4px 10px 8px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="route" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Trail 透明度
+        </span>
+        <span id="trailOpacityVal" style="font-size:12px;color:#ffd500;font-weight:700;min-width:38px;text-align:right;">100%</span>
+      </div>
+      <input type="range" id="trailOpacitySlider" min="10" max="100" value="100" step="5"
+             style="width:100%;accent-color:#ffd500;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
+    <!-- Reset button -->
+    <div style="padding:4px 10px 4px;text-align:right;">
+      <button onclick="resetSettings()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
+              color:#888;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;">
+        Reset
+      </button>
+    </div>
+
+  </div>
+</div>
 </div>
 
 <style>
@@ -71,7 +159,8 @@ function togglePanel(id, btn) {
   // 關掉所有面板
   document.getElementById('wxPanel').style.display = 'none';
   document.getElementById('tilePanel').style.display = 'none';
-  if (!isOpen) panel.style.display = 'block';
+  document.getElementById('settingsPanel').style.display = 'none';
+  if (!isOpen) { panel.style.display = 'block'; lucide.createIcons(); }
 }
 
 function toggleLayer(layer, btn) {
@@ -90,10 +179,109 @@ function switchBase(layer, btn) {
 // 點其他地方關掉面板
 document.addEventListener('click', e => {
   if (!e.target.closest('#customMapBar')) {
-    document.getElementById('wxPanel').style.display = 'none';
-    document.getElementById('tilePanel').style.display = 'none';
+    ['wxPanel','tilePanel','settingsPanel'].forEach(pid => {
+      const el = document.getElementById(pid);
+      if (el) el.style.display = 'none';
+    });
   }
 });
+
+// ── Display Settings (localStorage) ──────────────────────
+const DS_KEY = 'geofs_displaySettings';
+
+function _dsLoad() {
+  try { return JSON.parse(localStorage.getItem(DS_KEY)) || {}; } catch { return {}; }
+}
+function _dsSave(patch) {
+  localStorage.setItem(DS_KEY, JSON.stringify({ ..._dsLoad(), ...patch }));
+}
+
+// Called by oninput/onchange on sliders — reads current slider values, saves + applies
+function applySettings() {
+  const po  = Number(document.getElementById('panelOpacitySlider')?.value  ?? 100);
+  const pb  = Number(document.getElementById('panelBlurSlider')?.value     ?? 0);
+  const to  = Number(document.getElementById('trailOpacitySlider')?.value  ?? 100);
+  const lbl = document.getElementById('labelsToggle')?.checked ?? true;
+
+  // Update value labels
+  const poV = document.getElementById('panelOpacityVal');
+  const pbV = document.getElementById('panelBlurVal');
+  const toV = document.getElementById('trailOpacityVal');
+  if (poV) poV.textContent = po + '%';
+  if (pbV) pbV.textContent = pb + 'px';
+  if (toV) toV.textContent = to + '%';
+
+  // Update labelsTrack colour
+  const track = document.getElementById('labelsTrack');
+  const thumb = document.getElementById('labelsThumb');
+  if (track) track.style.background = lbl ? '#00cfff' : '#555';
+  if (thumb) thumb.style.transform  = lbl ? 'translateX(16px)' : 'translateX(0)';
+
+  // Apply to aircraftPanel
+  const ap = document.getElementById('aircraftPanel');
+  if (ap) {
+    ap.style.opacity = po / 100;
+    ap.style.backdropFilter = pb > 0 ? `blur(${pb}px)` : '';
+    ap.style.webkitBackdropFilter = pb > 0 ? `blur(${pb}px)` : '';
+  }
+
+  // Aircraft labels visibility
+  document.querySelectorAll('.label, .aircraft-tag').forEach(el => {
+    el.style.display = lbl ? '' : 'none';
+  });
+
+  // Trail opacity (segments are L.polyline, stored in obj.segments)
+  if (typeof aircrafts !== 'undefined') {
+    aircrafts.forEach(obj => {
+      (obj.segments || []).forEach(seg => {
+        try { seg.setStyle({ opacity: to / 100 }); } catch {}
+      });
+    });
+  }
+
+  _dsSave({ panelOpacity: po, panelBlur: pb, trailOpacity: to, showLabels: lbl });
+}
+
+function resetSettings() {
+  localStorage.removeItem(DS_KEY);
+  // Reset sliders to default values
+  const sl = document.getElementById('panelOpacitySlider');
+  const bl = document.getElementById('panelBlurSlider');
+  const tl = document.getElementById('trailOpacitySlider');
+  const lb = document.getElementById('labelsToggle');
+  if (sl) sl.value = 100;
+  if (bl) bl.value = 0;
+  if (tl) tl.value = 100;
+  if (lb) lb.checked = true;
+  applySettings();
+}
+
+// On page load: restore saved settings and sync slider UI
+(function restoreSettings() {
+  const s = _dsLoad();
+  const sl = document.getElementById('panelOpacitySlider');
+  const bl = document.getElementById('panelBlurSlider');
+  const tl = document.getElementById('trailOpacitySlider');
+  const lb = document.getElementById('labelsToggle');
+  if (sl) sl.value = s.panelOpacity  ?? 100;
+  if (bl) bl.value = s.panelBlur     ?? 0;
+  if (tl) tl.value = s.trailOpacity  ?? 100;
+  if (lb) lb.checked = s.showLabels  ?? true;
+  applySettings();
+})();
+
+// Re-apply panel opacity/blur whenever aircraftPanel is dynamically created
+new MutationObserver(() => {
+  const ap = document.getElementById('aircraftPanel');
+  if (ap && !ap._dsHooked) {
+    ap._dsHooked = true;
+    const s = _dsLoad();
+    ap.style.opacity = (s.panelOpacity ?? 100) / 100;
+    const b = s.panelBlur ?? 0;
+    ap.style.backdropFilter = b > 0 ? `blur(${b}px)` : '';
+    ap.style.webkitBackdropFilter = b > 0 ? `blur(${b}px)` : '';
+  }
+}).observe(document.body, { childList: true, subtree: false });
 </script>
 <body>
   <!-- ❌ 刪除 -->
@@ -2127,6 +2315,15 @@ async function showAircraftPanel(data, id) {
       overflowY: 'auto'
     });
     document.body.appendChild(p);
+    // Apply saved display settings (opacity / blur)
+    const saved = window._savedSettings;
+    if (saved) {
+      p.style.opacity = (saved.panelOpacity / 100).toFixed(2);
+      if (saved.panelBlur > 0) {
+        p.style.backdropFilter = `blur(${saved.panelBlur}px)`;
+        p.style.webkitBackdropFilter = p.style.backdropFilter;
+      }
+    }
   }
 
   // Shift right-side UI to avoid overlap (panel is 360px + 16px left + 16px gap)
