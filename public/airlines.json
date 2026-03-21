@@ -785,9 +785,16 @@
   },
   "PIA": {
     "name": "Pakistan International Airlines",
-    "icao": "",
+    "icao": "PIA",
     "iata": "PK",
     "country": "Pakistan",
     "logo": "https://images.kiwi.com/airlines/64/PK.png"
-  } 
+  },
+  "KOR": {
+    "name": "Air Koryo",
+    "icao": "KOR",
+    "iata": "JS",
+    "country": "North Korea",
+    "logo": "https://images.kiwi.com/airlines/64/JS.png"
+  }
 }
