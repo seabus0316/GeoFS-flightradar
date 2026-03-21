@@ -138,6 +138,7 @@
   </div>
 </div>
 </div>
+
 <script>
 let currentBase;
 
@@ -491,147 +492,6 @@ new MutationObserver(() => {
 <!-- ═══════════════════════════════════════════════
      FR24-Style Flight List Panel
 ═══════════════════════════════════════════════ -->
-<style>
-#flightListPanel {
-  position: fixed;
-  top: 74px;
-  left: 76px;
-  width: 320px;
-  max-height: calc(100vh - 90px);
-  background: rgba(13, 20, 32, 0.92);
-  backdrop-filter: blur(24px) saturate(180%);
-  -webkit-backdrop-filter: blur(24px) saturate(180%);
-  z-index: 8000;
-  display: flex; flex-direction: column;
-  font-family: "Inter","Segoe UI",sans-serif;
-  border-radius: 14px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.07);
-  transform: translateY(0) scale(1);
-  opacity: 1;
-  transition: transform 0.25s cubic-bezier(.4,0,.2,1), opacity 0.2s ease;
-  overflow: hidden;
-}
-#flightListPanel.collapsed {
-  transform: translateY(-12px) scale(0.97);
-  opacity: 0;
-  pointer-events: none;
-}
-
-/* Header */
-#flpHeader {
-  display: flex; align-items: center; justify-content: space-between;
-  padding: 12px 14px 0; flex-shrink: 0;
-}
-.flp-brand { font-size: 14px; font-weight: 700; color: #e8edf2; letter-spacing: -0.2px; }
-.flp-brand em { color: #ffd500; font-style: normal; }
-.flp-collapse { background: none; border: none; color: #5a6a7a; font-size: 16px; cursor: pointer; padding: 2px 6px; border-radius: 4px; line-height: 1; }
-.flp-collapse:hover { color: #e8edf2; background: rgba(255,255,255,0.08); }
-
-/* Open button — sits next to search box */
-#flightListOpenBtn {
-  position: fixed; top: 20px; left: 16px; z-index: 9001;
-  background: rgba(13,20,32,0.88);
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px; color: #ffd500; font-size: 16px;
-  width: 46px; height: 46px; cursor: pointer;
-  display: none; align-items: center; justify-content: center;
-  box-shadow: 0 2px 12px rgba(0,0,0,0.5);
-}
-#flightListOpenBtn.visible { display: flex; }
-
-/* Tabs */
-#flpTabs {
-  display: flex; margin: 8px 0 0; flex-shrink: 0;
-  border-bottom: 1px solid rgba(255,255,255,0.07);
-  padding: 0 4px;
-}
-.fl-tab {
-  flex: 1; background: none; border: none;
-  border-bottom: 2px solid transparent;
-  color: #4e6070; font-size: 11px; font-weight: 700;
-  letter-spacing: 0.8px; padding: 7px 0;
-  cursor: pointer; text-transform: uppercase;
-  transition: color 0.2s, border-color 0.2s;
-}
-.fl-tab:hover { color: #a0b4c4; }
-.fl-tab.active { color: #e8edf2; border-bottom-color: #ffd500; }
-
-/* Live badge */
-.fl-live-badge {
-  display: inline-block; background: #ffd500; color: #000;
-  font-size: 9px; font-weight: 800; letter-spacing: 0.5px;
-  padding: 1px 5px; border-radius: 4px;
-  margin-left: 5px; vertical-align: middle;
-  line-height: 14px;
-}
-
-/* List body */
-#flpBody { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
-#flpBody::-webkit-scrollbar { width: 3px; }
-#flpBody::-webkit-scrollbar-track { background: transparent; }
-#flpBody::-webkit-scrollbar-thumb { background: #ffd500; border-radius: 2px; }
-#flpBody::-webkit-scrollbar { width: 3px; }
-.fl-row3 { font-size: 11px; color: #4e6070; margin-top: 3px; }
-
-/* Flight item */
-.fl-item {
-  display: flex; align-items: center; gap: 10px;
-  padding: 9px 14px;
-  border-bottom: 1px solid rgba(255,255,255,0.04);
-  cursor: pointer; transition: background 0.12s;
-  border-left: 3px solid transparent;
-}
-.fl-item:hover { background: rgba(255,255,255,0.04); border-left-color: rgba(255,213,0,0.3); }
-.fl-item.selected { background: rgba(255,213,0,0.07); border-left-color: #ffd500; }
-
-/* Logo box */
-.fl-logo {
-  width: 38px; height: 38px; border-radius: 8px;
-  background: #1c2a38; border: 1px solid rgba(255,255,255,0.07);
-  display: flex; align-items: center; justify-content: center;
-  flex-shrink: 0; overflow: hidden;
-}
-.fl-logo img { width: 30px; height: 30px; object-fit: contain; }
-.fl-logo-fb { font-size: 18px; line-height: 1; }
-
-/* Info block */
-.fl-info { flex: 1; min-width: 0; }
-
-.fl-row1 { display: flex; align-items: center; gap: 5px; margin-bottom: 4px; flex-wrap: wrap; }
-.fl-callsign { font-size: 14px; font-weight: 700; color: #e8edf2; }
-.fl-badge {
-  font-size: 10px; font-weight: 600; color: #8a9db0;
-  background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.1);
-  padding: 1px 5px; border-radius: 4px; white-space: nowrap;
-}
-.fl-badge.type { color: #7ec8e3; border-color: rgba(126,200,227,0.25); background: rgba(126,200,227,0.08); }
-.fl-diverted { font-size: 9px; font-weight: 800; color: #f59e0b; background: rgba(245,158,11,0.15); padding: 1px 5px; border-radius: 3px; }
-
-.fl-row2 { display: flex; align-items: center; gap: 5px; font-size: 11px; color: #5a7080; }
-.fl-airport { color: #8a9db0; }
-.fl-iata {
-  font-size: 9px; font-weight: 700; color: #5a7080;
-  background: rgba(255,255,255,0.06);
-  padding: 1px 4px; border-radius: 3px;
-  border: 1px solid rgba(255,255,255,0.08);
-}
-.fl-arrow { color: #3a4a5a; font-size: 10px; }
-
-/* Speed badge */
-.fl-spd {
-  font-size: 12px; font-weight: 700; color: #e8edf2;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
-  padding: 4px 8px; border-radius: 6px;
-  white-space: nowrap; flex-shrink: 0;
-  min-width: 56px; text-align: center;
-}
-.fl-spd.ground { color: #3a5060; border-color: rgba(255,255,255,0.04); }
-
-/* Empty */
-.fl-empty { text-align: center; padding: 48px 20px; color: #2e4050; font-size: 13px; }
-.fl-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
-</style>
 
 <div id="flightListOpenBtn" onclick="openFlightPanel()" title="Show flight list">✈</div>
 
@@ -887,7 +747,6 @@ function renderFlightList() {
   });
 }
 
-
 function flSelectFlight(id) {
   flSelectedId = id;
   renderFlightList();
@@ -935,7 +794,6 @@ setTimeout(renderFlightList, 1500);
   <div id="searchResults" style="display: none; margin-top: 6px; background: white; border-radius: 8px; 
                                  box-shadow: 0 2px 12px rgba(0,0,0,0.2); max-height: 400px; overflow-y: auto;"></div>
 </div>
-
 
 <link rel="icon" type="image/x-icon" href="/favicon.ico">
 
@@ -2426,7 +2284,7 @@ async function showAircraftPanel(data, id) {
   let photosHtml = '';
   if (userPhotos.length > 0) {
     photosHtml = `
-      <div id="photoContainer" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;">
+      <div id="photoContainer" class="panel-photo-hero" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;">
         <img id="panelPhoto" src="${userPhotos[0].thumb}" style="width:100%;height:100%;object-fit:cover;">
         
         ${userPhotos.length > 1 ? `
@@ -2465,7 +2323,7 @@ async function showAircraftPanel(data, id) {
   } else {
     // 預設飛機圖（如果沒有用戶照片）
     photosHtml = `
-      <div style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
+      <div class="panel-photo-hero" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
         <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:48px;">
           ✈️
         </div>
@@ -2828,7 +2686,6 @@ const planeIcon = L.divIcon({
   iconSize: [30, 30],
   iconAnchor: [15, 15]
 });
-
 
 function clearPhotoMarkers() {
   photoMarkers.forEach(marker => map.removeLayer(marker));

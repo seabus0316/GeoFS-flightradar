@@ -838,11 +838,17 @@ input:checked + .slider:before {
     content: '';
     display: block;
     width: 40px; height: 4px;
-    background: rgba(0,0,0,0.15);
+    background: rgba(0,0,0,0.18);
     border-radius: 2px;
-    margin: 10px auto 0;
+    margin: 10px auto 2px;
   }
-  /* Flight list panel: full width, lower z so panel overlaps */
+  /* Photo hero: cap height on mobile so it doesn't eat the screen */
+  .panel-photo-hero {
+    aspect-ratio: unset !important;
+    height: 160px !important;
+    max-height: 160px !important;
+  }
+  /* Flight list panel: full width, bottom sheet */
   #flightListPanel {
     top: auto !important;
     bottom: 0 !important;
@@ -850,7 +856,7 @@ input:checked + .slider:before {
     width: 100vw !important;
     max-height: 45vh !important;
     border-radius: 0 !important;
-    display: none !important; /* hidden by default on mobile — use the FAB */
+    display: none !important;
   }
   #flightListPanel.mobile-visible {
     display: flex !important;
@@ -862,11 +868,41 @@ input:checked + .slider:before {
     min-width: 92vw !important;
     max-width: 340px !important;
   }
-  /* UTC time box: smaller on mobile */
+  /* UTC time box: hide on mobile */
   #utcTime {
-    font-size: 11px !important;
-    padding: 8px !important;
+    display: none !important;
+  }
+  /* METAR: stack vertically on mobile instead of left sidebar */
+  #metarToggle {
+    top: auto !important;
     bottom: 80px !important;
-    right: 10px !important;
+    left: 0 !important;
+    transform: none !important;
+    writing-mode: horizontal-tb !important;
+    padding: 10px 14px !important;
+    border-radius: 0 10px 10px 0 !important;
+  }
+  .metar-widget {
+    top: auto !important;
+    bottom: 130px !important;
+    left: -280px !important;
+    transform: none !important;
+  }
+  .metar-widget.open {
+    left: 0 !important;
+  }
+  /* Search box: full width */
+  #searchBox {
+    left: 8px !important;
+    right: 8px !important;
+    width: auto !important;
+  }
+  /* Aircraft panel slide-in from bottom instead of right */
+  #aircraftPanel {
+    animation: slideUp 0.32s cubic-bezier(.4,0,.2,1) !important;
+  }
+  @keyframes slideUp {
+    from { transform: translateY(100%); opacity: 0.5; }
+    to   { transform: translateY(0);    opacity: 1;   }
   }
 }
