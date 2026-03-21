@@ -822,3 +822,51 @@ input:checked + .slider:before {
 /* Empty */
 .fl-empty { text-align: center; padding: 48px 20px; color: #2e4050; font-size: 13px; }
 .fl-empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.4; }
+.wx-row, .tile-row {
+  display:block;width:100%;background:transparent;border:none;color:#ddd;
+  font-size:13px;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;
+  transition:background 0.15s;
+}
+.wx-row:hover, .tile-row:hover { background:rgba(255,255,255,0.1); }
+.wx-row.on { color:#00cfff;background:rgba(0,207,255,0.12); }
+.active-tile { color:#4287f5;background:rgba(66,135,245,0.2); }
+
+/* ── Responsive: mobile bottom sheet tweaks ── */
+@media (max-width: 639px) {
+  /* Bottom sheet drag handle */
+  #aircraftPanel::before {
+    content: '';
+    display: block;
+    width: 40px; height: 4px;
+    background: rgba(0,0,0,0.15);
+    border-radius: 2px;
+    margin: 10px auto 0;
+  }
+  /* Flight list panel: full width, lower z so panel overlaps */
+  #flightListPanel {
+    top: auto !important;
+    bottom: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    max-height: 45vh !important;
+    border-radius: 0 !important;
+    display: none !important; /* hidden by default on mobile — use the FAB */
+  }
+  #flightListPanel.mobile-visible {
+    display: flex !important;
+  }
+  /* Settings panel: expand leftward so it doesn't go offscreen */
+  #settingsPanel {
+    right: 0 !important;
+    left: auto !important;
+    min-width: 92vw !important;
+    max-width: 340px !important;
+  }
+  /* UTC time box: smaller on mobile */
+  #utcTime {
+    font-size: 11px !important;
+    padding: 8px !important;
+    bottom: 80px !important;
+    right: 10px !important;
+  }
+}

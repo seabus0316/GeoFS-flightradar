@@ -138,18 +138,6 @@
   </div>
 </div>
 </div>
-
-<style>
-.wx-row, .tile-row {
-  display:block;width:100%;background:transparent;border:none;color:#ddd;
-  font-size:13px;padding:8px 10px;border-radius:8px;cursor:pointer;text-align:left;
-  transition:background 0.15s;
-}
-.wx-row:hover, .tile-row:hover { background:rgba(255,255,255,0.1); }
-.wx-row.on { color:#00cfff;background:rgba(0,207,255,0.12); }
-.active-tile { color:#4287f5;background:rgba(66,135,245,0.2); }
-</style>
-
 <script>
 let currentBase;
 
@@ -279,6 +267,71 @@ function resetSettings() {
   if (lb) lb.checked = s.showLabels  ?? true;
   applySettings();
 })();
+
+// ── Responsive resize handler ────────────────────────────
+window.addEventListener('resize', () => {
+  const p   = document.getElementById('aircraftPanel');
+  const bar = document.getElementById('customMapBar');
+  const utc = document.getElementById('utcTime');
+  const mobile = window.innerWidth < 640;
+  if (!p) {
+    // Panel not open — just reset bar/utc position
+    if (bar) bar.style.right = '20px';
+    if (utc) utc.style.right = '20px';
+    return;
+  }
+  if (mobile) {
+    // Convert to bottom sheet
+    Object.assign(p.style, {
+      top: '', right: '', bottom: '0', left: '0',
+      width: '100%', maxHeight: '72vh',
+      borderRadius: '18px 18px 0 0',
+      boxShadow: '0 -4px 32px rgba(0,0,0,0.3)',
+      transform: 'translateY(0)'
+    });
+    if (bar) bar.style.right = '20px';
+    if (utc) utc.style.right = '20px';
+  } else {
+    // Convert to desktop sidebar
+    Object.assign(p.style, {
+      bottom: '', left: '', top: '16px', right: '16px',
+      width: '360px', maxHeight: 'calc(100vh - 32px)',
+      borderRadius: '14px',
+      boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
+      transform: ''
+    });
+    if (bar) bar.style.right = '396px';
+    if (utc) utc.style.right = '396px';
+  }
+});
+
+// ── Close aircraft panel (responsive) ───────────────────
+function closeAircraftPanel() {
+  const p = document.getElementById('aircraftPanel');
+  const mobile = window.innerWidth < 640;
+  const finish = () => {
+    if (p) p.remove();
+    clearAllAircraftTracks();
+    if (focusedAircraftId && aircrafts.has(focusedAircraftId)) {
+      const o = aircrafts.get(focusedAircraftId);
+      if (o && o.marker) o.marker.setIcon(makeDivIcon(o.data, false));
+    }
+    focusedAircraftId = null;
+    clearFlightPlanMarkers();
+    if (window.innerWidth >= 640) {
+      const bar = document.getElementById('customMapBar');
+      const utc = document.getElementById('utcTime');
+      if (bar) bar.style.right = '20px';
+      if (utc) utc.style.right = '20px';
+    }
+  };
+  if (p && mobile) {
+    p.style.transform = 'translateY(100%)';
+    setTimeout(finish, 320);
+  } else {
+    finish();
+  }
+}
 
 // Re-apply panel opacity/blur whenever aircraftPanel is dynamically created
 new MutationObserver(() => {
@@ -2302,43 +2355,68 @@ async function showAircraftPanel(data, id) {
   } 
   // 建立或更新 Panel
 
+  const isMobile = window.innerWidth < 640;
   let p = document.getElementById('aircraftPanel');
   if (!p) {
     p = document.createElement('div');
     p.id = 'aircraftPanel';
-    Object.assign(p.style, {
-      position: 'fixed',
-      top: '16px',
-      right: '16px',
-      width: '360px',
-      background: '#fff',
-      borderRadius: '14px',
-      boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
-      fontSize: '13px',
-      zIndex: 99990,
-      fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
-      overflow: 'hidden',
-      maxHeight: 'calc(100vh - 32px)',
-      overflowY: 'auto'
-    });
+    if (isMobile) {
+      // Mobile: bottom sheet
+      Object.assign(p.style, {
+        position: 'fixed',
+        bottom: '0',
+        left: '0',
+        right: '0',
+        width: '100%',
+        maxHeight: '72vh',
+        background: '#fff',
+        borderRadius: '18px 18px 0 0',
+        boxShadow: '0 -4px 32px rgba(0,0,0,0.3)',
+        fontSize: '13px',
+        zIndex: 99990,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden',
+        overflowY: 'auto',
+        transform: 'translateY(100%)',
+        transition: 'transform 0.32s cubic-bezier(.4,0,.2,1)'
+      });
+    } else {
+      // Desktop: right sidebar
+      Object.assign(p.style, {
+        position: 'fixed',
+        top: '16px',
+        right: '16px',
+        width: '360px',
+        background: '#fff',
+        borderRadius: '14px',
+        boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
+        fontSize: '13px',
+        zIndex: 99990,
+        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif',
+        overflow: 'hidden',
+        maxHeight: 'calc(100vh - 32px)',
+        overflowY: 'auto'
+      });
+    }
     document.body.appendChild(p);
     // Apply saved display settings (opacity / blur)
-    const saved = window._savedSettings;
-    if (saved) {
-      p.style.opacity = (saved.panelOpacity / 100).toFixed(2);
-      if (saved.panelBlur > 0) {
-        p.style.backdropFilter = `blur(${saved.panelBlur}px)`;
-        p.style.webkitBackdropFilter = p.style.backdropFilter;
-      }
-    }
+    const ds = (() => { try { return JSON.parse(localStorage.getItem('geofs_displaySettings')) || {}; } catch { return {}; } })();
+    const po = ds.panelOpacity ?? 100;
+    const pb = ds.panelBlur ?? 0;
+    p.style.opacity = (po / 100).toFixed(2);
+    if (pb > 0) { p.style.backdropFilter = `blur(${pb}px)`; p.style.webkitBackdropFilter = p.style.backdropFilter; }
+    // Animate in for mobile
+    if (isMobile) requestAnimationFrame(() => { p.style.transform = 'translateY(0)'; });
   }
 
-  // Shift right-side UI to avoid overlap (panel is 360px + 16px left + 16px gap)
+  // Shift right-side UI — desktop only
   const panelShift = '396px';
   const bar = document.getElementById('customMapBar');
   const utc = document.getElementById('utcTime');
-  if (bar) bar.style.right = panelShift;
-  if (utc) utc.style.right = panelShift;
+  if (!isMobile) {
+    if (bar) bar.style.right = panelShift;
+    if (utc) utc.style.right = panelShift;
+  }
 
   const depShort = (data.departure || '').substring(0, 4) || '—';
   const arrShort = (data.arrival || '').substring(0, 4) || '—';
@@ -2442,16 +2520,7 @@ async function showAircraftPanel(data, id) {
       </div>
 
       <!-- Close -->
-      <button onclick="document.getElementById('aircraftPanel').remove();
-                       clearAllAircraftTracks();
-        if(focusedAircraftId && aircrafts.has(focusedAircraftId)){
-          const o=aircrafts.get(focusedAircraftId);
-          if(o&&o.marker) o.marker.setIcon(makeDivIcon(o.data,false));
-        }
-        focusedAircraftId=null;
-        clearFlightPlanMarkers();
-        document.getElementById('customMapBar').style.right='20px';
-        document.getElementById('utcTime').style.right='20px';"
+      <button onclick="closeAircraftPanel()"
         style="background:rgba(255,255,255,0.08);border:none;color:#8a9db0;
                width:30px;height:30px;border-radius:8px;cursor:pointer;
                font-size:18px;line-height:1;flex-shrink:0;
