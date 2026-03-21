@@ -1786,60 +1786,57 @@ function showAircraftTrack(id) {
   const obj = aircrafts.get(id);
   if (!obj || !obj.rawPathForDisplay || obj.rawPathForDisplay.length === 0) return;
   clearAllAircraftTracks();
+
+  // Read saved trail opacity (persists across re-renders)
+  const savedOpacity = (() => {
+    try { return (JSON.parse(localStorage.getItem('geofs_displaySettings')) || {}).trailOpacity ?? 100; }
+    catch { return 100; }
+  })() / 100;
+
   const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
   obj.displayPath = simplified;
+
   for (let i = 1; i < obj.displayPath.length; i++) {
-  const prev = obj.displayPath[i - 1];
-  const curr = obj.displayPath[i];
-  const alt = curr[2] || 0;
+    const prev = obj.displayPath[i - 1];
+    const curr = obj.displayPath[i];
+    const alt  = curr[2] || 0;
 
-  // 1. 先判斷是否為異常的「瞬間移動」（例如伺服器跳格），這種才需要 continue
-  if (crossesTooFar(prev[0], prev[1], curr[0], curr[1], 1500) && Math.abs(curr[1] - prev[1]) <= 180) {
-    continue;
-  }
+    const distKm = calculateDistance(prev[0], prev[1], curr[0], curr[1]);
 
-  // 2. 核心：處理換日線跨越 (經度差大於 180)
-  if (Math.abs(curr[1] - prev[1]) > 180) {
-    let pLat = prev[0], pLon = prev[1];
-    let cLat = curr[0], cLon = curr[1];
-    
-    // 判斷飛行方向：是往東還是往西跨過邊界
-    let movingEast = (cLon - pLon) < 0; 
-    let edge1 = movingEast ? 180 : -180; // 第一段連向的邊界
-    let edge2 = movingEast ? -180 : 180; // 第二段出發的邊界
-
-    // 第一段：從前一點畫到地圖邊緣 (180 或 -180)
-    const seg1 = L.polyline([[pLat, pLon], [cLat, edge1]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2, opacity: 0.8
-    }).addTo(map);
-    obj.segments.push(seg1);
-
-    // 第二段：從地圖另一側邊緣出發到當前點
-    const seg2 = L.polyline([[pLat, edge2], [cLat, cLon]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2, opacity: 0.8
-    }).addTo(map);
-    obj.segments.push(seg2);
-
-  } else {
-    // 3. 正常情況：直接連線
-    const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
-      renderer: canvasRenderer,
-      color: getAltitudeColor(alt),
-      weight: 2,
-      opacity: 0.8
-    }).addTo(map);
-    
-    // 保留你原本的 Tooltip 邏輯
-    if (seg.bindTooltip) {
-      seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+    // 1. Teleport / data gap detection — skip any segment > 500 km
+    //    (genuine antimeridian crossing < 500 km between consecutive points is unrealistic)
+    if (distKm > 500) {
+      continue;
     }
-    obj.segments.push(seg);
+
+    // 2. Antimeridian split — longitude diff > 180° after normalization
+    const dLon = curr[1] - prev[1];
+    if (Math.abs(dLon) > 180) {
+      const movingEast = dLon < 0;
+      const edge1 = movingEast ?  180 : -180;
+      const edge2 = movingEast ? -180 :  180;
+
+      const seg1 = L.polyline([[prev[0], prev[1]], [curr[0], edge1]], {
+        renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+      }).addTo(map);
+      obj.segments.push(seg1);
+
+      const seg2 = L.polyline([[prev[0], edge2], [curr[0], curr[1]]], {
+        renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+      }).addTo(map);
+      obj.segments.push(seg2);
+
+    } else {
+      // 3. Normal segment
+      const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
+        renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+      }).addTo(map);
+      if (seg.bindTooltip) {
+        seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
+      }
+      obj.segments.push(seg);
+    }
   }
-}
 }
 function clearAllAircraftTracks() {
   for (const [id, obj] of aircrafts.entries()) {
