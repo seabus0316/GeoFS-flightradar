@@ -796,5 +796,12 @@
     "iata": "JS",
     "country": "North Korea",
     "logo": "https://images.kiwi.com/airlines/64/JS.png"
+  },
+    "STRK": {
+    "name": "Stark Airways",
+    "icao": "STRK",
+    "iata": "STK",
+    "country": "France",
+    "logo": "https://www.zupimages.net/up/26/12/rvlm.png"
   }
 }

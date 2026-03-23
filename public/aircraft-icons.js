@@ -42,7 +42,7 @@ const AircraftIconDB = {
    * GeoFS 的 type 欄位就是完整機型名，e.g. "Boeing 737-800"
    */
   resolve(typeStr) {
-    if (!typeStr) return 'c0.svg';
+    if (!typeStr) return 'b767.svg';
     const t = String(typeStr).toLowerCase().trim();
 
     // ① 完整 key 直接命中

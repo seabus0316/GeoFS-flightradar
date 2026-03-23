@@ -65,23 +65,23 @@ function fmtDateShort(ts) {
 const commands = [
   new SlashCommandBuilder()
     .setName('flights')
-    .setDescription('查看自己最近的飛行紀錄')
+    .setDescription('Search your flight record')
     .addIntegerOption(o => o.setName('page').setDescription('頁數（預設第 1 頁）').setMinValue(1))
     .addUserOption(o => o.setName('user').setDescription('查看其他用戶的紀錄（選填）')),
 
   new SlashCommandBuilder()
     .setName('stats')
-    .setDescription('查看飛行統計')
+    .setDescription('See your flight status')
     .addUserOption(o => o.setName('user').setDescription('查看其他用戶（選填）')),
 
   new SlashCommandBuilder()
     .setName('whois')
-    .setDescription('查某個 Callsign 是誰在飛')
+    .setDescription("Search a callsign and see who's flying it")
     .addStringOption(o => o.setName('callsign').setDescription('Callsign，例如 EVA001').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('link')
-    .setDescription('綁定你的 GeoFS User ID')
+    .setDescription('Link your GeoFS User ID')
     .addStringOption(o => o.setName('geofs_id').setDescription('你的 GeoFS User ID（數字）').setRequired(true)),
 ].map(c => c.toJSON());
 
@@ -116,14 +116,14 @@ client.on('interactionCreate', async interaction => {
     const geofsId = interaction.options.getString('geofs_id').trim();
 
     if (!/^\d+$/.test(geofsId)) {
-      return interaction.editReply({ content: '❌ GeoFS ID 必須是數字。' });
+      return interaction.editReply({ content: '❌ GeoFS ID must be numbers' });
     }
 
     try {
       // 檢查是否已被其他人綁定
       const taken = await User.findOne({ geofsUserId: geofsId, discordId: { $ne: interaction.user.id } });
       if (taken) {
-        return interaction.editReply({ content: `❌ GeoFS ID \`${geofsId}\` 已被其他帳號綁定。` });
+        return interaction.editReply({ content: `❌ GeoFS ID \`${geofsId}\` was lined by other user` });
       }
 
       await User.findOneAndUpdate(
