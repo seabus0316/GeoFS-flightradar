@@ -45,7 +45,62 @@ const ioAtcClients    = new Set();
 const ioPlayerClients = new Set();
 
 const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
-
+const waypointState = new Map(); // aircraftId → { planHash, triggered }
+ 
+function haversineNm(lat1, lon1, lat2, lon2) {
+  const R = 3440.065; // Earth radius in nautical miles
+  const dLat = (lat2 - lat1) * Math.PI / 180;
+  const dLon = (lon2 - lon1) * Math.PI / 180;
+  const a = Math.sin(dLat / 2) ** 2 +
+    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+    Math.sin(dLon / 2) ** 2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+ 
+async function checkWaypointReminder(payload) {
+  const { id: aircraftId, flightPlan, lat, lon, userId, callsign, arrival } = payload;
+ 
+  // 至少要有 2 個航點，且飛機有綁定用戶
+  if (!flightPlan || flightPlan.length < 2 || !userId) return;
+ 
+  const penultimate = flightPlan[flightPlan.length - 2];
+  if (!penultimate || typeof penultimate.lat === 'undefined') return;
+ 
+  // planHash：用來偵測換了航線就重置觸發狀態
+  const planHash = `${flightPlan.length}_${penultimate.lat?.toFixed(3)}_${penultimate.lon?.toFixed(3)}`;
+  let state = waypointState.get(aircraftId) || { planHash: null, triggered: false };
+  if (state.planHash !== planHash) state = { planHash, triggered: false };
+ 
+  // 已經觸發過就跳過
+  if (state.triggered) { waypointState.set(aircraftId, state); return; }
+ 
+  // 距離倒數第二航點超過 30 nm 就不處理
+  const dist = haversineNm(lat, lon, penultimate.lat, penultimate.lon);
+  if (dist > 30) { waypointState.set(aircraftId, state); return; }
+ 
+  // 查找用戶與提醒設定
+  const user = await User.findOne({ geofsUserId: String(userId) }).lean();
+  if (!user?.discordId) { state.triggered = true; waypointState.set(aircraftId, state); return; }
+ 
+  const pref = await ReminderPreference.findOne({ discordId: user.discordId, enabled: true }).lean();
+  if (!pref) { state.triggered = true; waypointState.set(aircraftId, state); return; }
+ 
+  // 航點名稱：優先用 name/id，fallback 座標
+  const wpLabel = penultimate.name || penultimate.id ||
+    `${penultimate.lat?.toFixed(2)}, ${penultimate.lon?.toFixed(2)}`;
+ 
+  await PendingNotification.create({
+    discordId:           user.discordId,
+    callsign:            callsign || 'N/A',
+    arrival:             arrival  || '',
+    penultimateWaypoint: wpLabel,
+    sent:                false,
+  });
+ 
+  state.triggered = true;
+  waypointState.set(aircraftId, state);
+  console.log(`[Reminder] Queued for ${user.discordId} (${callsign}) approaching ${wpLabel}`);
+}
 // ============ Middleware ============
 app.use(compression());
 app.use(cookieParser());
@@ -133,7 +188,20 @@ function formatUserForClient(user) {
     }
   };
 }
-
+const ReminderPreference = mongoose.model('ReminderPreference', new mongoose.Schema({
+  discordId: { type: String, unique: true, index: true },
+  enabled:   { type: Boolean, default: true },
+  updatedAt: { type: Date, default: Date.now },
+}, { versionKey: false }));
+ 
+const PendingNotification = mongoose.model('PendingNotification', new mongoose.Schema({
+  discordId:           String,
+  callsign:            String,
+  arrival:             String,
+  penultimateWaypoint: String,
+  sent:                { type: Boolean, default: false, index: true },
+  createdAt:           { type: Date, default: Date.now },
+}, { versionKey: false }));
 // ============ MongoDB 連線 ============
 mongoose.connect(MONGODB_URI)
   .then(async () => {
@@ -292,7 +360,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     console.error('finalizeFlightSession error', err);
   }
 }
-
+waypointState.delete(aircraftId);
 // ✅ 緊急 Squawk 警報（7700 / 7500 / 7600）
 async function sendSquawkAlert(payload) {
   if (!ALERT_WEBHOOK_URL) return;
