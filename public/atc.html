@@ -354,6 +354,361 @@ new MutationObserver(() => {
   <h3 style="color:#58a6ff;margin-top:0;">JetPhotos Gallery</h3>
   <div id="photoPanel"></div>
 </div>
+<!-- ═══════════════════════════════════════════════
+     What's New 大聲公按鈕 + 面板
+═══════════════════════════════════════════════ -->
+<style>
+  /* ── What's New Button — matches .atc-mode-btn Liquid Glass ── */
+  #whatsNewBtn {
+    position: relative; /* for badge positioning */
+    width: 44px;
+    height: 44px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.55);
+    background: rgba(255, 255, 255, 0.22);
+    backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
+    -webkit-backdrop-filter: blur(40px) saturate(200%) brightness(1.1);
+    color: rgba(255, 255, 255, 0.95);
+    font-size: 18px;
+    cursor: pointer;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.18),
+      0 1px 0 rgba(255, 255, 255, 0.7) inset,
+      0 -1px 0 rgba(255, 255, 255, 0.1) inset;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+    overflow: visible; /* allow badge to overflow */
+  }
+  /* Top gloss line — same as atc-mode-btn::before */
+  #whatsNewBtn::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 8%; right: 8%;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
+    border-radius: 14px 14px 0 0;
+  }
+  #whatsNewBtn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.75);
+    box-shadow:
+      0 6px 32px rgba(0, 0, 0, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    transform: translateY(-1px);
+  }
+  #whatsNewBtn.active {
+    background: rgba(0, 40, 55, 0.38);
+    border-color: rgba(0, 207, 255, 0.45);
+    color: #00cfff;
+    box-shadow:
+      0 4px 24px rgba(0, 0, 0, 0.28),
+      0 0 16px rgba(0, 207, 255, 0.18),
+      0 1px 0 rgba(0, 207, 255, 0.12) inset;
+  }
+
+  /* Unread badge */
+  #whatsNewBadge {
+    position: absolute;
+    top: -5px;
+    right: -5px;
+    min-width: 17px;
+    height: 17px;
+    border-radius: 9px;
+    background: #ffd500;
+    color: #000;
+    font-size: 10px;
+    font-weight: 800;
+    align-items: center;
+    justify-content: center;
+    padding: 0 4px;
+    pointer-events: none;
+    display: none;
+    border: 1.5px solid rgba(255,255,255,0.55);
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    line-height: 1;
+  }
+
+  /* ── What's New Panel — matches existing wx/tile/settings panels ── */
+  #whatsNewPanel {
+    position: fixed;
+    top: 72px;
+    right: 20px;
+    z-index: 10000;
+    width: 330px;
+    max-height: 500px;
+    background: rgba(10, 15, 25, 0.55);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 12px;
+    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.45);
+    display: none;
+    flex-direction: column;
+    overflow: hidden;
+    animation: wnSlideIn 0.2s cubic-bezier(.4,0,.2,1);
+  }
+  @keyframes wnSlideIn {
+    from { opacity:0; transform: translateY(-8px) scale(0.98); }
+    to   { opacity:1; transform: translateY(0)    scale(1);    }
+  }
+
+  /* Panel header — matches wx/tile section headers */
+  #whatsNewPanel .wn-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 11px;
+    color: #aaa;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    padding: 10px 14px 10px;
+    border-bottom: 1px solid #333;
+    flex-shrink: 0;
+  }
+  #whatsNewPanel .wn-title {
+    font-weight: 700;
+    color: #aaa;
+  }
+  #whatsNewPanel .wn-count-badge {
+    font-size: 11px;
+    color: #888;
+    background: rgba(255,255,255,0.07);
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 20px;
+    padding: 2px 9px;
+    font-weight: 600;
+  }
+
+  /* Scrollable items */
+  #whatsNewList {
+    overflow-y: auto;
+    flex: 1;
+    padding: 4px 0;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(255,255,255,0.12) transparent;
+  }
+  #whatsNewList::-webkit-scrollbar { width: 4px; }
+  #whatsNewList::-webkit-scrollbar-track { background: transparent; }
+  #whatsNewList::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+
+  /* Individual item */
+  .wn-item {
+    padding: 12px 14px;
+    border-bottom: 1px solid rgba(255,255,255,0.05);
+    position: relative;
+  }
+  .wn-item:last-child { border-bottom: none; }
+  .wn-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 12px;
+    bottom: 12px;
+    width: 3px;
+    border-radius: 0 3px 3px 0;
+    background: rgba(255,255,255,0.12);
+  }
+
+  .wn-meta {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    margin-bottom: 5px;
+  }
+  .wn-tag {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.06em;
+    padding: 2px 7px;
+    border-radius: 5px;
+    text-transform: uppercase;
+  }
+  .wn-tag.new     { background: rgba(0,207,255,0.15); color: #00cfff; border: 1px solid rgba(0,207,255,0.3); }
+  .wn-tag.improve { background: rgba(0,255,133,0.12); color: #00ff85; border: 1px solid rgba(0,255,133,0.25); }
+  .wn-tag.fix     { background: rgba(255,213,0,0.12);  color: #ffd500; border: 1px solid rgba(255,213,0,0.25); }
+
+  /* Accent left bar matches tag colour */
+  .wn-item:has(.wn-tag.new)::before     { background: rgba(0,207,255,0.45); }
+  .wn-item:has(.wn-tag.improve)::before { background: rgba(0,255,133,0.4); }
+  .wn-item:has(.wn-tag.fix)::before     { background: rgba(255,213,0,0.4); }
+
+  .wn-date {
+    font-size: 11px;
+    color: rgba(180,210,230,0.4);
+  }
+  .wn-item-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: #dde8f0;
+    margin-bottom: 4px;
+    line-height: 1.3;
+  }
+  .wn-item-desc {
+    font-size: 12px;
+    color: rgba(180,210,230,0.55);
+    line-height: 1.55;
+  }
+</style>
+
+<!-- Megaphone button — placed in the same fixed container as map control bar -->
+<div style="position:fixed;top:20px;right:20px;z-index:10001;">
+  <button id="whatsNewBtn" onclick="toggleWhatsNew()" title="What's New">
+    📢
+    <span id="whatsNewBadge"></span>
+  </button>
+</div>
+
+<!-- What's New Panel -->
+<div id="whatsNewPanel">
+  <div class="wn-header">
+    <span class="wn-title">What's New</span>
+    <span class="wn-count-badge" id="wnCountBadge">0 updates</span>
+  </div>
+  <div id="whatsNewList"></div>
+</div>
+
+<script>
+(function() {
+  // ── 更新清單（由新到舊）──────────────────────────────
+  const WN_UPDATES = [
+    {
+      tag: 'new',
+      date: '2026-03-27',
+      title: 'What\'s New 通知面板',
+      desc: '新增大聲公按鈕！點擊即可查看最新功能更新與改進。'
+    },
+    {
+      tag: 'new',
+      date: '2026-03-23',
+      title: 'Discord Waypoint Reminders',
+      desc: 'You can now use the Discord bot to schedule waypoint reminders for your live flight and get pinged on your chosen interval after the trigger point.'
+    },
+    {
+      tag: 'improve',
+      date: '2026-03-23',
+      title: 'Mid-Flight Route Viewing',
+      desc: 'Selected flights can now expose the route flown so far before landing, so you no longer have to wait for a flight to end to inspect its track.'
+    },
+    {
+      tag: 'improve',
+      date: '2026-03-21',
+      title: 'Day / Night Terminator Layer',
+      desc: '新增晝夜分隔線圖層，自動每分鐘更新，讓你一眼看出全球日夜分布。'
+    },
+    {
+      tag: 'improve',
+      date: '2026-03-18',
+      title: 'Display Settings Panel',
+      desc: '新增 Display Settings：可調整側邊欄透明度、Blur 強度、軌跡透明度，以及一鍵開關機身標籤。'
+    },
+    {
+      tag: 'new',
+      date: '2026-03-12',
+      title: 'Flight History Tab',
+      desc: '新增飛行歷史記錄分頁，可查詢自己與他人的航班紀錄，包含距離、時間與狀態。'
+    },
+    {
+      tag: 'fix',
+      date: '2026-03-08',
+      title: 'Airline Logo & ICAO Matching Fix',
+      desc: '修正部分航空公司 logo 無法正確對應的問題，並改進 callsign 識別邏輯。'
+    },
+    {
+      tag: 'new',
+      date: '2026-03-01',
+      title: 'Airport Search & METAR Widget',
+      desc: '搜尋列現在支援機場 ICAO 搜尋，點擊後自動載入 METAR 天氣資訊。'
+    }
+  ];
+
+  const LS_KEY = 'geofs_whatsNew_lastSeen';
+
+  function getLastSeen() {
+    return localStorage.getItem(LS_KEY) || '';
+  }
+  function markAllSeen() {
+    localStorage.setItem(LS_KEY, WN_UPDATES[0]?.date || '');
+  }
+
+  function countUnread() {
+    const last = getLastSeen();
+    if (!last) return WN_UPDATES.length;
+    return WN_UPDATES.filter(u => u.date > last).length;
+  }
+
+  function updateBadge() {
+    const n = countUnread();
+    const badge = document.getElementById('whatsNewBadge');
+    if (!badge) return;
+    if (n > 0) {
+      badge.textContent = n;
+      badge.style.display = 'flex';
+    } else {
+      badge.style.display = 'none';
+    }
+  }
+
+  function renderList() {
+    const list = document.getElementById('whatsNewList');
+    const countEl = document.getElementById('wnCountBadge');
+    if (!list) return;
+    if (countEl) countEl.textContent = WN_UPDATES.length + ' updates';
+
+    const last = getLastSeen();
+    list.innerHTML = WN_UPDATES.map(u => {
+      const tagClass = u.tag === 'new' ? 'new' : u.tag === 'improve' ? 'improve' : 'fix';
+      const tagLabel = u.tag === 'new' ? 'NEW' : u.tag === 'improve' ? 'IMPROVEMENT' : 'FIX';
+      return `
+        <div class="wn-item">
+          <div class="wn-meta">
+            <span class="wn-tag ${tagClass}">${tagLabel}</span>
+            <span class="wn-date">${u.date}</span>
+          </div>
+          <div class="wn-item-title">${u.title}</div>
+          <div class="wn-item-desc">${u.desc}</div>
+        </div>`;
+    }).join('');
+  }
+
+  window.toggleWhatsNew = function() {
+    const panel = document.getElementById('whatsNewPanel');
+    const btn   = document.getElementById('whatsNewBtn');
+    if (!panel) return;
+    const isOpen = panel.style.display === 'flex';
+    // Close all other panels
+    ['wxPanel','tilePanel','settingsPanel'].forEach(pid => {
+      const el = document.getElementById(pid);
+      if (el) el.style.display = 'none';
+    });
+    if (isOpen) {
+      panel.style.display = 'none';
+      btn.classList.remove('active');
+    } else {
+      renderList();
+      panel.style.display = 'flex';
+      btn.classList.add('active');
+      markAllSeen();
+      updateBadge();
+    }
+  };
+
+  // Close panel when clicking outside
+  document.addEventListener('click', e => {
+    if (!e.target.closest('#whatsNewPanel') && !e.target.closest('#whatsNewBtn')) {
+      const panel = document.getElementById('whatsNewPanel');
+      const btn   = document.getElementById('whatsNewBtn');
+      if (panel) panel.style.display = 'none';
+      if (btn)   btn.classList.remove('active');
+    }
+  });
+
+  // Init badge on load
+  updateBadge();
+})();
+</script>
+
 <!-- 新增：漢堡選單按鈕 -->
 <button id="menuToggle" style="position: fixed; top: 100px; left: 20px; z-index: 10000; 
         background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
