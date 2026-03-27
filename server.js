@@ -360,7 +360,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     console.error('finalizeFlightSession error', err);
   }
 }
-waypointState.delete(aircraftId);
+
 // ✅ 緊急 Squawk 警報（7700 / 7500 / 7600）
 async function sendSquawkAlert(payload) {
   if (!ALERT_WEBHOOK_URL) return;
