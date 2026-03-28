@@ -3,7 +3,7 @@
 // 跟 server.js 共用同一個 MongoDB
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActivityType } = require('discord.js');
 const mongoose = require('mongoose');
 
 // ============ 環境變數 ============
@@ -133,9 +133,24 @@ async function registerCommands() {
 // ============ Bot Client ============
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
+const activities = [
+  { name: 'GeoFS Radar', type: ActivityType.Watching },
+  { name: 'all flights', type: ActivityType.Watching },
+  { name: '/stats', type: ActivityType.Listening },
+  { name: 'GeoFS pilots', type: ActivityType.Watching },
+  { name: 'radar updates', type: ActivityType.Listening },
+];
+
+function setRandomActivity() {
+  if (!client.user) return;
+  const activity = activities[Math.floor(Math.random() * activities.length)];
+  client.user.setActivity(activity.name, { type: activity.type });
+}
+
 client.once('ready', () => {
   console.log(`✅ Bot logged in as ${client.user.tag}`);
-  client.user.setActivity('GeoFS Radar', { type: 3 });
+  setRandomActivity();
+  setInterval(setRandomActivity, 60_000);
 });
 
 client.on('interactionCreate', async interaction => {
