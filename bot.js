@@ -134,11 +134,15 @@ async function registerCommands() {
 const client = new Client({ intents: [GatewayIntentBits.Guilds] });
 
 const activities = [
-  { name: 'GeoFS Radar', type: ActivityType.Watching },
+  { name: 'GeoFS-Flightradar', type: ActivityType.Watching },
   { name: 'all flights', type: ActivityType.Watching },
   { name: '/stats', type: ActivityType.Listening },
   { name: 'GeoFS pilots', type: ActivityType.Watching },
   { name: 'radar updates', type: ActivityType.Listening },
+  { name: 'Never Gonna Give You Up', type: ActivityType.Listening },
+  { name: 'Seabus\'s unfunny jokes :(', type: ActivityType.Listening },
+  { name: 'Geo-FS', type: ActivityType.Playing },
+  { name: '67🫲🧒🫱', type: ActivityType.Playing },
 ];
 
 function setRandomActivity() {
