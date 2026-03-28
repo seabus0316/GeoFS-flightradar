@@ -83,7 +83,7 @@
 
   <script>
     async function deletePhoto(id) {
-  if (!confirm('確定要永久刪除？')) return;
+  if (!confirm('Delete it forever?')) return;
   await fetch(`/admin/photos/${id}`, {
     method: 'DELETE',
     headers: { 'x-admin-pass': adminPass }

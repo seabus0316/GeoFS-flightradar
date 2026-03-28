@@ -85,36 +85,36 @@ const commands = [
   new SlashCommandBuilder()
     .setName('flights')
     .setDescription('Search your flight record')
-    .addIntegerOption(o => o.setName('page').setDescription('頁數（預設第 1 頁）').setMinValue(1))
-    .addUserOption(o => o.setName('user').setDescription('查看其他用戶的紀錄（選填）')),
+    .addIntegerOption(o => o.setName('page').setDescription('page (1 for default)').setMinValue(1))
+    .addUserOption(o => o.setName('user').setDescription("view other user's status (optional)")),
 
   new SlashCommandBuilder()
     .setName('stats')
     .setDescription('See your flight status')
-    .addUserOption(o => o.setName('user').setDescription('查看其他用戶（選填）')),
+    .addUserOption(o => o.setName('user').setDescription("view other user's status (optional)")),
 
   new SlashCommandBuilder()
     .setName('whois')
     .setDescription("Search a callsign and see who's flying it")
-    .addStringOption(o => o.setName('callsign').setDescription('Callsign，例如 EVA001').setRequired(true)),
+    .addStringOption(o => o.setName('callsign').setDescription('Callsign, such as EVA001').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('link')
     .setDescription('Link your GeoFS User ID')
-    .addStringOption(o => o.setName('geofs_id').setDescription('你的 GeoFS User ID（數字）').setRequired(true)),
+    .addStringOption(o => o.setName('geofs_id').setDescription('Your geofs user ID (numbers)').setRequired(true)),
 
   new SlashCommandBuilder()
     .setName('reminder')
     .setDescription('Manage penultimate waypoint arrival reminder')
     .addSubcommand(sub => sub
       .setName('enable')
-      .setDescription('開啟提醒 — 抵達倒數第二航點時 @ 你'))
+      .setDescription('Enable reminder(ping you before landing)'))
     .addSubcommand(sub => sub
       .setName('disable')
-      .setDescription('關閉提醒'))
+      .setDescription('Disable reminder'))
     .addSubcommand(sub => sub
       .setName('status')
-      .setDescription('查看目前提醒狀態')),
+      .setDescription('View the reminder status(enables/disabled)')),
 
 ].map(c => c.toJSON());
 
@@ -403,7 +403,7 @@ async function processPendingNotifications() {
       try {
         const wpLabel  = notif.penultimateWaypoint || 'penultimate waypoint';
         const arrLabel = notif.arrival || 'destination';
-        const text = `🛬 **${notif.callsign}** — 即將抵達倒數第二航點 **${wpLabel}**，目的地為 **${arrLabel}**，請準備進場！`;
+        const text = `🛬 **${notif.callsign}** — Arriving the last waypoint **${wpLabel}**, arrival airport is **${arrLabel}**, please prepare for landing`;
 
         let sent = false;
 
