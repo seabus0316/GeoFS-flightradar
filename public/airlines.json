@@ -803,5 +803,26 @@
     "iata": "STK",
     "country": "France",
     "logo": "https://www.zupimages.net/up/26/12/rvlm.png"
+  },
+    "JSP": {
+    "name": "Jet Singapore",
+    "icao": "JSP",
+    "iata": "JS",
+    "country": "Singapore",
+    "logo": "https://media.discordapp.net/attachments/1458047856123314285/1487136138182398114/jetSingapore.png?ex=69c8b3b4&is=69c76234&hm=244b0893ccda3c168c1baa2506dcd9a2020b17f4082cd784005a0f5fd67bf505&=&format=webp&quality=lossless&width=1104&height=1104"
+  },
+    "STW": {
+    "name": "Southwind Airlines",
+    "icao": "STW",
+    "iata": "2S",
+    "country": "Türkiye",
+    "logo": "https://images.kiwi.com/airlines/64/2S.png"
+  },
+    "IRA": {
+    "name": "Iran Air",
+    "icao": "IRA",
+    "iata": "IR",
+    "country": "Iran",
+    "logo": "https://avatars.mds.yandex.net/i?id=687b78281ec6d260d2557c1e57cc2f99_sr-5332183-images-thumbs&n=13"
   }
 }

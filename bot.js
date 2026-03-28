@@ -140,7 +140,7 @@ const activities = [
   { name: 'GeoFS pilots', type: ActivityType.Watching },
   { name: 'radar updates', type: ActivityType.Listening },
   { name: 'Never Gonna Give You Up', type: ActivityType.Listening },
-  { name: 'Seabus\'s unfunny jokes :(', type: ActivityType.Listening },
+  { name: 'SeaBus\'s unfunny jokes :(', type: ActivityType.Listening },
   { name: 'Geo-FS', type: ActivityType.Playing },
   { name: '67🫲🧒🫱', type: ActivityType.Playing },
 ];
