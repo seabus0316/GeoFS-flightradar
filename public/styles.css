@@ -1104,3 +1104,6 @@ input:checked + .slider:before {
     color: rgba(180,210,230,0.55);
     line-height: 1.55;
   }
+  *, *::before, *::after {
+  font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+}
