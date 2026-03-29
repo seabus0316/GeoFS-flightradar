@@ -1923,21 +1923,28 @@ function clearAllAircraftTracks() {
 function predictFlightStatus(data, prev) {
   const altAGL = data.alt || 0; // 假設 alt 已經是 AGL (Above Ground Level)
   const speed = formatSpeed(data.speed);
+  const prevStatus = prev?.flightStatus?.status || null;
   
   // 計算垂直速度 (vspeed) - 單位: ft/min
   let vspeed = 0;
   if (prev && prev.alt !== undefined && prev.ts && data.ts) {
     const timeDiff = (data.ts - prev.ts) / 60000; // 轉換為分鐘
-    if (timeDiff > 0) {
+    if (timeDiff > 0.03 && timeDiff < 2) {
       vspeed = (data.alt - prev.alt) / timeDiff;
     }
   }
+  data.vspeed = vspeed;
   
   // 判斷飛行階段
-  const isOnGround = altAGL < 100;
-  const isClimbing = vspeed > 200;
-  const isDescending = vspeed < -200;
+  const isOnGround = altAGL < 150 && speed < 50;
+  const isStableVSpeed = Math.abs(vspeed) < 600;
+  const isClimbing = speed > 90 && (vspeed > 900 || (vspeed > 700 && prevStatus === 'climbing'));
+  const isDescending = speed > 90 && (vspeed < -900 || (vspeed < -700 && prevStatus === 'descending'));
   const hasFlightPlan = data.flightPlan && data.flightPlan.length > 0;
+  const isCruising =
+    speed > 140 &&
+    ((altAGL > 8000 && isStableVSpeed) ||
+     (prevStatus === 'cruising' && altAGL > 6000 && Math.abs(vspeed) < 800));
   
   // 地面
   if (isOnGround) {
@@ -1951,14 +1958,14 @@ function predictFlightStatus(data, prev) {
   
   // 下降/降落
   if (isDescending) {
-    if (hasFlightPlan && altAGL < 5000) {
+    if (hasFlightPlan && altAGL < 3500) {
       return { status: 'landing', text: 'Landing', color: '#FF9800', image: FLIGHT_STATUS_IMAGES.landing };
     }
     return { status: 'descending', text: 'Descending', color: '#FFA726', image: FLIGHT_STATUS_IMAGES.landing };
   }
   
   // 巡航
-  if (altAGL > 5000) {
+  if (isCruising) {
     return { status: 'cruising', text: 'Cruising', color: '#2196F3', image: FLIGHT_STATUS_IMAGES.cruise };
   }
   
