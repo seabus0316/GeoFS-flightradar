@@ -100,7 +100,7 @@
     /* ── Hero ── */
     .hero {
       position: relative; z-index: 1;
-      padding: 60px 32px 48px; max-width: 860px; margin: 0 auto;
+      padding: 60px 32px 48px; max-width: 1040px; margin: 0 auto;
       border-bottom: 1px solid var(--border);
     }
     .hero-eyebrow {
@@ -121,12 +121,12 @@
     /* ── Layout ── */
     main {
       position: relative; z-index: 1;
-      max-width: 860px; margin: 0 auto; padding: 0 32px 96px;
-      display: grid; grid-template-columns: 192px 1fr; gap: 0 48px;
+      max-width: 1040px; margin: 0 auto; padding: 0 32px 96px;
+      display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 0 36px;
     }
 
     /* ── Sidebar ── */
-    .toc { padding-top: 40px; }
+    .toc { padding-top: 40px; margin-left: -18px; }
     .toc-inner { position: sticky; top: 72px; }
     .toc-label {
       font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;

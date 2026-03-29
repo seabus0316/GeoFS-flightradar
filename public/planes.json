@@ -77,6 +77,7 @@
   { "model": "Pilatus PC12", "icon": "cessna.svg" },
   { "model": "Pilatus PC24", "icon": "gla6.svg" },
   { "model": "Piper PA-28 Floatplane", "icon": "cessna.svg" },
+  { "model": "Piper Cub", "icon": "cessna.svg" },
   { "model": "Robinson R-44", "icon": "a7.svg" },
   { "model": "Robinson R22", "icon": "a7.svg" },
   { "model": "SAAB 340", "icon": "crjx.svg" },
