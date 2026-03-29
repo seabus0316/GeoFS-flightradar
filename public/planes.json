@@ -25,6 +25,7 @@
   { "model": "Boeing 767-300ER", "icon": "b767.svg" },
   { "model": "Boeing 767-400", "icon": "b767.svg" },
   { "model": "Boeing 777 Freighter", "icon": "b777.svg" },
+  { "model": "Boeing 777-300ER", "icon": "b777.svg" },
   { "model": "Boeing 77x", "icon": "b777.svg" },
   { "model": "Boeing 787-10 Dreamliner (British Airways)", "icon": "b787.svg" },
   { "model": "Boeing 787-10 Dreamliner (Etihad)", "icon": "b787.svg" },
