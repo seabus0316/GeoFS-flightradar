@@ -1,0 +1,667 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Help & FAQ — GeoFS Flightradar</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500;600&display=swap">
+
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --amber:      #e8900a;
+      --amber-dim:  rgba(232,144,10,0.11);
+      --amber-line: rgba(232,144,10,0.22);
+      --amber-text: #f0aa40;
+      --warn:       #d94f20;
+      --warn-dim:   rgba(217,79,32,0.1);
+      --warn-line:  rgba(217,79,32,0.25);
+      --bg:         #080705;
+      --bg-card:    #0f0d0a;
+      --bg-card-h:  #141108;
+      --border:     rgba(255,220,160,0.07);
+      --border-h:   rgba(255,220,160,0.13);
+      --text:       #d8c9a8;
+      --text-dim:   #7a6c52;
+      --text-faint: rgba(216,201,168,0.3);
+      --code-bg:    rgba(232,144,10,0.08);
+      --code-bdr:   rgba(232,144,10,0.18);
+      --code-text:  #c8a060;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      line-height: 1.65;
+    }
+
+    body::before {
+      content: '';
+      position: fixed; inset: 0;
+      background: repeating-linear-gradient(
+        -45deg, transparent, transparent 28px,
+        rgba(255,220,140,0.012) 28px, rgba(255,220,140,0.012) 29px
+      );
+      pointer-events: none; z-index: 0;
+    }
+    body::after {
+      content: '';
+      position: fixed; inset: 0;
+      background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(232,144,10,0.045) 0%, transparent 68%);
+      pointer-events: none; z-index: 0;
+    }
+
+    /* ── Nav ── */
+    nav.topnav {
+      position: sticky; top: 0; z-index: 100;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 32px; height: 52px;
+      background: rgba(8,7,5,0.94);
+      border-bottom: 1px solid var(--border);
+    }
+    nav.topnav::after {
+      content: '';
+      position: absolute; bottom: -1px; left: 32px; right: 32px; height: 1px;
+      background: linear-gradient(90deg, transparent, var(--amber-line), transparent);
+    }
+    .nav-left { display: flex; align-items: center; gap: 18px; }
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      text-decoration: none; color: var(--text-dim);
+      font-size: 12px; font-weight: 500; letter-spacing: 0.2px;
+      padding: 5px 10px 5px 8px;
+      border: 1px solid var(--border); border-radius: 4px;
+      transition: all 0.15s ease;
+    }
+    .back-btn:hover { color: var(--amber-text); border-color: var(--amber-line); background: var(--amber-dim); }
+    .logo {
+      display: flex; align-items: center; gap: 9px;
+      font-size: 13px; font-weight: 700; color: var(--text); letter-spacing: 0.3px;
+    }
+    .logo-mark {
+      width: 22px; height: 22px;
+      border: 1.5px solid var(--amber); border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--amber);
+    }
+    .nav-tag {
+      font-family: 'JetBrains Mono', monospace; font-size: 9.5px; font-weight: 600;
+      color: var(--text-faint); letter-spacing: 1px; text-transform: uppercase;
+      border: 1px solid var(--border); border-radius: 3px; padding: 2px 7px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      position: relative; z-index: 1;
+      padding: 60px 32px 48px; max-width: 860px; margin: 0 auto;
+      border-bottom: 1px solid var(--border);
+    }
+    .hero-eyebrow {
+      font-family: 'JetBrains Mono', monospace; font-size: 11px; font-weight: 500;
+      color: var(--amber); letter-spacing: 1.6px; text-transform: uppercase;
+      margin-bottom: 18px; display: flex; align-items: center; gap: 10px;
+    }
+    .hero-eyebrow::before {
+      content: ''; display: block; width: 22px; height: 1px; background: var(--amber); opacity: 0.6;
+    }
+    .hero h1 {
+      font-size: clamp(30px, 5vw, 50px); font-weight: 800;
+      color: #fff; line-height: 1.08; letter-spacing: -0.8px; margin-bottom: 16px;
+    }
+    .hero h1 em { font-style: normal; color: var(--amber-text); }
+    .hero-sub { font-size: 14.5px; color: var(--text-dim); max-width: 420px; line-height: 1.6; }
+
+    /* ── Layout ── */
+    main {
+      position: relative; z-index: 1;
+      max-width: 860px; margin: 0 auto; padding: 0 32px 96px;
+      display: grid; grid-template-columns: 192px 1fr; gap: 0 48px;
+    }
+
+    /* ── Sidebar ── */
+    .toc { padding-top: 40px; }
+    .toc-inner { position: sticky; top: 72px; }
+    .toc-label {
+      font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
+      letter-spacing: 1.4px; text-transform: uppercase; color: var(--text-faint); margin-bottom: 12px;
+    }
+    .toc-list { list-style: none; }
+    .toc-list li { margin-bottom: 1px; }
+    .toc-list a {
+      display: flex; align-items: center; gap: 8px; text-decoration: none;
+      font-size: 12px; color: var(--text-dim);
+      padding: 5px 8px; border-left: 2px solid transparent;
+      transition: all 0.14s ease; border-radius: 0 3px 3px 0;
+    }
+    .toc-list a svg { flex-shrink: 0; opacity: 0.45; transition: opacity 0.14s; }
+    .toc-list a:hover { color: var(--amber-text); border-left-color: var(--amber); background: var(--amber-dim); }
+    .toc-list a:hover svg { opacity: 0.9; }
+
+    /* ── Content ── */
+    .content { min-width: 0; }
+    .section { padding-top: 40px; }
+
+    .section-head {
+      display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+    }
+    .section-icon {
+      width: 28px; height: 28px; flex-shrink: 0;
+      border: 1px solid var(--amber-line); background: var(--amber-dim);
+      border-radius: 4px; display: flex; align-items: center; justify-content: center;
+      color: var(--amber);
+    }
+    .section-title {
+      font-family: 'JetBrains Mono', monospace; font-size: 10.5px; font-weight: 600;
+      letter-spacing: 1.2px; text-transform: uppercase; color: var(--amber-text);
+    }
+    .section-head::after { content: ''; flex: 1; height: 1px; background: var(--border); }
+
+    /* ── FAQ item ── */
+    .faq-item {
+      border-left: 2px solid transparent; border-radius: 0 5px 5px 0;
+      background: var(--bg-card);
+      border-top: 1px solid var(--border);
+      border-right: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 5px; overflow: hidden;
+      transition: border-left-color 0.18s ease, background 0.18s ease;
+    }
+    .faq-item:hover { border-left-color: rgba(232,144,10,0.3); background: var(--bg-card-h); }
+    .faq-item.open { border-left-color: var(--amber); background: #110f09; border-right-color: var(--border-h); }
+
+    .faq-q {
+      width: 100%; background: none; border: none;
+      color: var(--text); font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+      font-size: 13.5px; font-weight: 600; text-align: left;
+      padding: 14px 16px; cursor: pointer;
+      display: flex; align-items: center; justify-content: space-between; gap: 12px;
+      transition: color 0.14s ease;
+    }
+    .faq-item.open .faq-q { color: var(--amber-text); }
+    .faq-q-inner { display: flex; align-items: center; gap: 10px; }
+
+    .q-icon {
+      flex-shrink: 0; width: 26px; height: 26px; border-radius: 3px;
+      background: rgba(255,220,160,0.04); border: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: center;
+      color: var(--text-dim); transition: all 0.18s ease;
+    }
+    .faq-item.open .q-icon { background: var(--amber-dim); border-color: var(--amber-line); color: var(--amber); }
+
+    .chevron {
+      flex-shrink: 0; width: 15px; height: 15px; color: var(--text-faint);
+      transition: transform 0.22s cubic-bezier(.4,0,.2,1), color 0.14s ease;
+    }
+    .faq-item.open .chevron { transform: rotate(180deg); color: var(--amber); }
+
+    .faq-body {
+      display: none; padding: 0 16px 17px;
+      font-size: 13px; color: rgba(216,201,168,0.6); line-height: 1.75;
+    }
+    .faq-item.open .faq-body { display: block; }
+    .faq-body p { margin-bottom: 10px; }
+    .faq-body p:last-child { margin-bottom: 0; }
+    .faq-body strong { color: var(--text); font-weight: 600; }
+    .faq-body ul, .faq-body ol { list-style: none; padding: 0; margin-bottom: 10px; }
+    .faq-body ul li, .faq-body ol li { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; }
+    .faq-body ul li::before { content: '—'; color: var(--text-dim); flex-shrink: 0; line-height: 1.75; }
+    .faq-body a { color: var(--amber-text); text-decoration: none; border-bottom: 1px solid rgba(240,170,64,0.25); transition: border-color 0.12s; }
+    .faq-body a:hover { border-color: var(--amber-text); }
+    .faq-body code {
+      font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
+      background: var(--code-bg); border: 1px solid var(--code-bdr);
+      border-radius: 3px; padding: 1px 5px; color: var(--code-text);
+    }
+
+    .steps { list-style: none; padding: 0; counter-reset: s; }
+    .steps li { counter-increment: s; display: flex; gap: 10px; margin-bottom: 7px; align-items: flex-start; }
+    .steps li::before {
+      content: counter(s); flex-shrink: 0;
+      width: 20px; height: 20px; border-radius: 2px;
+      background: rgba(232,144,10,0.1); border: 1px solid rgba(232,144,10,0.22);
+      color: var(--amber); font-family: 'JetBrains Mono', monospace;
+      font-size: 10px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center; margin-top: 3px;
+    }
+
+    .callout {
+      display: flex; gap: 10px; padding: 10px 13px;
+      border-radius: 3px; font-size: 12.5px; margin-top: 11px; line-height: 1.6;
+    }
+    .callout svg { flex-shrink: 0; margin-top: 1px; }
+    .callout.tip { background: var(--amber-dim); border: 1px solid var(--amber-line); color: rgba(240,170,64,0.9); }
+    .callout.warn { background: var(--warn-dim); border: 1px solid var(--warn-line); color: rgba(255,120,80,0.88); }
+
+    .cmd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+    .cmd-table thead th {
+      font-family: 'JetBrains Mono', monospace; font-size: 9px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.8px; color: var(--text-faint);
+      text-align: left; padding: 0 0 8px; border-bottom: 1px solid var(--border);
+    }
+    .cmd-table thead th:first-child { padding-right: 24px; }
+    .cmd-table tbody tr { border-bottom: 1px solid var(--border); }
+    .cmd-table tbody tr:last-child { border-bottom: none; }
+    .cmd-table td { padding: 8px 0; vertical-align: top; }
+    .cmd-table td:first-child { padding-right: 24px; white-space: nowrap; }
+    .cmd-table td:last-child { color: rgba(216,201,168,0.48); }
+
+    /* ── Footer ── */
+    footer {
+      position: relative; z-index: 1;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 32px; border-top: 1px solid var(--border);
+      font-family: 'JetBrains Mono', monospace; font-size: 10px; color: var(--text-faint);
+    }
+    footer a { color: var(--text-dim); text-decoration: none; transition: color 0.12s; }
+    footer a:hover { color: var(--amber-text); }
+    .fsep { margin: 0 9px; opacity: 0.3; }
+
+    /* ── Mobile ── */
+    @media (max-width: 660px) {
+      nav.topnav { padding: 0 16px; }
+      .hero { padding: 40px 16px 32px; }
+      main { grid-template-columns: 1fr; padding: 0 16px 64px; }
+      .toc { display: none; }
+      footer { padding: 14px 16px; flex-direction: column; gap: 5px; text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<nav class="topnav">
+  <div class="nav-left">
+    <a class="back-btn" href="/">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg>
+      Back to Radar
+    </a>
+    <div class="logo">
+      <span class="logo-mark">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg>
+      </span>
+      GeoFS Flightradar
+    </div>
+  </div>
+  <span class="nav-tag">DOCS</span>
+</nav>
+
+<div class="hero">
+  <div class="hero-eyebrow">Documentation</div>
+  <h1>Help &amp; <em>FAQ</em></h1>
+  <p class="hero-sub">Everything you need to get started and make the most of GeoFS Flightradar.</p>
+</div>
+
+<main>
+
+  <!-- Sidebar ToC -->
+  <nav class="toc" aria-label="On this page">
+    <div class="toc-inner">
+      <div class="toc-label">On this page</div>
+      <ul class="toc-list">
+        <li><a href="#getting-started">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg>
+          Getting Started
+        </a></li>
+        <li><a href="#airline">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 2 16.5 3.5L13 7 4.8 5.2 3.4 6.6l7.1 3-2.3 2.3-3.5-.9-1.3 1.3 3 1.5 1.5 3 1.3-1.3-.9-3.5 2.3-2.3 3 7.1z"/></svg>
+          Airline Registry
+        </a></li>
+        <li><a href="#photos">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          Jet-Photos
+        </a></li>
+        <li><a href="#features">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg>
+          Radar Features
+        </a></li>
+        <li><a href="#bot">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 11v2M16 11v2"/></svg>
+          Bot Commands
+        </a></li>
+        <li><a href="#troubleshoot">
+          <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg>
+          Troubleshooting
+        </a></li>
+      </ul>
+    </div>
+  </nav>
+
+  <div class="content">
+
+    <!-- Getting Started -->
+    <section class="section" id="getting-started">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 8v4l3 3"/></svg></div>
+        <span class="section-title">Getting Started</span>
+      </div>
+
+      <div class="faq-item open">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg></span>
+            How do I install the GeoFS userscript?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>The userscript connects your GeoFS session to the Flightradar, broadcasting your position in real-time.</p>
+          <ol class="steps">
+            <li>Install a userscript manager — <a href="https://www.tampermonkey.net/" target="_blank">Tampermonkey</a> (recommended) works on Chrome, Firefox, Edge, and Safari.</li>
+            <li>Open Tampermonkey's dashboard and click <strong>Create a new script</strong>.</li>
+            <li>Paste the userscript code (grab the latest version from our <a href="https://github.com/" target="_blank">GitHub repo</a>) and save.</li>
+            <li>Visit <a href="https://www.geo-fs.com/geofs.php" target="_blank">geo-fs.com</a> — the script activates automatically once GeoFS finishes loading.</li>
+            <li>A small HUD overlay will confirm the connection. Your blip will appear on the radar.</li>
+          </ol>
+          <div class="callout tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Make sure the userscript's server URL points to <code>geofs-flightradar.duckdns.org</code>. If you self-host, update the URL constant at the top of the script.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 00-7.54-.54l-3 3a5 5 0 007.07 7.07l1.71-1.71"/></svg></span>
+            How do I link my Discord account?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>Linking your Discord account unlocks flight history, stats, and community features.</p>
+          <ol class="steps">
+            <li>Click the <strong>profile / login button</strong> in the top-right corner of the radar page.</li>
+            <li>Select <strong>Login with Discord</strong> and authorise the app on Discord's OAuth page.</li>
+            <li>You'll be redirected back. A profile badge confirms your login.</li>
+            <li>Optionally enter your <strong>GeoFS User ID</strong> in the link form to associate your flight data.</li>
+          </ol>
+          <div class="callout tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>Your GeoFS User ID is visible in the GeoFS URL when logged in, or find it via the <code>/whois</code> bot command.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Airline Registry -->
+    <section class="section" id="airline">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.8 19.2L16 11l3.5-3.5C21 6 21 4 19.5 2.5S18 2 16.5 3.5L13 7 4.8 5.2 3.4 6.6l7.1 3-2.3 2.3-3.5-.9-1.3 1.3 3 1.5 1.5 3 1.3-1.3-.9-3.5 2.3-2.3 3 7.1z"/></svg></div>
+        <span class="section-title">Airline Registry</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg></span>
+            How do I apply to register my airline?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>Any GeoFS virtual airline can apply to have its logo and callsign prefix appear on the radar.</p>
+          <ol class="steps">
+            <li>Join our <a href="https://discord.gg/" target="_blank">Discord server</a> and head to the <strong>#airline-registry</strong> channel.</li>
+            <li>Use <code>/airline apply</code> and follow the prompts — provide your <strong>ICAO callsign prefix</strong>, airline name, and a square logo (PNG, min 128×128 px).</li>
+            <li>An admin will review your submission. Approval usually takes 1–3 days.</li>
+            <li>Once approved, flights using your prefix display your logo on the radar and flight list panel.</li>
+          </ol>
+          <div class="callout warn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Callsign prefixes must be unique. If another virtual airline already holds yours, contact an admin.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg></span>
+            How do I update my airline's logo?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>Only the airline owner or an admin can update logos.</p>
+          <ol class="steps">
+            <li>Prepare a new logo — <strong>PNG, square aspect ratio</strong>, at least 128×128 px, transparent background preferred.</li>
+            <li>Use <code>/airline update logo</code> in the bot and attach the new image.</li>
+            <li>Changes take effect within a few minutes as the cache refreshes.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Jet-Photos -->
+    <section class="section" id="photos">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg></div>
+        <span class="section-title">Jet-Photos &amp; Gallery</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="16 16 12 12 8 16"/><line x1="12" y1="12" x2="12" y2="21"/><path d="M20.39 18.39A5 5 0 0018 9h-1.26A8 8 0 103 16.3"/></svg></span>
+            How do I upload a jet-photo?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>Approved photos appear as map markers and in the community gallery.</p>
+          <ol class="steps">
+            <li>Make sure you're <strong>logged in</strong> with your Discord account.</li>
+            <li>Click <strong>Upload Photo</strong> in the top bar of the radar page.</li>
+            <li>Select your image (JPG or PNG, max 10 MB). Add a caption, aircraft type, and location tags.</li>
+            <li>Submit — your photo enters a review queue. Admins typically approve within 24 hours.</li>
+            <li>Once approved, a pin appears on the map at the photo's coordinates.</li>
+          </ol>
+          <div class="callout tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>GeoFS screenshots embed GPS EXIF data automatically. For manually captured photos, tag the location in the upload form.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></span>
+            What are the photo guidelines?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>All photos are moderated. Submissions are approved if they:</p>
+          <ul>
+            <li>Show a GeoFS aircraft clearly — no black screens, menu UI, or loading screens</li>
+            <li>Are not duplicates of an existing approved photo</li>
+            <li>Do not contain offensive or inappropriate content</li>
+            <li>Are reasonably sharp — extreme blur or solid fog shots will be rejected</li>
+          </ul>
+          <div class="callout warn">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>Repeated submission of rejected photos may result in upload privileges being suspended.</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Radar Features -->
+    <section class="section" id="features">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="2"/><path d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"/></svg></div>
+        <span class="section-title">Radar Features</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2"/></svg></span>
+            What does ATC Mode do?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>ATC Mode switches the map to a high-contrast radar scope style — green aircraft tags on a dark background — designed for use during ATC sessions.</p>
+          <p>Toggle it with the <strong>radio button</strong> in the bottom-right control bar, or press <code>A</code>.</p>
+          <div class="callout tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>ATC Mode pairs well with the <strong>OpenAIP</strong> layer, which overlays airways, fixes, and airspace boundaries.</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></span>
+            What triggers an emergency squawk alert?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>The system monitors squawk codes from all connected aircraft. These codes trigger a Discord alert:</p>
+          <ul>
+            <li><code>7700</code> — General emergency</li>
+            <li><code>7600</code> — Radio failure (NORDO)</li>
+            <li><code>7500</code> — Hijacking</li>
+          </ul>
+          <p>Each code triggers a maximum of <strong>one alert per flight</strong>. The alert includes callsign, position, altitude, and a map link.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg></span>
+            How does the waypoint reminder work?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>The bot pings you on Discord when approaching your <strong>penultimate waypoint</strong>, so you can prepare for descent.</p>
+          <ol class="steps">
+            <li>Make sure your Discord account is linked.</li>
+            <li>Use <code>/reminder set</code> with your callsign and flight plan.</li>
+            <li>The bot watches your position and sends a DM at the penultimate waypoint.</li>
+            <li>Use <code>/reminder cancel</code> to remove an active reminder.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <!-- Bot Commands -->
+    <section class="section" id="bot">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4M8 11v2M16 11v2"/></svg></div>
+        <span class="section-title">Discord Bot Commands</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 17 10 11 4 5"/><line x1="12" y1="19" x2="20" y2="19"/></svg></span>
+            What slash commands does the bot support?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <table class="cmd-table">
+            <thead><tr><th>Command</th><th>Description</th></tr></thead>
+            <tbody>
+              <tr><td><code>/link</code></td><td>Link your Discord account to a GeoFS User ID</td></tr>
+              <tr><td><code>/stats</code></td><td>View flight statistics — hours, distance, total flights</td></tr>
+              <tr><td><code>/flights</code></td><td>Show your recent flight history</td></tr>
+              <tr><td><code>/whois</code></td><td>Look up a GeoFS user's linked Discord account</td></tr>
+              <tr><td><code>/reminder</code></td><td>Set a waypoint approach reminder for your active flight</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- Troubleshooting -->
+    <section class="section" id="troubleshoot">
+      <div class="section-head">
+        <div class="section-icon"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z"/></svg></div>
+        <span class="section-title">Troubleshooting</span>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+            My aircraft isn't showing up on the radar
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <ul>
+            <li>The userscript is <strong>enabled</strong> in Tampermonkey and GeoFS has fully loaded</li>
+            <li>Browser console (<code>F12</code>) shows no WebSocket errors — look for <code>WS connected to geofs-flightradar…</code></li>
+            <li>You're <strong>in the air or taxiing</strong> — the script only broadcasts during an active simulation</li>
+            <li>Ad-blockers or firewall rules aren't blocking the WebSocket connection</li>
+            <li>The server is online — check <strong>#status</strong> on Discord</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="3 11 22 2 13 21 11 13 3 11"/></svg></span>
+            Flight trails look broken across the date line
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>This is a known cosmetic issue with trans-Pacific routes crossing the antimeridian (±180°). The radar uses longitude unwrapping to minimise this, but very long trails may still jump across the map.</p>
+          <p>If you see a persistent bug, report it in <strong>#bug-reports</strong> on Discord with your route details.</p>
+        </div>
+      </div>
+
+      <div class="faq-item">
+        <button class="faq-q" onclick="toggle(this)">
+          <span class="faq-q-inner">
+            <span class="q-icon"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></span>
+            Where can I get more help?
+          </span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg>
+        </button>
+        <div class="faq-body">
+          <p>Join our Discord server — it's the fastest way to get support, report bugs, or suggest features. Use <strong>#support</strong> for technical questions and <strong>#general</strong> for everything else.</p>
+          <div class="callout tip">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+            <span>When reporting issues, include your browser, OS, and any errors from the browser console (<code>F12</code>).</span>
+          </div>
+        </div>
+      </div>
+    </section>
+
+  </div>
+</main>
+
+<footer>
+  <span>GeoFS Flightradar</span>
+  <span>
+    <a href="/">Open Radar</a><span class="fsep">/</span>Not affiliated with GeoFS or Geo-F.S. SAS
+  </span>
+</footer>
+
+<script>
+  function toggle(btn) {
+    const item = btn.closest('.faq-item');
+    const wasOpen = item.classList.contains('open');
+    document.querySelectorAll('.faq-item.open').forEach(el => el.classList.remove('open'));
+    if (!wasOpen) item.classList.add('open');
+  }
+</script>
+</body>
+</html>
