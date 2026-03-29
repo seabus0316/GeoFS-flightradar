@@ -142,7 +142,6 @@
 </div>
 
 <!-- Help / FAQ 按鈕 -->
-<a href="/about/" id="helpBtn" class="atc-mode-btn" title="Help &amp; FAQ" style="text-decoration:none;font-size:18px;font-weight:700;line-height:1;">?</a>
 
 </div>
 
@@ -367,7 +366,8 @@ new MutationObserver(() => {
 
  
 <!-- Megaphone button — placed in the same fixed container as map control bar -->
-<div style="position:fixed;top:20px;right:20px;z-index:10001;">
+<div style="position:fixed;top:20px;right:20px;z-index:10001;display:flex;align-items:center;gap:8px;">
+  <a href="/about/" id="helpBtn" class="atc-mode-btn" title="Help &amp; FAQ" style="text-decoration:none;font-size:18px;font-weight:700;line-height:1;">?</a>
   <button id="whatsNewBtn" onclick="toggleWhatsNew()" title="What's New">
     <i data-lucide="bell"></i>
     <span id="whatsNewBadge"></span>
