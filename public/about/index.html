@@ -354,7 +354,7 @@
           <ol class="steps">
             <li>Install a userscript manager — <a href="https://www.tampermonkey.net/" target="_blank">Tampermonkey</a> (recommended) works on Chrome, Firefox, Edge, and Safari.</li>
             <li>Open Tampermonkey's dashboard and click <strong>Create a new script</strong>.</li>
-            <li>Paste the userscript code (grab the latest version from our <a href="https://github.com/seabus0316/GeoFS-flightradar" target="_blank">GitHub repo</a>) and save.</li>
+            <li>Paste the userscript code (grab the latest version from our <a href="https://github.com/seabus0316/GeoFS-flightradar/blob/main/geofs-flightradar_receiver.user.js" target="_blank">GitHub repo</a>) and save.</li>
             <li>Visit <a href="https://www.geo-fs.com/geofs.php" target="_blank">geo-fs.com</a> — the script activates automatically once GeoFS finishes loading.</li>
             <li>A small HUD overlay will confirm the connection. Your blip will appear on the radar.</li>
           </ol>
@@ -606,9 +606,8 @@
           <ul>
             <li>The userscript is <strong>enabled</strong> in Tampermonkey and GeoFS has fully loaded</li>
             <li>Browser console (<code>F12</code>) shows no WebSocket errors — look for <code>WS connected to geofs-flightradar…</code></li>
-            <li>You're <strong>in the air or taxiing</strong> — the script only broadcasts during an active simulation</li>
-            <li>Ad-blockers or firewall rules aren't blocking the WebSocket connection</li>
-            <li>The server is online — check <strong>#status</strong> on Discord</li>
+            <li>Ad-blockers or firewall rules aren't blocking the WebSocket connection, this offen happens on firefox or brave.</li>
+            <li>Maybe SeaBus is fixing something.</li>
           </ul>
         </div>
       </div>
