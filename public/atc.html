@@ -192,6 +192,20 @@ function _dsLoad() {
 function _dsSave(patch) {
   localStorage.setItem(DS_KEY, JSON.stringify({ ..._dsLoad(), ...patch }));
 }
+function _applyPanelGlass(el, opacity, blur) {
+  if (!el) return;
+  el.style.opacity = opacity / 100;
+  el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(180%)` : '';
+  el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(180%)` : '';
+}
+function _syncDisplayPanels(opacity, blur) {
+  ['wxPanel', 'tilePanel', 'settingsPanel', 'aircraftPanel'].forEach(id => {
+    const panel = document.getElementById(id);
+    if (!panel) return;
+    if (id === 'aircraftPanel') panel.style.background = 'rgba(255,255,255,0.76)';
+    _applyPanelGlass(panel, opacity, blur);
+  });
+}
 
 // Called by oninput/onchange on sliders — reads current slider values, saves + applies
 function applySettings() {
@@ -214,13 +228,7 @@ function applySettings() {
   if (track) track.style.background = lbl ? '#00cfff' : '#555';
   if (thumb) thumb.style.transform  = lbl ? 'translateX(16px)' : 'translateX(0)';
 
-  // Apply to aircraftPanel
-  const ap = document.getElementById('aircraftPanel');
-  if (ap) {
-    ap.style.opacity = po / 100;
-    ap.style.backdropFilter = pb > 0 ? `blur(${pb}px)` : '';
-    ap.style.webkitBackdropFilter = pb > 0 ? `blur(${pb}px)` : '';
-  }
+  _syncDisplayPanels(po, pb);
 
   // Aircraft labels visibility — use a persistent <style> so dynamically-created markers also obey
   let lblStyle = document.getElementById('_labelVisStyle');
@@ -346,10 +354,7 @@ new MutationObserver(() => {
   if (ap && !ap._dsHooked) {
     ap._dsHooked = true;
     const s = _dsLoad();
-    ap.style.opacity = (s.panelOpacity ?? 100) / 100;
-    const b = s.panelBlur ?? 0;
-    ap.style.backdropFilter = b > 0 ? `blur(${b}px)` : '';
-    ap.style.webkitBackdropFilter = b > 0 ? `blur(${b}px)` : '';
+    _syncDisplayPanels(s.panelOpacity ?? 100, s.panelBlur ?? 0);
   }
 }).observe(document.body, { childList: true, subtree: false });
 </script>
@@ -2405,7 +2410,7 @@ async function showAircraftPanel(data, id) {
         right: '0',
         width: '100%',
         maxHeight: '72vh',
-        background: '#fff',
+        background: 'rgba(255,255,255,0.76)',
         borderRadius: '18px 18px 0 0',
         boxShadow: '0 -4px 32px rgba(0,0,0,0.3)',
         fontSize: '13px',
@@ -2423,7 +2428,7 @@ async function showAircraftPanel(data, id) {
         top: '16px',
         right: '16px',
         width: '360px',
-        background: '#fff',
+        background: 'rgba(255,255,255,0.76)',
         borderRadius: '14px',
         boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
         fontSize: '13px',
@@ -2439,8 +2444,7 @@ async function showAircraftPanel(data, id) {
     const ds = (() => { try { return JSON.parse(localStorage.getItem('geofs_displaySettings')) || {}; } catch { return {}; } })();
     const po = ds.panelOpacity ?? 100;
     const pb = ds.panelBlur ?? 0;
-    p.style.opacity = (po / 100).toFixed(2);
-    if (pb > 0) { p.style.backdropFilter = `blur(${pb}px)`; p.style.webkitBackdropFilter = p.style.backdropFilter; }
+    _applyPanelGlass(p, po, pb);
     // Animate in for mobile
     if (isMobile) requestAnimationFrame(() => { p.style.transform = 'translateY(0)'; });
   }
