@@ -2373,6 +2373,10 @@ async function showAircraftPanel(data, id) {
       for (let i = 1; i < latlngs.length; i++) {
         const [lat1, lon1] = latlngs[i-1];
         const [lat2, lon2] = latlngs[i];
+        if (crossesIDL(lon1, lon2)) {
+          // Avoid drawing a world-spanning flight plan segment across the antimeridian.
+          continue;
+        }
         const subSegs = splitSegmentAtAntimeridian(lat1, lon1, lat2, lon2);
         subSegs.forEach(pts => {
           const seg = L.polyline(pts, routeOptions).addTo(map);
