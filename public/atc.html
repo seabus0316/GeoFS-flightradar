@@ -10,6 +10,141 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap">
 <link rel="stylesheet" href="/styles.css">
+<style>
+  #aprilUpdateOverlay {
+    position: fixed;
+    inset: 0;
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding: 48px 20px 20px;
+    background: rgba(3, 8, 18, 0.5);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    z-index: 100120;
+  }
+
+  #aprilUpdateOverlay.show {
+    display: flex;
+  }
+
+  .april-update-card {
+    width: min(720px, calc(100vw - 40px));
+    background: rgba(7, 12, 18, 0.96);
+    border: 1px solid rgba(61, 233, 255, 0.22);
+    border-radius: 28px;
+    box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45);
+    color: #eef6ff;
+    padding: 28px;
+  }
+
+  .april-update-body {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+  }
+
+  .april-update-icon {
+    width: 54px;
+    height: 54px;
+    border-radius: 16px;
+    background: rgba(5, 200, 255, 0.12);
+    color: #09d8ff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex: 0 0 auto;
+  }
+
+  .april-update-copy {
+    min-width: 0;
+    flex: 1;
+  }
+
+  .april-update-title {
+    margin: 0 0 10px;
+    font-size: 2rem;
+    line-height: 1.15;
+    font-weight: 800;
+    letter-spacing: -0.03em;
+  }
+
+  .april-update-text {
+    margin: 0;
+    color: rgba(220, 231, 244, 0.82);
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 34ch;
+  }
+
+  .april-update-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-top: 22px;
+  }
+
+  .april-update-link {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 48px;
+    padding: 0 18px;
+    border-radius: 16px;
+    border: 1px solid rgba(8, 217, 255, 0.65);
+    background: rgba(8, 217, 255, 0.08);
+    color: #0fe1ff;
+    font-size: 1rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease;
+  }
+
+  .april-update-link:hover {
+    transform: translateY(-1px);
+    background: rgba(8, 217, 255, 0.14);
+    border-color: rgba(8, 217, 255, 0.9);
+  }
+
+  .april-update-dismiss {
+    appearance: none;
+    border: 0;
+    background: transparent;
+    color: rgba(220, 231, 244, 0.6);
+    font: inherit;
+    cursor: pointer;
+    padding: 0 4px;
+  }
+
+  .april-update-dismiss:hover {
+    color: rgba(220, 231, 244, 0.95);
+  }
+
+  @media (max-width: 640px) {
+    #aprilUpdateOverlay {
+      padding-top: 24px;
+    }
+
+    .april-update-card {
+      border-radius: 22px;
+      padding: 22px;
+    }
+
+    .april-update-body {
+      align-items: flex-start;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .april-update-title {
+      font-size: 1.6rem;
+    }
+
+    .april-update-actions {
+      flex-wrap: wrap;
+    }
+  }
+</style>
 </head>
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="/aircraft-icons.js"></script>
@@ -359,6 +494,26 @@ new MutationObserver(() => {
 }).observe(document.body, { childList: true, subtree: false });
 </script>
 <body>
+<div id="aprilUpdateOverlay" aria-hidden="true">
+  <div class="april-update-card" role="dialog" aria-modal="true" aria-labelledby="aprilUpdateTitle">
+    <div class="april-update-body">
+      <div class="april-update-icon" aria-hidden="true">
+        <i data-lucide="megaphone"></i>
+      </div>
+      <div class="april-update-copy">
+        <h2 id="aprilUpdateTitle" class="april-update-title">We are changing our domain</h2>
+        <p class="april-update-text">
+          We are going to change our domain. Our new website will be available at
+          <span id="aprilUpdateDomainText"></span>.
+        </p>
+        <div class="april-update-actions">
+          <a id="aprilUpdateLink" class="april-update-link" href="#" target="_blank" rel="noopener noreferrer">See what's new</a>
+          <button id="aprilUpdateDismiss" class="april-update-dismiss" type="button">Maybe later</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
   <!-- ❌ 刪除 -->
 <button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
 <div id="photoSidebar">
@@ -3834,7 +3989,52 @@ function toggleDayNight() {
     btn.style.color = '#3b82f6';
   }
 }
+const APRIL_UPDATE_STORAGE_KEY = 'geofs_april_domain_notice_v1';
+const APRIL_UPDATE_URL = 'https://map-s.online/AF8PDS';
+const APRIL_UPDATE_LABEL = APRIL_UPDATE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
+
+function closeAprilUpdateModal(markSeen = true) {
+  const overlay = document.getElementById('aprilUpdateOverlay');
+  if (!overlay) return;
+  overlay.classList.remove('show');
+  overlay.setAttribute('aria-hidden', 'true');
+  if (markSeen) localStorage.setItem(APRIL_UPDATE_STORAGE_KEY, '1');
+}
+
+function openAprilUpdateModal() {
+  const overlay = document.getElementById('aprilUpdateOverlay');
+  const link = document.getElementById('aprilUpdateLink');
+  const domain = document.getElementById('aprilUpdateDomainText');
+  if (!overlay || !link || !domain) return;
+
+  link.href = APRIL_UPDATE_URL;
+  domain.textContent = APRIL_UPDATE_LABEL;
+  overlay.classList.add('show');
+  overlay.setAttribute('aria-hidden', 'false');
+}
+
+function initAprilUpdateModal() {
+  const overlay = document.getElementById('aprilUpdateOverlay');
+  const dismiss = document.getElementById('aprilUpdateDismiss');
+  const link = document.getElementById('aprilUpdateLink');
+  if (!overlay || !dismiss || !link) return;
+
+  dismiss.addEventListener('click', () => closeAprilUpdateModal(true));
+  overlay.addEventListener('click', (event) => {
+    if (event.target === overlay) closeAprilUpdateModal(true);
+  });
+  link.addEventListener('click', () => closeAprilUpdateModal(true));
+  document.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape' && overlay.classList.contains('show')) closeAprilUpdateModal(true);
+  });
+
+  if (!localStorage.getItem(APRIL_UPDATE_STORAGE_KEY)) {
+    setTimeout(openAprilUpdateModal, 900);
+  }
+}
+
 lucide.createIcons();
+initAprilUpdateModal();
 toggleDayNight();
 // ============ Discord OAuth 登入 ============
 (function() {
