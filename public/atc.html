@@ -4027,9 +4027,7 @@ function initAprilUpdateModal() {
     if (event.key === 'Escape' && overlay.classList.contains('show')) closeAprilUpdateModal(true);
   });
 
-  if (!localStorage.getItem(APRIL_UPDATE_STORAGE_KEY)) {
-    setTimeout(openAprilUpdateModal, 900);
-  }
+  setTimeout(openAprilUpdateModal, 900);
 }
 
 lucide.createIcons();
