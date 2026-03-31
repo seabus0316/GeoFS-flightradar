@@ -506,7 +506,7 @@ new MutationObserver(() => {
       <div class="april-update-copy">
         <h2 id="aprilUpdateTitle" class="april-update-title">We are changing our domain</h2>
         <p class="april-update-text">
-          We are going to change our domain.
+          We are going to change our domain. Please use the button below to view the migration notice and updated access link.
         </p>
         <div class="april-update-actions">
           <a id="aprilUpdateLink" class="april-update-link" href="#" target="_blank" rel="noopener noreferrer">See what's new</a>
@@ -3993,7 +3993,6 @@ function toggleDayNight() {
 }
 const APRIL_UPDATE_STORAGE_KEY = 'geofs_april_domain_notice_v1';
 const APRIL_UPDATE_URL = 'https://map-s.online/AF8PDS';
-const APRIL_UPDATE_LABEL = APRIL_UPDATE_URL.replace(/^https?:\/\//, '').replace(/\/$/, '');
 
 function closeAprilUpdateModal(markSeen = true) {
   const overlay = document.getElementById('aprilUpdateOverlay');
@@ -4006,11 +4005,9 @@ function closeAprilUpdateModal(markSeen = true) {
 function openAprilUpdateModal() {
   const overlay = document.getElementById('aprilUpdateOverlay');
   const link = document.getElementById('aprilUpdateLink');
-  const domain = document.getElementById('aprilUpdateDomainText');
-  if (!overlay || !link || !domain) return;
+  if (!overlay || !link) return;
 
   link.href = APRIL_UPDATE_URL;
-  domain.textContent = APRIL_UPDATE_LABEL;
   overlay.classList.add('show');
   overlay.setAttribute('aria-hidden', 'false');
 }
