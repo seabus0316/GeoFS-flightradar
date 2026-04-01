@@ -515,11 +515,17 @@ function closeAircraftPanel() {
   }
 }
 
+let _ignoreOutsidePanelCloseUntil = 0;
+function _armOutsidePanelCloseGuard(ms = 250) {
+  _ignoreOutsidePanelCloseUntil = Date.now() + ms;
+}
+
 document.addEventListener('click', e => {
   const panel = document.getElementById('aircraftPanel');
   if (!panel) return;
+  if (Date.now() < _ignoreOutsidePanelCloseUntil) return;
   if (e.target.closest('#aircraftPanel')) return;
-  if (e.target.closest('.leaflet-aircraft-icon')) return;
+  if (e.target.closest('.leaflet-aircraft-icon, .leaflet-marker-icon, .atc-radar-blip')) return;
   closeAircraftPanel();
 });
 
@@ -2189,6 +2195,7 @@ function updateAircraft(id, data, trackPoint = null) {
     
     // 點擊事件
     marker.on('click', async () => {
+      _armOutsidePanelCloseGuard();
       clearAllAircraftTracks();
       const prevFocused = focusedAircraftId;
       focusedAircraftId = id;
@@ -3145,6 +3152,7 @@ else if (m.type === 'aircraft_track_history') {
           };
           const marker = L.marker([lastTrack.lat, lastTrack.lon], { icon: makeDivIcon(dummyData) }).addTo(map);
           marker.on('click', () => {
+            _armOutsidePanelCloseGuard();
             clearAllAircraftTracks();
             focusedAircraftId = aircraftId;
             map.flyTo([dummyData.lat, dummyData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
@@ -3886,6 +3894,7 @@ function selectFlight(aircraftId) {
   // 聚焦飛機
   clearAllAircraftTracks();
   focusedAircraftId = aircraftId;
+  _armOutsidePanelCloseGuard();
   showAircraftTrack(aircraftId);
   showAircraftPanel(data, aircraftId);
   
