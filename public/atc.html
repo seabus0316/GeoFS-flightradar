@@ -653,6 +653,14 @@ function closeAircraftPanel() {
   }
 }
 
+document.addEventListener('click', e => {
+  const panel = document.getElementById('aircraftPanel');
+  if (!panel) return;
+  if (e.target.closest('#aircraftPanel')) return;
+  if (e.target.closest('.leaflet-aircraft-icon')) return;
+  closeAircraftPanel();
+});
+
 // Re-apply panel opacity/blur whenever aircraftPanel is dynamically created
 new MutationObserver(() => {
   const ap = document.getElementById('aircraftPanel');
@@ -2347,6 +2355,7 @@ function updateAircraft(id, data, trackPoint = null) {
         if (prev && prev.marker) prev.marker.setIcon(makeDivIcon(prev.data, false));
       }
       marker.setIcon(makeDivIcon(data, true));
+      map.flyTo([data.lat, data.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
       showAircraftTrack(id);
       showAircraftPanel(data, id);
       
@@ -2363,7 +2372,6 @@ function updateAircraft(id, data, trackPoint = null) {
           showAircraftTrack(id);
         }
       }
-      map.setView([data.lat, data.lon], map.getZoom(), {animate: true});
     });
 
     aircrafts.set(id, {
@@ -3296,6 +3304,7 @@ else if (m.type === 'aircraft_track_history') {
           marker.on('click', () => {
             clearAllAircraftTracks();
             focusedAircraftId = aircraftId;
+            map.flyTo([dummyData.lat, dummyData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
             showAircraftTrack(aircraftId);
             showAircraftPanel(dummyData, aircraftId);
           });
