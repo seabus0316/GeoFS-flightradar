@@ -70,12 +70,12 @@
       ⚙ Display Settings
     </div>
 
-    <!-- Panel Opacity -->
-    <div style="padding:8px 10px 4px;">
+    <!-- Aircraft Panel Opacity -->
+    <div class="settings-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
         <span style="font-size:12px;color:#cdd;">
           <i data-lucide="panel-right" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-          Panel Opacity
+          Aircraft Panel Opacity
         </span>
         <span id="panelOpacityVal" style="font-size:12px;color:#00cfff;font-weight:700;min-width:38px;text-align:right;">100%</span>
       </div>
@@ -84,12 +84,12 @@
              oninput="applySettings()">
     </div>
 
-    <!-- Panel Blur -->
-    <div style="padding:4px 10px 4px;">
+    <!-- Aircraft Panel Blur -->
+    <div class="settings-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
         <span style="font-size:12px;color:#cdd;">
           <i data-lucide="blend" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-          Panel Blur
+          Aircraft Panel Blur
         </span>
         <span id="panelBlurVal" style="font-size:12px;color:#a78bfa;font-weight:700;min-width:38px;text-align:right;">0px</span>
       </div>
@@ -98,8 +98,59 @@
              oninput="applySettings()">
     </div>
 
+    <!-- Button Glass -->
+    <div class="settings-section settings-divider">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="circle-dot" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Button Opacity
+        </span>
+        <span id="buttonOpacityVal" style="font-size:12px;color:#f59e0b;font-weight:700;min-width:38px;text-align:right;">100%</span>
+      </div>
+      <input type="range" id="buttonOpacitySlider" min="15" max="100" value="100" step="5"
+             style="width:100%;accent-color:#f59e0b;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
+    <div class="settings-section">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="sparkles" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Button Blur
+        </span>
+        <span id="buttonBlurVal" style="font-size:12px;color:#fb7185;font-weight:700;min-width:38px;text-align:right;">22px</span>
+      </div>
+      <input type="range" id="buttonBlurSlider" min="0" max="30" value="22" step="1"
+             style="width:100%;accent-color:#fb7185;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
+    <!-- Display Units -->
+    <div class="settings-section settings-divider">
+      <div style="font-size:11px;color:#88dff7;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:12px;">
+        Display Units
+      </div>
+      <div class="settings-unit-group">
+        <div class="settings-unit-row">
+          <div class="settings-unit-label">Speed</div>
+          <div class="settings-segmented" id="speedUnitGroup">
+            <button type="button" class="settings-segmented-btn active" data-unit-group="speed" data-unit-value="knots" onclick="setDisplayUnit('speed','knots')">Knots</button>
+            <button type="button" class="settings-segmented-btn" data-unit-group="speed" data-unit-value="mach" onclick="setDisplayUnit('speed','mach')">Mach</button>
+          </div>
+        </div>
+        <div class="settings-unit-row">
+          <div class="settings-unit-label">Altitude</div>
+          <div class="settings-segmented" id="altitudeUnitGroup">
+            <button type="button" class="settings-segmented-btn active" data-unit-group="altitude" data-unit-value="auto" onclick="setDisplayUnit('altitude','auto')">Auto</button>
+            <button type="button" class="settings-segmented-btn" data-unit-group="altitude" data-unit-value="feet" onclick="setDisplayUnit('altitude','feet')">Feet</button>
+            <button type="button" class="settings-segmented-btn" data-unit-group="altitude" data-unit-value="fl" onclick="setDisplayUnit('altitude','fl')">FL</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- Aircraft Labels toggle -->
-    <div style="padding:8px 10px;display:flex;justify-content:space-between;align-items:center;
+    <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
                 border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
       <span style="font-size:12px;color:#cdd;">
         <i data-lucide="tag" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
@@ -117,7 +168,7 @@
     </div>
 
     <!-- Trail Opacity -->
-    <div style="padding:4px 10px 8px;">
+    <div class="settings-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
         <span style="font-size:12px;color:#cdd;">
           <i data-lucide="route" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
@@ -131,9 +182,8 @@
     </div>
 
     <!-- Reset button -->
-    <div style="padding:4px 10px 4px;text-align:right;">
-      <button onclick="resetSettings()" style="background:rgba(255,255,255,0.07);border:1px solid rgba(255,255,255,0.15);
-              color:#888;font-size:11px;padding:4px 10px;border-radius:6px;cursor:pointer;">
+    <div style="padding:6px 10px 4px;text-align:right;">
+      <button onclick="resetSettings()" class="settings-reset-btn">
         Reset
       </button>
     </div>
@@ -185,50 +235,151 @@ document.addEventListener('click', e => {
 
 // ── Display Settings (localStorage) ──────────────────────
 const DS_KEY = 'geofs_displaySettings';
+const DS_DEFAULTS = {
+  panelOpacity: 100,
+  panelBlur: 0,
+  buttonOpacity: 100,
+  buttonBlur: 22,
+  trailOpacity: 100,
+  showLabels: true,
+  speedUnit: 'knots',
+  altitudeUnit: 'auto'
+};
 
 function _dsLoad() {
-  try { return JSON.parse(localStorage.getItem(DS_KEY)) || {}; } catch { return {}; }
+  try { return { ...DS_DEFAULTS, ...(JSON.parse(localStorage.getItem(DS_KEY)) || {}) }; } catch { return { ...DS_DEFAULTS }; }
 }
 function _dsSave(patch) {
   localStorage.setItem(DS_KEY, JSON.stringify({ ..._dsLoad(), ...patch }));
 }
-function _applyPanelGlass(el, opacity, blur) {
+function _applyPanelGlass(el, opacity, blur, saturate = 180) {
   if (!el) return;
   el.style.opacity = opacity / 100;
-  el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(180%)` : '';
-  el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(180%)` : '';
+  el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(${saturate}%)` : '';
+  el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(${saturate}%)` : '';
+}
+function _applyButtonGlass(el, opacity, blur) {
+  if (!el) return;
+  el.style.opacity = opacity / 100;
+  el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(175%) brightness(1.08)` : '';
+  el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(175%) brightness(1.08)` : '';
 }
 function _syncDisplayPanels(opacity, blur) {
-  ['wxPanel', 'tilePanel', 'settingsPanel', 'aircraftPanel'].forEach(id => {
+  ['wxPanel', 'tilePanel', 'aircraftPanel'].forEach(id => {
     const panel = document.getElementById(id);
     if (!panel) return;
     if (id === 'aircraftPanel') panel.style.background = 'rgba(255,255,255,0.76)';
     _applyPanelGlass(panel, opacity, blur);
   });
 }
+function _syncDisplayButtons(opacity, blur) {
+  document.querySelectorAll('.atc-mode-btn, .map-control-btn, #whatsNewBtn, #photoToggle, #metarToggle, #flightListOpenBtn').forEach(btn => {
+    _applyButtonGlass(btn, opacity, blur);
+  });
+}
+function _syncUnitButtons(speedUnit, altitudeUnit) {
+  document.querySelectorAll('[data-unit-group="speed"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.unitValue === speedUnit);
+  });
+  document.querySelectorAll('[data-unit-group="altitude"]').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.unitValue === altitudeUnit);
+  });
+}
+function setDisplayUnit(group, value) {
+  if (group === 'speed') _dsSave({ speedUnit: value });
+  if (group === 'altitude') _dsSave({ altitudeUnit: value });
+  applySettings();
+}
+function getSpeedKnots(speedRaw) {
+  if (typeof speedRaw !== 'number') return null;
+  return speedRaw < 50 ? speedRaw * 1.94384 : speedRaw;
+}
+function getSpeedUnit() {
+  return _dsLoad().speedUnit;
+}
+function getAltitudeUnit() {
+  return _dsLoad().altitudeUnit;
+}
+function convertSpeedValue(knots) {
+  if (typeof knots !== 'number') return null;
+  return getSpeedUnit() === 'mach' ? knots / 661.47 : knots;
+}
+function getSpeedUnitSuffix() {
+  return getSpeedUnit() === 'mach' ? 'Mach' : 'kt';
+}
+function formatSpeed(speedRaw) {
+  const knots = getSpeedKnots(speedRaw);
+  if (typeof knots !== 'number') return '---';
+  const value = convertSpeedValue(knots);
+  return getSpeedUnit() === 'mach' ? value.toFixed(2) : Math.round(value);
+}
+function formatSpeedWithUnit(speedRaw) {
+  const value = formatSpeed(speedRaw);
+  return value === '---' ? value : `${value} ${getSpeedUnitSuffix()}`;
+}
+function convertAltitudeValue(altFt) {
+  const alt = Math.round(Number(altFt) || 0);
+  const unit = getAltitudeUnit();
+  if (unit === 'fl' || (unit === 'auto' && alt >= 18000)) return Math.round(alt / 100);
+  return alt;
+}
+function formatAltitude(altFt) {
+  const alt = Math.round(Number(altFt) || 0);
+  const unit = getAltitudeUnit();
+  if (unit === 'fl' || (unit === 'auto' && alt >= 18000)) return `FL${Math.round(alt / 100)}`;
+  return `${alt.toLocaleString()} ft`;
+}
+function getAltitudeAxisLabel() {
+  const unit = getAltitudeUnit();
+  return unit === 'fl' ? 'Altitude (FL)' : unit === 'feet' ? 'Altitude (ft)' : 'Altitude (Auto)';
+}
+function _refreshDisplayUnits() {
+  let activeId = null;
+  let atcEnabled = false;
+  try { activeId = focusedAircraftId; } catch {}
+  try { atcEnabled = atcMode; } catch {}
+  if (typeof aircrafts !== 'undefined') {
+    aircrafts.forEach((obj, id) => {
+      if (obj?.marker) obj.marker.setIcon(makeDivIcon(obj.data, id === activeId));
+      if (atcEnabled) updateAtcLabel(obj, true);
+    });
+  }
+  if (typeof renderFlightList === 'function') renderFlightList();
+  if (activeId && typeof aircrafts !== 'undefined' && aircrafts.has(activeId)) {
+    showAircraftPanel(aircrafts.get(activeId).data, activeId);
+    if (typeof showAircraftTrack === 'function') showAircraftTrack(activeId);
+  }
+}
 
 // Called by oninput/onchange on sliders — reads current slider values, saves + applies
 function applySettings() {
-  const po  = Number(document.getElementById('panelOpacitySlider')?.value  ?? 100);
-  const pb  = Number(document.getElementById('panelBlurSlider')?.value     ?? 0);
-  const to  = Number(document.getElementById('trailOpacitySlider')?.value  ?? 100);
-  const lbl = document.getElementById('labelsToggle')?.checked ?? true;
+  const current = _dsLoad();
+  const po  = Number(document.getElementById('panelOpacitySlider')?.value ?? current.panelOpacity);
+  const pb  = Number(document.getElementById('panelBlurSlider')?.value ?? current.panelBlur);
+  const bo  = Number(document.getElementById('buttonOpacitySlider')?.value ?? current.buttonOpacity);
+  const bb  = Number(document.getElementById('buttonBlurSlider')?.value ?? current.buttonBlur);
+  const to  = Number(document.getElementById('trailOpacitySlider')?.value ?? current.trailOpacity);
+  const lbl = document.getElementById('labelsToggle')?.checked ?? current.showLabels;
 
-  // Update value labels
   const poV = document.getElementById('panelOpacityVal');
   const pbV = document.getElementById('panelBlurVal');
+  const boV = document.getElementById('buttonOpacityVal');
+  const bbV = document.getElementById('buttonBlurVal');
   const toV = document.getElementById('trailOpacityVal');
   if (poV) poV.textContent = po + '%';
   if (pbV) pbV.textContent = pb + 'px';
+  if (boV) boV.textContent = bo + '%';
+  if (bbV) bbV.textContent = bb + 'px';
   if (toV) toV.textContent = to + '%';
 
-  // Update labelsTrack colour
   const track = document.getElementById('labelsTrack');
   const thumb = document.getElementById('labelsThumb');
   if (track) track.style.background = lbl ? '#00cfff' : '#555';
   if (thumb) thumb.style.transform  = lbl ? 'translateX(16px)' : 'translateX(0)';
 
   _syncDisplayPanels(po, pb);
+  _syncDisplayButtons(bo, bb);
+  _syncUnitButtons(current.speedUnit, current.altitudeUnit);
 
   // Aircraft labels visibility — use a persistent <style> so dynamically-created markers also obey
   let lblStyle = document.getElementById('_labelVisStyle');
@@ -252,20 +403,32 @@ function applySettings() {
     });
   }
 
-  _dsSave({ panelOpacity: po, panelBlur: pb, trailOpacity: to, showLabels: lbl });
+  _dsSave({
+    panelOpacity: po,
+    panelBlur: pb,
+    buttonOpacity: bo,
+    buttonBlur: bb,
+    trailOpacity: to,
+    showLabels: lbl
+  });
+  _refreshDisplayUnits();
 }
 
 function resetSettings() {
   localStorage.removeItem(DS_KEY);
-  // Reset sliders to default values
   const sl = document.getElementById('panelOpacitySlider');
   const bl = document.getElementById('panelBlurSlider');
+  const bol = document.getElementById('buttonOpacitySlider');
+  const bbl = document.getElementById('buttonBlurSlider');
   const tl = document.getElementById('trailOpacitySlider');
   const lb = document.getElementById('labelsToggle');
-  if (sl) sl.value = 100;
-  if (bl) bl.value = 0;
-  if (tl) tl.value = 100;
-  if (lb) lb.checked = true;
+  if (sl) sl.value = DS_DEFAULTS.panelOpacity;
+  if (bl) bl.value = DS_DEFAULTS.panelBlur;
+  if (bol) bol.value = DS_DEFAULTS.buttonOpacity;
+  if (bbl) bbl.value = DS_DEFAULTS.buttonBlur;
+  if (tl) tl.value = DS_DEFAULTS.trailOpacity;
+  if (lb) lb.checked = DS_DEFAULTS.showLabels;
+  _dsSave({ speedUnit: DS_DEFAULTS.speedUnit, altitudeUnit: DS_DEFAULTS.altitudeUnit });
   applySettings();
 }
 
@@ -274,12 +437,16 @@ function resetSettings() {
   const s = _dsLoad();
   const sl = document.getElementById('panelOpacitySlider');
   const bl = document.getElementById('panelBlurSlider');
+  const bol = document.getElementById('buttonOpacitySlider');
+  const bbl = document.getElementById('buttonBlurSlider');
   const tl = document.getElementById('trailOpacitySlider');
   const lb = document.getElementById('labelsToggle');
-  if (sl) sl.value = s.panelOpacity  ?? 100;
-  if (bl) bl.value = s.panelBlur     ?? 0;
-  if (tl) tl.value = s.trailOpacity  ?? 100;
-  if (lb) lb.checked = s.showLabels  ?? true;
+  if (sl) sl.value = s.panelOpacity;
+  if (bl) bl.value = s.panelBlur;
+  if (bol) bol.value = s.buttonOpacity;
+  if (bbl) bbl.value = s.buttonBlur;
+  if (tl) tl.value = s.trailOpacity;
+  if (lb) lb.checked = s.showLabels;
   applySettings();
 })();
 
@@ -392,6 +559,12 @@ new MutationObserver(() => {
 (function() {
   // ── 更新清單（由新到舊）──────────────────────────────
   const WN_UPDATES = [
+    {
+      tag: 'new',
+      date: '2026-04-02',
+      title: 'Options on adjust panel',
+      desc: 'Added more options to change preferences.'
+    },
     {
       tag: 'new',
       date: '2026-03-27',
@@ -915,7 +1088,7 @@ function renderFlightList() {
     // 更新速度、route3（只改 textContent，不動 DOM 結構）
     const spdEl = el.querySelector(".fl-spd-n");
     if (spdEl) {
-      spdEl.textContent = `${spd} kts`;
+      spdEl.textContent = `${spd} ${getSpeedUnit() === 'mach' ? 'Mach' : 'kts'}`;
       spdEl.className = `fl-spd fl-spd-n${isGround ? " ground" : ""}`;
     }
     const r3El = el.querySelector(".fl-r3");
@@ -1192,8 +1365,11 @@ function showFlightChart(track) {
     return i + 1;
   });
   
-  const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
-  const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
+  const altitudes = simplifiedTrack.map(p => convertAltitudeValue(p.alt));
+  const speeds = simplifiedTrack.map(p => {
+    const knots = getSpeedKnots(p.speed);
+    return typeof knots === 'number' ? Number(convertSpeedValue(knots)) : 0;
+  });
 
   if (!flightChartObj) {
     flightChartObj = new Chart(ctx, {
@@ -1255,9 +1431,8 @@ function showFlightChart(track) {
               },
               label: (item) => {
                 if (item.dataset.label === "Ground Speed")
-                  return `Ground Speed: ${item.formattedValue} kt`;
-                else
-                  return `Altitude: ${item.formattedValue} ft`;
+                  return `Ground Speed: ${item.formattedValue} ${getSpeedUnitSuffix()}`;
+                return `Altitude: ${getAltitudeUnit() === 'fl' ? 'FL' + item.formattedValue : item.formattedValue + ' ft'}`;
               }
             }
           }
@@ -1282,7 +1457,7 @@ function showFlightChart(track) {
             position: 'left',
             title: {
               display: true,
-              text: 'Altitude (ft)',
+              text: getAltitudeAxisLabel(),
               color: "#00b4ff",
               font: { size: 13, weight:'bold' }
             },
@@ -1294,7 +1469,7 @@ function showFlightChart(track) {
             position: 'right',
             title: {
               display: true,
-              text: 'Speed (kt)',
+              text: `Speed (${getSpeedUnitSuffix()})`,
               color: "#ffd300",
               font: { size: 13, weight:'bold' }
             },
@@ -1314,12 +1489,17 @@ function showFlightChart(track) {
       }
       return i + 1;
     });
-    const speeds = simplifiedTrack.map(p => Math.round(formatSpeed(p.speed)));
-    const altitudes = simplifiedTrack.map(p => Math.round(p.alt));
+    const speeds = simplifiedTrack.map(p => {
+      const knots = getSpeedKnots(p.speed);
+      return typeof knots === 'number' ? Number(convertSpeedValue(knots)) : 0;
+    });
+    const altitudes = simplifiedTrack.map(p => convertAltitudeValue(p.alt));
     
     flightChartObj.data.labels = labels;
     flightChartObj.data.datasets[0].data = speeds;
     flightChartObj.data.datasets[1].data = altitudes;
+    flightChartObj.options.scales['y-alt'].title.text = getAltitudeAxisLabel();
+    flightChartObj.options.scales['y-speed'].title.text = `Speed (${getSpeedUnitSuffix()})`;
     flightChartObj.options.scales.x.ticks.maxTicksLimit = maxTicks; // 更新 maxTicks
     flightChartObj.update('none'); // 使用 'none' 模式加快更新速度
   }
@@ -1341,12 +1521,6 @@ function getAltitudeColor(altFt) {
   if (alt < 30000) return "#0000ff";
   if (alt < 40000) return "#800080";
   return "#ff0000";
-}
-function formatSpeed(speedRaw) {
-  if (typeof speedRaw !== 'number') return '---';
-  let speed = speedRaw;
-  if (speedRaw < 50) speed = speedRaw * 1.94384;
-  return Math.round(speed);
 }
 function calculateDistance(lat1, lon1, lat2, lon2) {
   const R = 6371;
@@ -1508,7 +1682,7 @@ function makeDivIcon(data, isFocused){
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
-          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
@@ -1696,7 +1870,7 @@ function updateAtcLabel(obj, enable) {
     const squawk = d.squawk === '7700' ? `⚠ SQK 7700` : '';
     const labelHtml = `
       <span style="font-weight:700;font-size:11px;">${d.callsign || 'UNK'}</span><br>
-      <span style="font-size:10px;">${d.type || '??'} · ${Math.round(d.alt || 0)}ft · ${Math.round(d.speed || 0)}kt</span>
+      <span style="font-size:10px;">${d.type || '??'} · ${formatAltitude(d.alt || 0)} · ${formatSpeedWithUnit(d.speed)}</span>
       ${squawk ? `<br><span style="color:#ff4444;font-size:10px;">${squawk}</span>` : ''}
     `;
     marker.bindTooltip(labelHtml, {
@@ -1937,7 +2111,7 @@ function clearAllAircraftTracks() {
 // 飛行狀態預測函數 - 新邏輯
 function predictFlightStatus(data, prev) {
   const altAGL = data.alt || 0; // 假設 alt 已經是 AGL (Above Ground Level)
-  const speed = formatSpeed(data.speed);
+  const speed = getSpeedKnots(data.speed) || 0;
   const prevStatus = prev?.flightStatus?.status || null;
   
   // 計算垂直速度 (vspeed) - 單位: ft/min
@@ -2118,7 +2292,7 @@ function updateAircraft(id, data, trackPoint = null) {
       label.innerHTML = `
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
-          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${Math.round(data.alt||0)}ft</span> · ${formatSpeed(data.speed)}kt
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
@@ -2266,7 +2440,7 @@ function calculateFlightProgress(data, airports) {
   }
   
   if (distRem > 0 && data.speed > 10) {
-    ete = (distRem / formatSpeed(data.speed)) * 3600 * 1000; // 轉換為毫秒
+    ete = (distRem / (getSpeedKnots(data.speed) || 0)) * 3600 * 1000; // 轉換為毫秒
   }
 
   return {
@@ -2659,8 +2833,8 @@ async function showAircraftPanel(data, id) {
   <div style="background:#1c2431;padding:14px 16px;display:grid;
               grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
     ${[
-      ['ALTITUDE', Math.round(data.alt || 0).toLocaleString() + ' ft'],
-      ['SPEED',    formatSpeed(data.speed) + ' kt'],
+      ['ALTITUDE', formatAltitude(data.alt || 0)],
+      ['SPEED',    formatSpeedWithUnit(data.speed)],
       ['HEADING',  Math.round(data.heading || 0) + '°'],
       ['SQUAWK',   data.squawk || '—'],
     ].map(([label, val]) => `
@@ -3640,8 +3814,8 @@ function displaySearchResults(results) {
               </div>
               <div style="font-size: 13px; color: #666; margin-top: 2px;">
                 ${escapeHtml(data.type || '??')} • 
-                <span style="color: ${color}; font-weight: 600;">${Math.round(data.alt || 0)}ft</span> • 
-                ${formatSpeed(data.speed)}kt
+                <span style="color: ${color}; font-weight: 600;">${formatAltitude(data.alt || 0)}</span> •
+                ${formatSpeedWithUnit(data.speed)}
               </div>
               ${data.departure && data.arrival ? `
                 <div style="font-size: 12px; color: #999; margin-top: 2px;">
