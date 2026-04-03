@@ -5,6 +5,7 @@ require('dotenv').config();
 
 const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActivityType } = require('discord.js');
 const mongoose = require('mongoose');
+const fetch = global.fetch || require('node-fetch');
 
 // ============ 環境變數 ============
 const BOT_TOKEN          = process.env.DISCORD_BOT_TOKEN    || '';
@@ -161,6 +162,100 @@ client.on('interactionCreate', async interaction => {
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
+
+  if (commandName === 'whois') {
+    await interaction.deferReply();
+    const callsign = interaction.options.getString('callsign').trim().toUpperCase();
+
+    try {
+      const embed = new EmbedBuilder()
+        .setColor(0xffd700)
+        .setTitle(`Whois: ${callsign}`);
+
+      let liveAircraft = null;
+      try {
+        const liveRes = await fetch(`${RADAR_URL}/api/whois/${encodeURIComponent(callsign)}`);
+        if (liveRes.ok) {
+          const liveData = await liveRes.json();
+          liveAircraft = liveData?.aircraft || null;
+        }
+      } catch (liveErr) {
+        console.warn('/whois live lookup failed:', liveErr.message);
+      }
+
+      if (liveAircraft) {
+        const dbUser = liveAircraft.discordId
+          ? await User.findOne({ discordId: liveAircraft.discordId }).lean()
+          : liveAircraft.geofsUserId
+            ? await User.findOne({ geofsUserId: liveAircraft.geofsUserId }).lean()
+            : null;
+
+        if (dbUser?.discordId) {
+          const discordUser = await client.users.fetch(dbUser.discordId).catch(() => null);
+          embed.setDescription(`**${callsign}** is currently operated by <@${dbUser.discordId}>`);
+          if (discordUser) embed.setThumbnail(discordUser.displayAvatarURL());
+          embed.addFields(
+            { name: 'Discord', value: `<@${dbUser.discordId}>`, inline: true },
+            { name: 'GeoFS ID', value: dbUser.geofsUserId || liveAircraft.geofsUserId || 'N/A', inline: true },
+          );
+        } else {
+          embed.setDescription(`**${callsign}** is currently online, but the pilot is not linked to any Discord account`);
+          if (liveAircraft.geofsUserId) {
+            embed.addFields({ name: 'GeoFS ID', value: liveAircraft.geofsUserId, inline: true });
+          }
+        }
+
+        embed.addFields(
+          { name: 'Aircraft', value: liveAircraft.type || 'N/A', inline: true },
+          { name: 'Route', value: `${liveAircraft.departure || 'N/A'} -> ${liveAircraft.arrival || 'N/A'}`, inline: true },
+          { name: 'Status', value: 'Live now', inline: true },
+        );
+      } else {
+        const recent = await FlightSession.findOne({ callsign: new RegExp(`^${callsign}$`, 'i') })
+          .sort({ startTime: -1 })
+          .lean();
+
+        if (!recent) {
+          return interaction.editReply({ content: `No live or historical records found for callsign **${callsign}**.` });
+        }
+
+        const dbUser = recent.discordId
+          ? await User.findOne({ discordId: recent.discordId }).lean()
+          : recent.geofsUserId
+            ? await User.findOne({ geofsUserId: recent.geofsUserId }).lean()
+            : null;
+
+        if (dbUser?.discordId) {
+          const discordUser = await client.users.fetch(dbUser.discordId).catch(() => null);
+          embed.setDescription(`**${callsign}** was last operated by <@${dbUser.discordId}>`);
+          if (discordUser) embed.setThumbnail(discordUser.displayAvatarURL());
+          embed.addFields(
+            { name: 'Discord', value: `<@${dbUser.discordId}>`, inline: true },
+            { name: 'GeoFS ID', value: dbUser.geofsUserId || 'N/A', inline: true },
+          );
+        } else {
+          embed.setDescription(`**${callsign}** pilot not linked to any Discord account`);
+          if (recent.geofsUserId) {
+            embed.addFields({ name: 'GeoFS ID', value: recent.geofsUserId, inline: true });
+          }
+        }
+
+        embed.addFields(
+          { name: 'Aircraft', value: recent.type || 'N/A', inline: true },
+          { name: 'Last Route', value: `${recent.departure || 'N/A'} -> ${recent.arrival || 'N/A'}`, inline: true },
+          { name: 'Last Seen', value: fmtDate(recent.startTime), inline: true },
+        );
+      }
+
+      embed.setFooter({ text: 'GeoFS Radar', iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
+      await interaction.editReply({ embeds: [embed] });
+    } catch (err) {
+      console.error('/whois error', err);
+      await interaction.editReply({ content: 'Server error.' });
+    }
+
+    return;
+  }
 
   // ── /link ──────────────────────────────────────────────────
   if (commandName === 'link') {

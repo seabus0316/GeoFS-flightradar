@@ -838,6 +838,43 @@ app.get('/api/flights/stats/:discordId', async (req, res) => {
 });
 
 // 刪除飛行紀錄（管理員）
+app.get('/api/whois/:callsign', async (req, res) => {
+  try {
+    const callsign = String(req.params.callsign || '').trim().toUpperCase();
+    if (!callsign) return res.status(400).json({ error: 'Callsign is required' });
+
+    const live = Array.from(aircrafts.values()).find(({ payload }) =>
+      String(payload?.callsign || '').trim().toUpperCase() === callsign
+    );
+
+    if (!live?.payload) {
+      return res.status(404).json({ error: 'Live aircraft not found' });
+    }
+
+    const geofsUserId = live.payload.userId ? String(live.payload.userId).trim() : null;
+    const user = geofsUserId ? await User.findOne({ geofsUserId }).lean() : null;
+
+    res.json({
+      live: true,
+      callsign,
+      aircraft: {
+        callsign: live.payload.callsign || callsign,
+        type: live.payload.type || '',
+        departure: live.payload.departure || '',
+        arrival: live.payload.arrival || '',
+        geofsUserId,
+        discordId: user?.discordId || null,
+        username: user?.username || null,
+        displayName: user?.displayName || null,
+        lastSeen: live.lastSeen || Date.now(),
+      }
+    });
+  } catch (err) {
+    console.error('GET /api/whois/:callsign error', err);
+    res.status(500).json({ error: 'Failed to lookup callsign' });
+  }
+});
+
 app.delete('/admin/flights/:sessionId', checkAdminPass, async (req, res) => {
   try {
     await FlightSession.findByIdAndDelete(req.params.sessionId);
