@@ -936,8 +936,8 @@ function renderHistoryTab(flights, page, total) {
   const fmtDate = ts => ts ? new Date(ts).toLocaleDateString(undefined, {month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"}) : "—";
 
   let html = flights.map(f => {
-    const dep = (f.departure || "—").substring(0, 4).toUpperCase();
-    const arr = (f.arrival   || "—").substring(0, 4).toUpperCase();
+    const dep = (f.departure || "—").substring(0, 4);
+    const arr = (f.arrival   || "—").substring(0, 4);
     const logoUrl = (typeof getAirlineLogo === "function") ? getAirlineLogo(f.callsign, f.flightNo) : null;
     const logoHtml = logoUrl
       ? `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="fl-logo-fb" style="display:none">📋</span>`
@@ -1059,8 +1059,8 @@ function renderFlightList() {
   // 新增 or 更新（只改數字，不重建 DOM → 不跳動）
   items.forEach(d => {
     const id = d._id || d.aircraftId || d.callsign || "";
-    const dep4 = (d.actualDeparture || d.departure || "").substring(0, 4).toUpperCase() || "—";
-    const arr4 = (d.actualArrival  || d.arrival   || "").substring(0, 4).toUpperCase() || "—";
+    const dep4 = (d.actualDeparture || d.departure || "").substring(0, 4) || "—";
+    const arr4 = (d.actualArrival  || d.arrival   || "").substring(0, 4) || "—";
     const spd = fmtSpd(d.speed);
     const isGround = (d.speed || 0) < 30;
     const type = esc(d.type || "");
@@ -1686,8 +1686,8 @@ function makeDivIcon(data, isFocused){
   const isEmergency = data.squawk === '7700';
   const labelClass = isEmergency ? 'label emergency' : 'label';
   const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-  const depShort = (data.departure || '').substring(0, 4).toUpperCase();
-  const arrShort = (data.arrival || '').substring(0, 4).toUpperCase();
+  const depShort = (data.departure||'').substring(0, 4);
+  const arrShort = (data.arrival||'').substring(0, 4);
   
   return L.divIcon({
   html:`
@@ -2299,8 +2299,8 @@ function updateAircraft(id, data, trackPoint = null) {
       const color = getAltitudeColor(data.alt);
       const isEmergency = data.squawk === '7700';
       const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-      const depShort = (data.departure || '').substring(0, 4).toUpperCase();
-      const arrShort = (data.arrival || '').substring(0, 4).toUpperCase();
+      const depShort = (data.departure||'').substring(0, 4);
+      const arrShort = (data.arrival||'').substring(0, 4);
       
       label.className = isEmergency ? 'label emergency' : 'label';
       label.style.borderLeft = `3px solid ${color}`;
@@ -2654,12 +2654,6 @@ async function showAircraftPanel(data, id) {
   const depShort = (data.departure || '').substring(0, 4) || '—';
   const arrShort = (data.arrival || '').substring(0, 4) || '—';
   const isEmergency = data.squawk === '7700';
-  const depShortUpper = depShort.toUpperCase();
-  const arrShortUpper = arrShort.toUpperCase();
-  const depFullUpper = (data.departure || '').toUpperCase();
-  const arrFullUpper = (data.arrival || '').toUpperCase();
-  data.departure = depFullUpper || data.departure;
-  data.arrival = arrFullUpper || data.arrival;
 
 // 照片輪播 HTML
   let photosHtml = '';
@@ -2781,7 +2775,7 @@ async function showAircraftPanel(data, id) {
       <!-- DEP -->
       <div style="text-align:center;">
         <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
-          ${escapeHtml(depShortUpper)}
+          ${escapeHtml(depShort)}
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
           ${escapeHtml(data.departure || '—')}
@@ -2800,7 +2794,7 @@ async function showAircraftPanel(data, id) {
       <!-- ARR -->
       <div style="text-align:center;">
         <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
-          ${escapeHtml(arrShortUpper)}
+          ${escapeHtml(arrShort)}
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
           ${escapeHtml(data.arrival || '—')}

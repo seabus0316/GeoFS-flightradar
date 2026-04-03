@@ -277,6 +277,13 @@ function buildPayload(snap) {
 
     document.body.appendChild(flightUI);
 
+    [depInput, arrInput, fltInput, sqkInput].forEach((input) => {
+      input.style.textTransform = 'uppercase';
+      input.addEventListener('input', () => {
+        input.value = input.value.toUpperCase();
+      });
+    });
+
     saveBtn.onclick = () => {
       flightInfo.departure = depInput.value.trim();
       flightInfo.arrival = arrInput.value.trim();
