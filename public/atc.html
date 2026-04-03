@@ -936,8 +936,8 @@ function renderHistoryTab(flights, page, total) {
   const fmtDate = ts => ts ? new Date(ts).toLocaleDateString(undefined, {month:"short", day:"numeric", hour:"2-digit", minute:"2-digit"}) : "—";
 
   let html = flights.map(f => {
-    const dep = (f.departure || "—").substring(0, 4);
-    const arr = (f.arrival   || "—").substring(0, 4);
+    const dep = (f.departure || "—").substring(0, 4).toUpperCase();
+    const arr = (f.arrival   || "—").substring(0, 4).toUpperCase();
     const logoUrl = (typeof getAirlineLogo === "function") ? getAirlineLogo(f.callsign, f.flightNo) : null;
     const logoHtml = logoUrl
       ? `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="fl-logo-fb" style="display:none">📋</span>`
@@ -1059,8 +1059,8 @@ function renderFlightList() {
   // 新增 or 更新（只改數字，不重建 DOM → 不跳動）
   items.forEach(d => {
     const id = d._id || d.aircraftId || d.callsign || "";
-    const dep4 = (d.actualDeparture || d.departure || "").substring(0, 4) || "—";
-    const arr4 = (d.actualArrival  || d.arrival   || "").substring(0, 4) || "—";
+    const dep4 = (d.actualDeparture || d.departure || "").substring(0, 4).toUpperCase() || "—";
+    const arr4 = (d.actualArrival  || d.arrival   || "").substring(0, 4).toUpperCase() || "—";
     const spd = fmtSpd(d.speed);
     const isGround = (d.speed || 0) < 30;
     const type = esc(d.type || "");
