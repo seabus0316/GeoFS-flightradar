@@ -516,13 +516,24 @@ function closeAircraftPanel() {
 }
 
 let _ignoreOutsidePanelCloseUntil = 0;
+let _outsidePanelPointerDown = null;
 function _armOutsidePanelCloseGuard(ms = 250) {
   _ignoreOutsidePanelCloseUntil = Date.now() + ms;
 }
 
+document.addEventListener('pointerdown', e => {
+  _outsidePanelPointerDown = { x: e.clientX, y: e.clientY };
+}, true);
+
 document.addEventListener('click', e => {
   const panel = document.getElementById('aircraftPanel');
   if (!panel) return;
+  const pointer = _outsidePanelPointerDown;
+  _outsidePanelPointerDown = null;
+  if (pointer) {
+    const moved = Math.hypot(e.clientX - pointer.x, e.clientY - pointer.y);
+    if (moved > 6) return;
+  }
   if (Date.now() < _ignoreOutsidePanelCloseUntil) return;
   if (e.target.closest('#aircraftPanel')) return;
   if (e.target.closest('.leaflet-aircraft-icon, .leaflet-marker-icon, .atc-radar-blip')) return;
