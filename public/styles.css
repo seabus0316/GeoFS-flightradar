@@ -835,6 +835,56 @@ input:checked + .slider:before {
   padding: 8px 10px 4px;
 }
 
+.settings-category {
+  margin: 6px 0;
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 12px;
+  background: rgba(255,255,255,0.03);
+  overflow: hidden;
+}
+
+.settings-category-toggle {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 12px 12px;
+  border: 0;
+  background: transparent;
+  color: #e2e8f0;
+  font-size: 12px;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.settings-category-toggle:hover {
+  background: rgba(255,255,255,0.04);
+}
+
+.settings-category-chevron {
+  width: 14px;
+  height: 14px;
+  color: #7dd3fc;
+  transition: transform 0.18s ease;
+}
+
+.settings-category.open .settings-category-chevron {
+  transform: rotate(180deg);
+}
+
+.settings-category-body {
+  padding-bottom: 8px;
+}
+
+.settings-category-body .settings-divider {
+  border-top: 0;
+  margin-top: 0;
+  padding-top: 8px;
+}
+
 .settings-divider {
   border-top: 1px solid rgba(255,255,255,0.07);
   margin-top: 8px;

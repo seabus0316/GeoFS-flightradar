@@ -62,7 +62,7 @@
        background:rgba(10,15,25,0.6);backdrop-filter:blur(20px) saturate(180%);
        -webkit-backdrop-filter:blur(20px) saturate(180%);
        border:1px solid rgba(255,255,255,0.12);border-radius:14px;
-       padding:10px 8px;min-width:230px;
+       padding:10px 8px;min-width:230px;max-height:min(70vh, 620px);overflow-y:auto;
        box-shadow:0 4px 28px rgba(0,0,0,0.5);">
 
     <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;
@@ -70,6 +70,12 @@
       ⚙ Display Settings
     </div>
 
+    <div class="settings-category">
+      <button type="button" class="settings-category-toggle" onclick="toggleSettingsCategory(this)">
+        <span>Adjust</span>
+        <i data-lucide="chevron-down" class="settings-category-chevron"></i>
+      </button>
+      <div class="settings-category-body" style="display:none;">
     <!-- Aircraft Panel Opacity -->
     <div class="settings-section">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
@@ -124,7 +130,15 @@
              style="width:100%;accent-color:#fb7185;cursor:pointer;height:4px;"
              oninput="applySettings()">
     </div>
+      </div>
+    </div>
 
+    <div class="settings-category">
+      <button type="button" class="settings-category-toggle" onclick="toggleSettingsCategory(this)">
+        <span>Units</span>
+        <i data-lucide="chevron-down" class="settings-category-chevron"></i>
+      </button>
+      <div class="settings-category-body" style="display:none;">
     <!-- Display Units -->
     <div class="settings-section settings-divider">
       <div style="font-size:11px;color:#88dff7;text-transform:uppercase;letter-spacing:0.16em;font-weight:800;margin-bottom:12px;">
@@ -148,7 +162,15 @@
         </div>
       </div>
     </div>
+      </div>
+    </div>
 
+    <div class="settings-category">
+      <button type="button" class="settings-category-toggle" onclick="toggleSettingsCategory(this)">
+        <span>Display</span>
+        <i data-lucide="chevron-down" class="settings-category-chevron"></i>
+      </button>
+      <div class="settings-category-body" style="display:none;">
     <!-- Aircraft Labels toggle -->
     <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
                 border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
@@ -211,6 +233,8 @@
              style="width:100%;accent-color:#7dd3fc;cursor:pointer;height:4px;"
              oninput="applySettings()">
     </div>
+      </div>
+    </div>
 
     <!-- Reset button -->
     <div style="padding:6px 10px 4px;text-align:right;">
@@ -239,6 +263,9 @@ function togglePanel(id, btn) {
   });
   // Toggle: only open if it wasn't already open
   if (!isOpen) panel.style.display = 'block';
+  if (!isOpen && id === 'settingsPanel' && window.lucide?.createIcons) {
+    requestAnimationFrame(() => window.lucide.createIcons());
+  }
 }
 
 function toggleLayer(layer, btn) {
@@ -252,6 +279,13 @@ function switchBase(layer, btn) {
   map.addLayer(layer);
   document.querySelectorAll('.tile-row').forEach(b => b.classList.remove('active-tile'));
   if (btn) btn.classList.add('active-tile');
+}
+function toggleSettingsCategory(btn) {
+  const category = btn.closest('.settings-category');
+  if (!category) return;
+  const body = category.querySelector('.settings-category-body');
+  const isOpen = category.classList.toggle('open');
+  if (body) body.style.display = isOpen ? 'block' : 'none';
 }
 
 // 點其他地方關掉面板
