@@ -1686,8 +1686,8 @@ function makeDivIcon(data, isFocused){
   const isEmergency = data.squawk === '7700';
   const labelClass = isEmergency ? 'label emergency' : 'label';
   const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-  const depShort = (data.departure||'').substring(0, 4);
-  const arrShort = (data.arrival||'').substring(0, 4);
+  const depShort = (data.departure || '').substring(0, 4).toUpperCase();
+  const arrShort = (data.arrival || '').substring(0, 4).toUpperCase();
   
   return L.divIcon({
   html:`
@@ -2299,8 +2299,8 @@ function updateAircraft(id, data, trackPoint = null) {
       const color = getAltitudeColor(data.alt);
       const isEmergency = data.squawk === '7700';
       const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
-      const depShort = (data.departure||'').substring(0, 4);
-      const arrShort = (data.arrival||'').substring(0, 4);
+      const depShort = (data.departure || '').substring(0, 4).toUpperCase();
+      const arrShort = (data.arrival || '').substring(0, 4).toUpperCase();
       
       label.className = isEmergency ? 'label emergency' : 'label';
       label.style.borderLeft = `3px solid ${color}`;
@@ -2654,6 +2654,12 @@ async function showAircraftPanel(data, id) {
   const depShort = (data.departure || '').substring(0, 4) || '—';
   const arrShort = (data.arrival || '').substring(0, 4) || '—';
   const isEmergency = data.squawk === '7700';
+  const depShortUpper = depShort.toUpperCase();
+  const arrShortUpper = arrShort.toUpperCase();
+  const depFullUpper = (data.departure || '').toUpperCase();
+  const arrFullUpper = (data.arrival || '').toUpperCase();
+  data.departure = depFullUpper || data.departure;
+  data.arrival = arrFullUpper || data.arrival;
 
 // 照片輪播 HTML
   let photosHtml = '';
@@ -2775,7 +2781,7 @@ async function showAircraftPanel(data, id) {
       <!-- DEP -->
       <div style="text-align:center;">
         <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
-          ${escapeHtml(depShort)}
+          ${escapeHtml(depShortUpper)}
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
           ${escapeHtml(data.departure || '—')}
@@ -2794,7 +2800,7 @@ async function showAircraftPanel(data, id) {
       <!-- ARR -->
       <div style="text-align:center;">
         <div style="font-size:32px;font-weight:800;color:#111;line-height:1;letter-spacing:-1px;">
-          ${escapeHtml(arrShort)}
+          ${escapeHtml(arrShortUpper)}
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
           ${escapeHtml(data.arrival || '—')}

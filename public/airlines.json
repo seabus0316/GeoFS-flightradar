@@ -824,5 +824,26 @@
     "iata": "IR",
     "country": "Iran",
     "logo": "https://avatars.mds.yandex.net/i?id=687b78281ec6d260d2557c1e57cc2f99_sr-5332183-images-thumbs&n=13"
+  },
+    "EDW": {
+    "name": "Edelweiss",
+    "icao": "EDW",
+    "iata": "WK",
+    "country": "Switzerland",
+    "logo": "https://images.kiwi.com/airlines/64/WK.png"
+  },
+    "LOL": {
+    "name": "Easy Charter",
+    "icao": "LOL",
+    "iata": "RD",
+    "country": "Georgia",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNO3_79_2clVShG6SNBd6kyXWrttcVNjFSGg&s"
+  },
+    "QAZ": {
+    "name": "VietJetAir Qazaqstan",
+    "icao": "QAZ",
+    "iata": "IQ",
+    "country": "Kazakhstan",
+    "logo": "https://images.kiwi.com/airlines/64/IQ.png"
   }
 }
