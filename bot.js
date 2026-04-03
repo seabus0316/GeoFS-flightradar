@@ -211,7 +211,12 @@ client.on('interactionCreate', async interaction => {
           { name: 'Status', value: 'Live now', inline: true },
         );
       } else {
-        const recent = await FlightSession.findOne({ callsign: new RegExp(`^${callsign}$`, 'i') })
+        const recent = await FlightSession.findOne({
+          $or: [
+            { callsign: new RegExp(`^${callsign}$`, 'i') },
+            { flightNo: new RegExp(`^${callsign}$`, 'i') },
+          ]
+        })
           .sort({ startTime: -1 })
           .lean();
 

@@ -47,6 +47,10 @@ const ioPlayerClients = new Set();
 const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
 const waypointState = new Map(); // aircraftId → { planHash, triggered }
  
+function normalizeFlightLookup(value) {
+  return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
+}
+
 function haversineNm(lat1, lon1, lat2, lon2) {
   const R = 3440.065; // Earth radius in nautical miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -312,6 +316,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
       discordId:   user?.discordId  || null,
       geofsUserId: payload.userId   ? String(payload.userId) : null,
       callsign:    payload.callsign || docs[0].callsign || 'UNK',
+      flightNo:    payload.flightNo || '',
       type:        payload.type     || docs[0].type     || '',
       departure:   payload.departure || '',
       arrival:     payload.arrival   || '',
@@ -841,10 +846,12 @@ app.get('/api/flights/stats/:discordId', async (req, res) => {
 app.get('/api/whois/:callsign', async (req, res) => {
   try {
     const callsign = String(req.params.callsign || '').trim().toUpperCase();
-    if (!callsign) return res.status(400).json({ error: 'Callsign is required' });
+    const normalizedQuery = normalizeFlightLookup(callsign);
+    if (!normalizedQuery) return res.status(400).json({ error: 'Callsign is required' });
 
     const live = Array.from(aircrafts.values()).find(({ payload }) =>
-      String(payload?.callsign || '').trim().toUpperCase() === callsign
+      normalizeFlightLookup(payload?.callsign) === normalizedQuery ||
+      normalizeFlightLookup(payload?.flightNo) === normalizedQuery
     );
 
     if (!live?.payload) {
@@ -859,6 +866,7 @@ app.get('/api/whois/:callsign', async (req, res) => {
       callsign,
       aircraft: {
         callsign: live.payload.callsign || callsign,
+        flightNo: live.payload.flightNo || '',
         type: live.payload.type || '',
         departure: live.payload.departure || '',
         arrival: live.payload.arrival || '',
