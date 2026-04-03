@@ -181,6 +181,37 @@
              oninput="applySettings()">
     </div>
 
+    <!-- Follow aircraft -->
+    <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
+                border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
+      <span style="font-size:12px;color:#cdd;">
+        <i data-lucide="locate-fixed" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+        Follow Aircraft
+      </span>
+      <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;">
+        <input type="checkbox" id="followAircraftToggle" style="opacity:0;width:0;height:0;"
+               onchange="applySettings()">
+        <span id="followAircraftTrack" style="position:absolute;inset:0;border-radius:20px;
+              background:#555;cursor:pointer;transition:background .2s;">
+          <span id="followAircraftThumb" style="position:absolute;left:2px;top:2px;width:16px;height:16px;
+                border-radius:50%;background:#fff;transition:transform .2s;transform:translateX(0);"></span>
+        </span>
+      </label>
+    </div>
+
+    <div id="followUpdateSection" class="settings-section" style="display:none;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+        <span style="font-size:12px;color:#cdd;">
+          <i data-lucide="timer-reset" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+          Update Amount
+        </span>
+        <span id="followUpdateVal" style="font-size:12px;color:#7dd3fc;font-weight:700;min-width:38px;text-align:right;">3s</span>
+      </div>
+      <input type="range" id="followUpdateSlider" min="1" max="10" value="3" step="1"
+             style="width:100%;accent-color:#7dd3fc;cursor:pointer;height:4px;"
+             oninput="applySettings()">
+    </div>
+
     <!-- Reset button -->
     <div style="padding:6px 10px 4px;text-align:right;">
       <button onclick="resetSettings()" class="settings-reset-btn">
@@ -241,6 +272,8 @@ const DS_DEFAULTS = {
   buttonOpacity: 100,
   buttonBlur: 22,
   trailOpacity: 100,
+  followAircraft: false,
+  followUpdateAmount: 3,
   showLabels: true,
   speedUnit: 'knots',
   altitudeUnit: 'auto'
@@ -333,6 +366,12 @@ function getAltitudeAxisLabel() {
   const unit = getAltitudeUnit();
   return unit === 'fl' ? 'Altitude (FL)' : unit === 'feet' ? 'Altitude (ft)' : 'Altitude (Auto)';
 }
+function getFollowAircraftEnabled() {
+  return !!_dsLoad().followAircraft;
+}
+function getFollowUpdateAmountMs() {
+  return Math.max(1, Number(_dsLoad().followUpdateAmount) || 3) * 1000;
+}
 function _refreshDisplayUnits() {
   let activeId = null;
   let atcEnabled = false;
@@ -359,6 +398,8 @@ function applySettings() {
   const bo  = Number(document.getElementById('buttonOpacitySlider')?.value ?? current.buttonOpacity);
   const bb  = Number(document.getElementById('buttonBlurSlider')?.value ?? current.buttonBlur);
   const to  = Number(document.getElementById('trailOpacitySlider')?.value ?? current.trailOpacity);
+  const fa  = document.getElementById('followAircraftToggle')?.checked ?? current.followAircraft;
+  const fua = Number(document.getElementById('followUpdateSlider')?.value ?? current.followUpdateAmount);
   const lbl = document.getElementById('labelsToggle')?.checked ?? current.showLabels;
 
   const poV = document.getElementById('panelOpacityVal');
@@ -366,16 +407,24 @@ function applySettings() {
   const boV = document.getElementById('buttonOpacityVal');
   const bbV = document.getElementById('buttonBlurVal');
   const toV = document.getElementById('trailOpacityVal');
+  const fuaV = document.getElementById('followUpdateVal');
   if (poV) poV.textContent = po + '%';
   if (pbV) pbV.textContent = pb + 'px';
   if (boV) boV.textContent = bo + '%';
   if (bbV) bbV.textContent = bb + 'px';
   if (toV) toV.textContent = to + '%';
+  if (fuaV) fuaV.textContent = fua + 's';
 
   const track = document.getElementById('labelsTrack');
   const thumb = document.getElementById('labelsThumb');
   if (track) track.style.background = lbl ? '#00cfff' : '#555';
   if (thumb) thumb.style.transform  = lbl ? 'translateX(16px)' : 'translateX(0)';
+  const followTrack = document.getElementById('followAircraftTrack');
+  const followThumb = document.getElementById('followAircraftThumb');
+  const followSection = document.getElementById('followUpdateSection');
+  if (followTrack) followTrack.style.background = fa ? '#00cfff' : '#555';
+  if (followThumb) followThumb.style.transform = fa ? 'translateX(16px)' : 'translateX(0)';
+  if (followSection) followSection.style.display = fa ? 'block' : 'none';
 
   _syncDisplayPanels(po, pb);
   _syncDisplayButtons(bo, bb);
@@ -409,8 +458,13 @@ function applySettings() {
     buttonOpacity: bo,
     buttonBlur: bb,
     trailOpacity: to,
+    followAircraft: fa,
+    followUpdateAmount: fua,
     showLabels: lbl
   });
+  if (fa && typeof aircrafts !== 'undefined' && focusedAircraftId && aircrafts.has(focusedAircraftId)) {
+    aircrafts.get(focusedAircraftId).lastFollowUpdate = 0;
+  }
   _refreshDisplayUnits();
 }
 
@@ -421,12 +475,16 @@ function resetSettings() {
   const bol = document.getElementById('buttonOpacitySlider');
   const bbl = document.getElementById('buttonBlurSlider');
   const tl = document.getElementById('trailOpacitySlider');
+  const fat = document.getElementById('followAircraftToggle');
+  const fus = document.getElementById('followUpdateSlider');
   const lb = document.getElementById('labelsToggle');
   if (sl) sl.value = DS_DEFAULTS.panelOpacity;
   if (bl) bl.value = DS_DEFAULTS.panelBlur;
   if (bol) bol.value = DS_DEFAULTS.buttonOpacity;
   if (bbl) bbl.value = DS_DEFAULTS.buttonBlur;
   if (tl) tl.value = DS_DEFAULTS.trailOpacity;
+  if (fat) fat.checked = DS_DEFAULTS.followAircraft;
+  if (fus) fus.value = DS_DEFAULTS.followUpdateAmount;
   if (lb) lb.checked = DS_DEFAULTS.showLabels;
   _dsSave({ speedUnit: DS_DEFAULTS.speedUnit, altitudeUnit: DS_DEFAULTS.altitudeUnit });
   applySettings();
@@ -440,12 +498,16 @@ function resetSettings() {
   const bol = document.getElementById('buttonOpacitySlider');
   const bbl = document.getElementById('buttonBlurSlider');
   const tl = document.getElementById('trailOpacitySlider');
+  const fat = document.getElementById('followAircraftToggle');
+  const fus = document.getElementById('followUpdateSlider');
   const lb = document.getElementById('labelsToggle');
   if (sl) sl.value = s.panelOpacity;
   if (bl) bl.value = s.panelBlur;
   if (bol) bol.value = s.buttonOpacity;
   if (bbl) bbl.value = s.buttonBlur;
   if (tl) tl.value = s.trailOpacity;
+  if (fat) fat.checked = s.followAircraft;
+  if (fus) fus.value = s.followUpdateAmount;
   if (lb) lb.checked = s.showLabels;
   applySettings();
 })();
@@ -2336,6 +2398,13 @@ function updateAircraft(id, data, trackPoint = null) {
     if (!obj.lastTrackUpdate || now - obj.lastTrackUpdate > 1000) {
         showAircraftTrack(id);
         obj.lastTrackUpdate = now;
+    }
+    if (getFollowAircraftEnabled()) {
+        const followEvery = getFollowUpdateAmountMs();
+        if (!obj.lastFollowUpdate || now - obj.lastFollowUpdate >= followEvery) {
+            map.setView([data.lat, data.lon], map.getZoom(), { animate: true });
+            obj.lastFollowUpdate = now;
+        }
     }
     showAircraftPanel(data, id);
     updateNextWaypointMarker(data); // 抽出更新 Waypoint 的邏輯
