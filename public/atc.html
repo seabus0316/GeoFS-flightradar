@@ -242,7 +242,6 @@
         Reset
       </button>
     </div>
-
   </div>
 </div>
 
@@ -680,6 +679,11 @@ new MutationObserver(() => {
 (function() {
   // ── 更新清單（由新到舊）──────────────────────────────
   const WN_UPDATES = [
+        {      tag: 'new',
+    date: '2026-04-05',
+    title: 'Flight replay',
+    desc: 'You can now replay past flights by clicking in the settings panel. It will show the flight path and key stats like speed and altitude over time.'
+    },
     {      tag: 'fix',
     date: '2026-04-05',
     title: 'Discord flight reminder ',
@@ -962,6 +966,13 @@ new MutationObserver(() => {
       <span style="font-size: 22px;">📋</span>
       <span style="font-size: 14px;">Search History</span>
     </a>
+    <button id="openReplayBtn" type="button"
+       style="display:flex; width:100%; align-items:center; gap:12px; color:transparent; font-size:0;
+       padding:12px; background:rgba(59,130,246,0.14); border-radius:8px; margin-top:12px;
+       border:1px solid rgba(59,130,246,0.3); transition:background 0.3s; cursor:pointer;">
+      <span style="font-size:22px;">▶</span>
+      <span style="font-size:14px; font-weight:700; color:#fff;">Replay</span>
+    </button>
   </div>
 </div>
 
@@ -969,6 +980,38 @@ new MutationObserver(() => {
 <div id="menuOverlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
      background: rgba(0,0,0,0.5); z-index: 99998; display: none; opacity: 0; 
      transition: opacity 0.3s ease;"></div>
+
+<div id="replayPanel" style="display:none; position: fixed; left: 20px; bottom: 24px; z-index: 10002; width: min(460px, calc(100vw - 40px));
+     background: rgba(16,22,31,0.94); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
+     box-shadow: 0 16px 50px rgba(0,0,0,0.32); backdrop-filter: blur(14px); color: #fff; overflow: hidden;">
+  <div style="padding: 14px 16px 10px; border-bottom: 1px solid rgba(255,255,255,0.08); display:flex; align-items:center; justify-content:space-between; gap:12px;">
+    <div>
+      <div style="font-size: 15px; font-weight: 700;">Flight Replay</div>
+      <div id="replayStatus" style="font-size: 12px; color: rgba(255,255,255,0.7); margin-top: 2px;">Ready</div>
+    </div>
+    <button id="closeReplayBtn" type="button" style="border:none; background:rgba(255,255,255,0.08); color:#fff; width:32px; height:32px; border-radius:8px; cursor:pointer; font-size:18px;">×</button>
+  </div>
+  <div style="padding: 14px 16px 16px;">
+    <div id="replayCurrentTime" style="font-size: 22px; font-weight: 700; letter-spacing: 0.02em;">--:--:--</div>
+    <div id="replayRangeLabel" style="font-size: 12px; color: rgba(255,255,255,0.65); margin-top: 4px;">No replay loaded</div>
+    <input id="replaySlider" type="range" min="0" max="0" value="0" step="1000"
+      style="width:100%; margin: 16px 0 14px; accent-color:#3b82f6;" disabled>
+    <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+      <button id="replayLoadBtn" type="button" style="border:none; background:#2563eb; color:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700;">Load Replay</button>
+      <button id="replayPlayBtn" type="button" style="border:none; background:rgba(255,255,255,0.1); color:#fff; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700;" disabled>Play</button>
+      <button id="replayStopBtn" type="button" style="border:none; background:rgba(239,68,68,0.16); color:#fca5a5; padding:10px 14px; border-radius:10px; cursor:pointer; font-weight:700;" disabled>Back To Live</button>
+      <label style="display:flex; align-items:center; gap:8px; margin-left:auto; font-size:12px; color:rgba(255,255,255,0.72);">
+        Speed
+        <select id="replaySpeedSelect" style="background:rgba(255,255,255,0.08); color:#fff; border:1px solid rgba(255,255,255,0.12); border-radius:8px; padding:8px 10px;">
+          <option value="1">1x</option>
+          <option value="10">10x</option>
+          <option value="30" selected>30x</option>
+          <option value="60">60x</option>
+        </select>
+      </label>
+    </div>
+  </div>
+</div>
 
 <!-- ═══════════════════════════════════════════════
      FR24-Style Flight List Panel
@@ -1345,6 +1388,14 @@ window.addEventListener('load', function() {
         clearPhotoMarkers();
         console.log('📷 Photo Map disabled');
       }
+    });
+  }
+
+  initReplayControls();
+  const openReplayBtn = document.getElementById('openReplayBtn');
+  if (openReplayBtn && typeof closeMenu === 'function') {
+    openReplayBtn.addEventListener('click', () => {
+      closeMenu();
     });
   }
 });
@@ -1898,6 +1949,394 @@ async function loadHistoryFromBackend(aircraftId) {
   }
 }
 
+const replayState = {
+  active: false,
+  loading: false,
+  playing: false,
+  playSpeed: 30,
+  startTs: 0,
+  endTs: 0,
+  currentTs: 0,
+  lastFrameTs: 0,
+  rafId: null,
+  tracks: new Map(),
+  liveMeta: new Map()
+};
+
+function getReplayControls() {
+  return {
+    panel: document.getElementById('replayPanel'),
+    status: document.getElementById('replayStatus'),
+    current: document.getElementById('replayCurrentTime'),
+    range: document.getElementById('replayRangeLabel'),
+    slider: document.getElementById('replaySlider'),
+    loadBtn: document.getElementById('replayLoadBtn'),
+    playBtn: document.getElementById('replayPlayBtn'),
+    stopBtn: document.getElementById('replayStopBtn'),
+    speedSelect: document.getElementById('replaySpeedSelect')
+  };
+}
+
+function setReplayStatus(text, isError = false) {
+  const { status } = getReplayControls();
+  if (!status) return;
+  status.textContent = text;
+  status.style.color = isError ? '#fca5a5' : 'rgba(255,255,255,0.7)';
+}
+
+function formatReplayTimestamp(ts) {
+  if (!ts) return '--';
+  return new Date(ts).toLocaleString('en-GB', {
+    month: 'short',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false
+  });
+}
+
+function updateReplayPanelUi(visibleCount = null) {
+  const { current, range, slider, playBtn, stopBtn, speedSelect } = getReplayControls();
+  if (!current || !range || !slider || !playBtn || !stopBtn || !speedSelect) return;
+
+  current.textContent = replayState.currentTs ? formatReplayTimestamp(replayState.currentTs) : '--:--:--';
+
+  if (replayState.startTs && replayState.endTs) {
+    range.textContent = `${formatReplayTimestamp(replayState.startTs)} -> ${formatReplayTimestamp(replayState.endTs)}${visibleCount === null ? '' : ` • ${visibleCount} aircraft`}`;
+    slider.min = String(replayState.startTs);
+    slider.max = String(replayState.endTs);
+    slider.value = String(Math.max(replayState.startTs, Math.min(replayState.currentTs || replayState.startTs, replayState.endTs)));
+    slider.disabled = false;
+    playBtn.disabled = false;
+    stopBtn.disabled = false;
+  } else {
+    range.textContent = 'No replay loaded';
+    slider.min = '0';
+    slider.max = '0';
+    slider.value = '0';
+    slider.disabled = true;
+    playBtn.disabled = true;
+    stopBtn.disabled = true;
+  }
+
+  playBtn.textContent = replayState.playing ? 'Pause' : 'Play';
+  speedSelect.value = String(replayState.playSpeed);
+}
+
+function snapshotLiveAircraftMeta() {
+  const meta = new Map();
+  aircrafts.forEach((obj, id) => {
+    meta.set(id, { ...(obj.data || {}) });
+  });
+  return meta;
+}
+
+function clearAircraftMap() {
+  try { closeAircraftPanel(); } catch {}
+  aircrafts.forEach((obj, id) => {
+    try {
+      if (obj.marker) map.removeLayer(obj.marker);
+      if (Array.isArray(obj.segments)) obj.segments.forEach(seg => map.removeLayer(seg));
+    } catch {}
+  });
+  aircrafts.clear();
+  clearAllAircraftTracks();
+  clearFlightPlanMarkers();
+  focusedAircraftId = null;
+  const connCountEl = document.getElementById('connCount');
+  if (connCountEl) connCountEl.textContent = '0';
+}
+
+function calculateBearing(lat1, lon1, lat2, lon2) {
+  const phi1 = lat1 * Math.PI / 180;
+  const phi2 = lat2 * Math.PI / 180;
+  let dLon = normalizeLon(lon2) - normalizeLon(lon1);
+  if (dLon > 180) dLon -= 360;
+  if (dLon < -180) dLon += 360;
+  const lambda = dLon * Math.PI / 180;
+  const y = Math.sin(lambda) * Math.cos(phi2);
+  const x = Math.cos(phi1) * Math.sin(phi2) - Math.sin(phi1) * Math.cos(phi2) * Math.cos(lambda);
+  return (Math.atan2(y, x) * 180 / Math.PI + 360) % 360;
+}
+
+function interpolateLongitude(lon1, lon2, t) {
+  let dLon = normalizeLon(lon2) - normalizeLon(lon1);
+  if (dLon > 180) dLon -= 360;
+  if (dLon < -180) dLon += 360;
+  return normalizeLon(normalizeLon(lon1) + dLon * t);
+}
+
+function getReplaySample(track, ts) {
+  if (!Array.isArray(track) || track.length === 0) return null;
+  if (ts < track[0].ts || ts > track[track.length - 1].ts) return null;
+
+  let lo = 0;
+  let hi = track.length - 1;
+  while (lo <= hi) {
+    const mid = Math.floor((lo + hi) / 2);
+    if (track[mid].ts === ts) {
+      const next = track[Math.min(mid + 1, track.length - 1)];
+      const heading = next && next !== track[mid]
+        ? calculateBearing(track[mid].lat, track[mid].lon, next.lat, next.lon)
+        : 0;
+      return { ...track[mid], heading };
+    }
+    if (track[mid].ts < ts) lo = mid + 1;
+    else hi = mid - 1;
+  }
+
+  const prev = track[Math.max(0, hi)];
+  const next = track[Math.min(track.length - 1, lo)];
+  if (!prev || !next) return null;
+  if (next.ts === prev.ts) return { ...prev, heading: 0 };
+  if (next.ts - prev.ts > 10 * 60 * 1000) return null;
+
+  const t = (ts - prev.ts) / (next.ts - prev.ts);
+  return {
+    lat: prev.lat + (next.lat - prev.lat) * t,
+    lon: interpolateLongitude(prev.lon, next.lon, t),
+    alt: (prev.alt || 0) + ((next.alt || 0) - (prev.alt || 0)) * t,
+    speed: (prev.speed || 0) + ((next.speed || 0) - (prev.speed || 0)) * t,
+    ts,
+    heading: calculateBearing(prev.lat, prev.lon, next.lat, next.lon)
+  };
+}
+
+function bindReplayTrackToAircraft(id, track) {
+  const obj = aircrafts.get(id);
+  if (!obj || obj._replayTrackBound) return;
+  obj.rawTrack = track.map(t => ({ lat: t.lat, lon: t.lon, alt: t.alt || 0, speed: t.speed || 0, ts: t.ts }));
+  obj.rawPathForDisplay = track.map(t => [t.lat, t.lon, t.alt || 0, t.speed || 0]);
+  obj._replayTrackBound = true;
+}
+
+function renderReplayAt(ts) {
+  if (!replayState.active) return;
+
+  const visibleIds = new Set();
+  replayState.tracks.forEach((track, id) => {
+    const sample = getReplaySample(track, ts);
+    if (!sample) {
+      if (aircrafts.has(id)) removeAircraft(id);
+      return;
+    }
+
+    visibleIds.add(id);
+    const meta = replayState.liveMeta.get(id) || {};
+    const replayData = {
+      ...meta,
+      id,
+      lat: sample.lat,
+      lon: sample.lon,
+      alt: sample.alt || 0,
+      speed: sample.speed || 0,
+      heading: sample.heading || 0,
+      ts: sample.ts,
+      callsign: meta.callsign || meta.flightNo || id,
+      type: meta.type || 'HIST'
+    };
+
+    updateAircraft(id, replayData, false, { disablePrediction: true, replayMode: true });
+    bindReplayTrackToAircraft(id, track);
+  });
+
+  Array.from(aircrafts.keys()).forEach(id => {
+    if (!visibleIds.has(id)) removeAircraft(id);
+  });
+
+  replayState.currentTs = ts;
+  updateReplayPanelUi(visibleIds.size);
+  setReplayStatus(`Replay active • ${visibleIds.size} aircraft`);
+
+  if (focusedAircraftId && aircrafts.has(focusedAircraftId)) {
+    showAircraftTrack(focusedAircraftId);
+  }
+}
+
+function stopReplayPlayback() {
+  replayState.playing = false;
+  replayState.lastFrameTs = 0;
+  if (replayState.rafId) {
+    cancelAnimationFrame(replayState.rafId);
+    replayState.rafId = null;
+  }
+  updateReplayPanelUi();
+}
+
+function replayFrame(frameTs) {
+  if (!replayState.active || !replayState.playing) return;
+  if (!replayState.lastFrameTs) replayState.lastFrameTs = frameTs;
+
+  const delta = frameTs - replayState.lastFrameTs;
+  replayState.lastFrameTs = frameTs;
+  const nextTs = Math.min(replayState.endTs, replayState.currentTs + delta * replayState.playSpeed);
+  renderReplayAt(nextTs);
+
+  if (nextTs >= replayState.endTs) {
+    stopReplayPlayback();
+    setReplayStatus('Replay reached latest point');
+    return;
+  }
+
+  replayState.rafId = requestAnimationFrame(replayFrame);
+}
+
+function startReplayPlayback() {
+  if (!replayState.active) return;
+  if (replayState.currentTs >= replayState.endTs) {
+    replayState.currentTs = replayState.startTs;
+    renderReplayAt(replayState.currentTs);
+  }
+  replayState.playing = true;
+  replayState.lastFrameTs = 0;
+  updateReplayPanelUi();
+  replayState.rafId = requestAnimationFrame(replayFrame);
+}
+
+let wsShouldReconnect = true;
+
+function reconnectLiveFeed() {
+  clearAircraftMap();
+  wsShouldReconnect = false;
+  try {
+    if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+      ws.close();
+    }
+  } catch {}
+  setTimeout(() => {
+    wsShouldReconnect = true;
+    connectWS();
+  }, 150);
+}
+
+function hideReplayPanel() {
+  const { panel } = getReplayControls();
+  if (panel) panel.style.display = 'none';
+}
+
+function stopReplay(closePanel = false) {
+  stopReplayPlayback();
+  replayState.active = false;
+  replayState.loading = false;
+  replayState.startTs = 0;
+  replayState.endTs = 0;
+  replayState.currentTs = 0;
+  replayState.tracks.clear();
+  replayState.liveMeta.clear();
+  updateReplayPanelUi();
+  if (closePanel) hideReplayPanel();
+  reconnectLiveFeed();
+  setReplayStatus('Returned to live');
+}
+
+async function loadReplayData() {
+  if (replayState.loading) return;
+  const { panel, loadBtn } = getReplayControls();
+  if (panel) panel.style.display = 'block';
+
+  replayState.loading = true;
+  if (loadBtn) loadBtn.disabled = true;
+  setReplayStatus('Loading last 6 hours of track history...');
+
+  try {
+    replayState.liveMeta = snapshotLiveAircraftMeta();
+    const startTime = Date.now() - (6 * 60 * 60 * 1000);
+    const response = await fetch(`/api/tracks/all?start=${startTime}`);
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+
+    const raw = await response.json();
+    const nextTracks = new Map();
+    let minTs = Infinity;
+    let maxTs = -Infinity;
+
+    Object.entries(raw || {}).forEach(([id, track]) => {
+      if (!Array.isArray(track) || track.length < 2) return;
+      const cleaned = track
+        .filter(p => Number.isFinite(p?.lat) && Number.isFinite(p?.lon) && Number.isFinite(p?.ts))
+        .sort((a, b) => a.ts - b.ts);
+      if (cleaned.length < 2) return;
+      nextTracks.set(id, cleaned);
+      minTs = Math.min(minTs, cleaned[0].ts);
+      maxTs = Math.max(maxTs, cleaned[cleaned.length - 1].ts);
+    });
+
+    if (!nextTracks.size || !Number.isFinite(minTs) || !Number.isFinite(maxTs) || minTs === maxTs) {
+      throw new Error('No replayable history available right now');
+    }
+
+    replayState.tracks = nextTracks;
+    replayState.startTs = minTs;
+    replayState.endTs = maxTs;
+    replayState.currentTs = minTs;
+    replayState.active = true;
+    clearAircraftMap();
+    renderReplayAt(replayState.currentTs);
+  } catch (error) {
+    console.error('Replay load failed:', error);
+    setReplayStatus(error.message || 'Replay load failed', true);
+  } finally {
+    replayState.loading = false;
+    if (loadBtn) loadBtn.disabled = false;
+    updateReplayPanelUi();
+  }
+}
+
+function initReplayControls() {
+  const { panel, slider, loadBtn, playBtn, stopBtn, speedSelect } = getReplayControls();
+  const openBtn = document.getElementById('openReplayBtn');
+  const closeBtn = document.getElementById('closeReplayBtn');
+
+  if (openBtn) {
+    openBtn.addEventListener('click', () => {
+      if (panel) panel.style.display = 'block';
+      setReplayStatus(replayState.active ? 'Replay active' : 'Ready');
+    });
+  }
+
+  if (closeBtn) {
+    closeBtn.addEventListener('click', () => {
+      if (replayState.active) stopReplay(true);
+      else hideReplayPanel();
+    });
+  }
+
+  if (loadBtn) loadBtn.addEventListener('click', loadReplayData);
+
+  if (playBtn) {
+    playBtn.addEventListener('click', () => {
+      if (!replayState.active) return;
+      if (replayState.playing) {
+        stopReplayPlayback();
+        setReplayStatus('Replay paused');
+      } else {
+        startReplayPlayback();
+        setReplayStatus('Replay playing');
+      }
+    });
+  }
+
+  if (stopBtn) stopBtn.addEventListener('click', () => stopReplay(true));
+
+  if (slider) {
+    slider.addEventListener('input', e => {
+      if (!replayState.active) return;
+      stopReplayPlayback();
+      renderReplayAt(Number(e.target.value));
+      setReplayStatus('Replay scrubbed');
+    });
+  }
+
+  if (speedSelect) {
+    speedSelect.addEventListener('change', e => {
+      replayState.playSpeed = Math.max(1, Number(e.target.value) || 1);
+      updateReplayPanelUi();
+    });
+  }
+
+  updateReplayPanelUi();
+}
+
 // ===== ATC MODE =====
 let atcMode = false;
 let polarLayer = null;
@@ -2331,7 +2770,7 @@ function ensureMeta(id) {
   }
 }
 
-function updateAircraft(id, data, trackPoint = null) {
+function updateAircraft(id, data, trackPoint = null, options = {}) {
   // 1. 取得或建立飛機物件
   let isNew = false;
   const now = Date.now();
@@ -2412,7 +2851,9 @@ function updateAircraft(id, data, trackPoint = null) {
     // 如果時間差太久(>5秒)或太短(<0.2秒)，使用預設值 1000ms
     let duration = now - obj.lastPacketTs;
     if (duration > 5000 || duration < 200) duration = 1000; 
-    const predictedPosition = predictAircraftPosition(data, duration / 1000);
+    const predictedPosition = options.disablePrediction
+      ? { lat: data.lat, lon: data.lon }
+      : predictAircraftPosition(data, duration / 1000);
     
     // 取得當前 Marker 實際顯示的位置 (作為動畫起點)
     const currentLatLng = obj.marker.getLatLng();
@@ -3273,6 +3714,16 @@ function connectWS() {
   ws.addEventListener('message', ev => {
     try {
       const m = JSON.parse(ev.data);
+      if (replayState.active && [
+        'aircraft_update',
+        'aircraft_snapshot',
+        'aircraft_batch_update',
+        'aircraft_track_history',
+        'aircraft_track_clear',
+        'aircraft_remove'
+      ].includes(m.type)) {
+        return;
+      }
       if (m.type === 'aircraft_update') {
         (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => 
           updateAircraft(a.id, a, m.trackPoint)
@@ -3367,7 +3818,9 @@ else if (m.type === 'aircraft_track_history') {
       console.warn('Message parse error:', e);
     }
   });
-  ws.addEventListener('close', () => setTimeout(connectWS, 2000));
+  ws.addEventListener('close', () => {
+    if (wsShouldReconnect) setTimeout(connectWS, 2000);
+  });
   ws.addEventListener('error', () => ws.close());
 }
 // 載入機場數據
