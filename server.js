@@ -986,17 +986,6 @@ app.delete('/clear/:aircraftId', async (req, res) => {
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
-app.get('/api/tracks/:aircraftId', async (req, res) => {
-  try {
-    const { aircraftId } = req.params;
-    const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
-    const docs = await FlightPoint.find({ aircraftId, ts: { $gte: startTime } })
-      .sort({ ts: 1 }).limit(20000).lean();
-    const tracks = docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, speed: d.speed || 0, ts: d.ts }));
-    res.json({ tracks });
-  } catch { res.status(500).json({ error: 'Failed to fetch tracks' }); }
-});
-
 app.get('/api/tracks/all', async (req, res) => {
   try {
     const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
@@ -1010,6 +999,17 @@ app.get('/api/tracks/all', async (req, res) => {
     Object.keys(grouped).forEach(id => { grouped[id] = simplifyTrack(grouped[id], 2000); });
     res.json(grouped);
   } catch { res.status(500).json({ error: 'Failed to fetch all tracks' }); }
+});
+
+app.get('/api/tracks/:aircraftId', async (req, res) => {
+  try {
+    const { aircraftId } = req.params;
+    const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
+    const docs = await FlightPoint.find({ aircraftId, ts: { $gte: startTime } })
+      .sort({ ts: 1 }).limit(20000).lean();
+    const tracks = docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, speed: d.speed || 0, ts: d.ts }));
+    res.json({ tracks });
+  } catch { res.status(500).json({ error: 'Failed to fetch tracks' }); }
 });
 
 // ============ Upload ============
