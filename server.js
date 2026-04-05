@@ -500,7 +500,6 @@ io.on('connection', async (socket) => {
     ioPlayerClients.delete(socket);
     if (socket.role === 'player' && socket.aircraftId) {
       await finalizeFlightSession(socket.aircraftId, 'completed');
-      await FlightPoint.deleteMany({ aircraftId: socket.aircraftId });
       alertedSquawks.delete(socket.aircraftId);
       waypointState.delete(socket.aircraftId);
       broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: socket.aircraftId } });
@@ -599,7 +598,6 @@ wss.on('connection', (ws) => {
 
       if (msg.type === 'disconnect' && msg.aircraftId) {
         await finalizeFlightSession(msg.aircraftId, 'completed');
-        await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
         waypointState.delete(msg.aircraftId);
         alertedSquawks.delete(msg.aircraftId);
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
@@ -618,7 +616,6 @@ wss.on('connection', (ws) => {
     if (ws.role === 'player' && ws.aircraftId) {
       try {
         await finalizeFlightSession(ws.aircraftId, 'completed');
-        await FlightPoint.deleteMany({ aircraftId: ws.aircraftId });
         alertedSquawks.delete(ws.aircraftId);
       } catch (err) {
         console.error('Error finalizing on close', err);
@@ -1080,7 +1077,6 @@ setInterval(async () => {
       removed.push(id);
       try {
         await finalizeFlightSession(id, 'aborted');
-        await FlightPoint.deleteMany({ aircraftId: id });
         alertedSquawks.delete(id);
       } catch (err) {
         console.error('cleanup error', err);
