@@ -40,9 +40,7 @@
   }
 
   function buildPayload() {
-    const info = JSON.parse(
-      localStorage.getItem("geofsFlightInfo")
-    );
+const info = window.geofsFlightInfo;
 
     if (
       !info ||

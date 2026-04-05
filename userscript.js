@@ -80,7 +80,8 @@
   }
 
   // --- 全域變數 ---
-  let flightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
+window.geofsFlightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
+let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
