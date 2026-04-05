@@ -61,7 +61,7 @@ const AircraftIconDB = {
     if (/a32[0-9]|a318|a319|a321/.test(t))                                 return 'a320.svg';
     if (/b74[0-9]|747/.test(t))                                            return 'b747.svg';
     if (/b77[0-9]|777/.test(t))                                            return 'b777.svg';
-    if (/b78[0-9]|787/.test(t))                                            return 'b787.svg';
+    if (/b78[0-9]|787/.test(t))                                            return 'a330.svg';
     if (/b76[0-9]|767|757/.test(t))                                        return 'b767.svg';
     if (/b73[0-9]|737/.test(t))                                            return 'b737.svg';
     if (/crj|canadair/.test(t))                                            return 'crjx.svg';
