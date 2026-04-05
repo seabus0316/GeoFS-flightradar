@@ -2103,12 +2103,19 @@ function getReplaySample(track, ts) {
   };
 }
 
-function bindReplayTrackToAircraft(id, track) {
+function bindReplayTrackToAircraft(id, track, ts) {
   const obj = aircrafts.get(id);
-  if (!obj || obj._replayTrackBound) return;
-  obj.rawTrack = track.map(t => ({ lat: t.lat, lon: t.lon, alt: t.alt || 0, speed: t.speed || 0, ts: t.ts }));
-  obj.rawPathForDisplay = track.map(t => [t.lat, t.lon, t.alt || 0, t.speed || 0]);
-  obj._replayTrackBound = true;
+  if (!obj) return;
+  // Binary search: find last index where track[i].ts <= ts
+  let hi = -1, lo = 0, right = track.length - 1;
+  while (lo <= right) {
+    const mid = (lo + right) >> 1;
+    if (track[mid].ts <= ts) { hi = mid; lo = mid + 1; }
+    else right = mid - 1;
+  }
+  const slice = hi < 0 ? [] : track.slice(0, hi + 1);
+  obj.rawTrack = slice.map(t => ({ lat: t.lat, lon: t.lon, alt: t.alt || 0, speed: t.speed || 0, ts: t.ts }));
+  obj.rawPathForDisplay = slice.map(t => [t.lat, t.lon, t.alt || 0, t.speed || 0]);
 }
 
 function renderReplayAt(ts) {
@@ -2137,8 +2144,8 @@ function renderReplayAt(ts) {
       type: meta.type || 'HIST'
     };
 
+    bindReplayTrackToAircraft(id, track, ts);
     updateAircraft(id, replayData, false, { disablePrediction: true, replayMode: true });
-    bindReplayTrackToAircraft(id, track);
   });
 
   Array.from(aircrafts.keys()).forEach(id => {
@@ -2232,6 +2239,7 @@ function stopReplay(closePanel = false) {
 
 async function loadReplayData() {
   if (replayState.loading) return;
+  if (replayState.playing) stopReplayPlayback();
   const { panel, loadBtn } = getReplayControls();
   if (panel) panel.style.display = 'block';
 
@@ -2796,7 +2804,7 @@ function updateAircraft(id, data, trackPoint = null, options = {}) {
       showAircraftTrack(id);
       showAircraftPanel(data, id);
       
-      const history = await loadHistoryFromBackend(id);
+      const history = replayState.active ? null : await loadHistoryFromBackend(id);
       if (history && history.tracks) {
         const obj = aircrafts.get(id);
         if (obj) {
