@@ -486,6 +486,11 @@ io.on('connection', async (socket) => {
     await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
       lat: payload.lat, lon: payload.lon, alt: payload.alt,
       speed: payload.speed, heading: payload.heading, ts: payload.ts });
+    try {
+      await checkWaypointReminder(payload);
+    } catch (err) {
+      console.error('[Reminder] Socket.IO check failed:', err);
+    }
     broadcastToATC({ type: 'aircraft_update', payload });
     await sendSquawkAlert(payload);
   });
@@ -497,6 +502,7 @@ io.on('connection', async (socket) => {
       await finalizeFlightSession(socket.aircraftId, 'completed');
       await FlightPoint.deleteMany({ aircraftId: socket.aircraftId });
       alertedSquawks.delete(socket.aircraftId);
+      waypointState.delete(socket.aircraftId);
       broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: socket.aircraftId } });
     }
     console.log('Socket.IO client disconnected:', socket.id);
@@ -574,6 +580,11 @@ wss.on('connection', (ws) => {
         await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
           lat: payload.lat, lon: payload.lon, alt: payload.alt,
           speed: payload.speed, heading: payload.heading, ts: payload.ts });
+        try {
+          await checkWaypointReminder(payload);
+        } catch (err) {
+          console.error('[Reminder] WebSocket check failed:', err);
+        }
         broadcastToATC({ type: 'aircraft_update', payload,
           trackPoint: { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } });
         await sendSquawkAlert(payload);
@@ -589,6 +600,7 @@ wss.on('connection', (ws) => {
       if (msg.type === 'disconnect' && msg.aircraftId) {
         await finalizeFlightSession(msg.aircraftId, 'completed');
         await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
+        waypointState.delete(msg.aircraftId);
         alertedSquawks.delete(msg.aircraftId);
         broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
         return;
