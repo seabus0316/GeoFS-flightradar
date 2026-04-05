@@ -1003,9 +1003,7 @@ app.get('/api/tracks/:aircraftId', async (req, res) => {
 app.get('/api/tracks/all', async (req, res) => {
   try {
     const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
-    const currentAircraftIds = Array.from(aircrafts.keys());
-    if (!currentAircraftIds.length) return res.json({});
-    const docs = await FlightPoint.find({ aircraftId: { $in: currentAircraftIds }, ts: { $gte: startTime } })
+    const docs = await FlightPoint.find({ ts: { $gte: startTime } })
       .sort({ ts: 1 }).lean();
     const grouped = {};
     docs.forEach(d => {
