@@ -2164,6 +2164,15 @@ function stopReplayPlayback() {
   updateReplayPanelUi();
 }
 
+function pauseReplayPlayback() {
+  replayState.playing = false;
+  replayState.lastFrameTs = 0;
+  if (replayState.rafId) {
+    cancelAnimationFrame(replayState.rafId);
+    replayState.rafId = null;
+  }
+}
+
 function replayFrame(frameTs) {
   if (!replayState.active || !replayState.playing) return;
   if (!replayState.lastFrameTs) replayState.lastFrameTs = frameTs;
@@ -2319,18 +2328,15 @@ function initReplayControls() {
   if (stopBtn) stopBtn.addEventListener('click', () => stopReplay(true));
 
   if (slider) {
-    // input: dragging - only update time display, no heavy render
     slider.addEventListener('input', e => {
       if (!replayState.active) return;
-      stopReplayPlayback();
-      replayState.currentTs = Number(e.target.value);
-      const { current } = getReplayControls();
-      if (current) current.textContent = formatReplayTimestamp(replayState.currentTs);
+      pauseReplayPlayback();
+      renderReplayAt(Number(e.target.value));
       setReplayStatus('Scrubbing...');
     });
-    // change: render on release
     slider.addEventListener('change', e => {
       if (!replayState.active) return;
+      pauseReplayPlayback();
       renderReplayAt(Number(e.target.value));
       setReplayStatus('Replay scrubbed');
     });
