@@ -2034,6 +2034,29 @@ const _radarProject = (lat, lon, brng, distNm) => {
 };
 
 // 靜態層：圓環 + 輻射線（只在地圖中心/縮放變化時重建）
+function normalizeLongitude(lon) {
+  return ((lon + 540) % 360) - 180;
+}
+
+function predictAircraftPosition(data, lookaheadSeconds) {
+  const lat = Number(data?.lat);
+  const lon = Number(data?.lon);
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) {
+    return { lat: data?.lat, lon: data?.lon };
+  }
+
+  const speedKnots = getSpeedKnots(data?.speed) || 0;
+  const heading = Number(data?.heading || 0);
+  const seconds = Math.max(0, Math.min(lookaheadSeconds || 0, 8));
+
+  if (speedKnots < 15 || seconds <= 0) {
+    return { lat, lon };
+  }
+
+  const predicted = _radarProject(lat, lon, heading, (speedKnots * seconds) / 3600);
+  return { lat: predicted.lat, lon: normalizeLongitude(predicted.lon) };
+}
+
 function buildRadarStatic() {
   if (polarStaticLayer) { map.removeLayer(polarStaticLayer); polarStaticLayer = null; }
   const center = map.getCenter();
@@ -2389,6 +2412,7 @@ function updateAircraft(id, data, trackPoint = null) {
     // 如果時間差太久(>5秒)或太短(<0.2秒)，使用預設值 1000ms
     let duration = now - obj.lastPacketTs;
     if (duration > 5000 || duration < 200) duration = 1000; 
+    const predictedPosition = predictAircraftPosition(data, duration / 1000);
     
     // 取得當前 Marker 實際顯示的位置 (作為動畫起點)
     const currentLatLng = obj.marker.getLatLng();
@@ -2396,8 +2420,8 @@ function updateAircraft(id, data, trackPoint = null) {
     obj.anim = {
       startLat: currentLatLng.lat,
       startLon: currentLatLng.lng,
-      endLat: data.lat,
-      endLon: data.lon,
+      endLat: predictedPosition.lat,
+      endLon: predictedPosition.lon,
       startHeading: prevData.heading || 0,
       endHeading: data.heading || 0,
       startTime: now,
