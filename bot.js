@@ -143,7 +143,7 @@ const activities = [
   { name: 'Never Gonna Give You Up', type: ActivityType.Listening },
   { name: 'SeaBus\'s unfunny jokes :(', type: ActivityType.Listening },
   { name: 'Geo-FS', type: ActivityType.Playing },
-  { name: '67🫲🧒🫱', type: ActivityType.Playing },
+  { name: '67🫲🧒🫱', type: ActivityType.Playing }
 ];
 
 function setRandomActivity() {
