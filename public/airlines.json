@@ -845,5 +845,12 @@
     "iata": "IQ",
     "country": "Kazakhstan",
     "logo": "https://images.kiwi.com/airlines/64/IQ.png"
+  },
+    "CSC": {
+    "name": "Sichuan Airlines",
+    "icao": "CSC",
+    "iata": "3U",
+    "country": "China",
+    "logo": "https://icons.veryicon.com/png/o/brands/navigation-logo/sichuan-airlines.png"
   }
 }
