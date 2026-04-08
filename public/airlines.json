@@ -852,5 +852,26 @@
     "iata": "3U",
     "country": "China",
     "logo": "https://icons.veryicon.com/png/o/brands/navigation-logo/sichuan-airlines.png"
+  },
+    "KAC": {
+    "name": "Kuwait Airways",
+    "icao": "KAC",
+    "iata": "KU",
+    "country": "Kuwait",
+    "logo": "https://images.kiwi.com/airlines/64/KU.png"
+  },
+    "JZR": {
+    "name": "Jazeera Airways",
+    "icao": "JZR",
+    "iata": "J9",
+    "country": "Kuwait",
+    "logo": "https://images.kiwi.com/airlines/64/J9.png"
+  },
+    "NIS": {
+    "name": "La Costeña",
+    "icao": "NIS",
+    "iata": "LC",
+    "country": "Nicaragua",
+    "logo": "https://image2url.com/r2/default/images/1775664832472-75f1490b-2bdf-4b40-a2a6-49288548cf09.png"
   }
 }
