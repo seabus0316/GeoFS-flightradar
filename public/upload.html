@@ -12,15 +12,15 @@
       --accent: #58a6ff;
       --success: #238636;
       --success-hover: #2ea043;
+      --discord: #5865F2;
+      --discord-hover: #4752C4;
       --border-radius: 10px;
       --shadow: 0 0 10px rgba(0,0,0,0.4);
       --transition: all 0.3s ease;
     }
-    
-    * {
-      box-sizing: border-box;
-    }
-    
+
+    * { box-sizing: border-box; }
+
     body {
       font-family: "Segoe UI", sans-serif;
       background: var(--bg-primary);
@@ -33,7 +33,7 @@
       align-items: center;
       justify-content: center;
     }
-    
+
     .container {
       width: 100%;
       max-width: 800px;
@@ -42,21 +42,104 @@
       align-items: center;
       gap: 20px;
     }
-    
+
     h1 {
       color: var(--accent);
       text-align: center;
       margin-bottom: 10px;
       font-size: 2rem;
     }
-    
+
     .subtitle {
       text-align: center;
       color: #8b949e;
       margin-bottom: 20px;
       font-size: 0.9rem;
     }
-    
+
+    /* ── Discord Auth Bar ── */
+    #authBar {
+      width: 500px;
+      max-width: 100%;
+      background: var(--bg-secondary);
+      border-radius: var(--border-radius);
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      box-shadow: var(--shadow);
+      min-height: 58px;
+    }
+
+    .auth-user {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex: 1;
+    }
+
+    .auth-user img {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      border: 2px solid var(--accent);
+    }
+
+    .auth-user .name {
+      font-weight: 600;
+      font-size: 0.95rem;
+    }
+
+    .auth-user .badge {
+      font-size: 0.72rem;
+      color: #3fb950;
+      background: rgba(35,134,54,0.18);
+      padding: 2px 8px;
+      border-radius: 10px;
+    }
+
+    .btn-discord {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: var(--discord);
+      border: none;
+      padding: 9px 18px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 600;
+      color: white;
+      cursor: pointer;
+      text-decoration: none;
+      transition: var(--transition);
+      white-space: nowrap;
+    }
+
+    .btn-discord:hover { background: var(--discord-hover); transform: translateY(-1px); }
+
+    .btn-logout {
+      background: transparent;
+      border: 1px solid #30363d;
+      color: #8b949e;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .btn-logout:hover { border-color: #f85149; color: #f85149; }
+
+    .auth-note {
+      font-size: 0.8rem;
+      color: #8b949e;
+      flex: 1;
+    }
+
+    .auth-note strong { color: var(--accent); }
+
+    /* ── Form ── */
     form {
       display: flex;
       flex-direction: column;
@@ -75,18 +158,18 @@
       max-height: 900px;
       resize: both;
     }
-    
+
     .form-group {
       display: flex;
       flex-direction: column;
       gap: 6px;
     }
-    
+
     label {
       font-weight: bold;
       font-size: 0.9rem;
     }
-    
+
     input, textarea {
       border-radius: 6px;
       border: 1px solid #30363d;
@@ -97,35 +180,33 @@
       color: var(--text-primary);
       transition: var(--transition);
     }
-    
+
     textarea {
       resize: none;
       flex-grow: 1;
       min-height: 80px;
     }
-    
+
     input:focus, textarea:focus {
       outline: none;
       border-color: var(--accent);
       box-shadow: 0 0 0 2px rgba(88, 166, 255, 0.2);
     }
-    
+
     input[type=file] {
       background: transparent;
       padding: 8px 0;
       border: none;
     }
-    
+
     .coordinates {
       display: flex;
       gap: 10px;
     }
-    
-    .coordinates input {
-      flex: 1;
-    }
-    
-    button {
+
+    .coordinates input { flex: 1; }
+
+    button[type=submit] {
       background: var(--success);
       border: none;
       padding: 12px;
@@ -137,17 +218,17 @@
       transition: var(--transition);
       margin-top: 10px;
     }
-    
-    button:hover {
+
+    button[type=submit]:hover {
       background: var(--success-hover);
       transform: translateY(-2px);
     }
-    
-    button:disabled {
+
+    button[type=submit]:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
-    
+
     #msg {
       margin-top: 20px;
       font-weight: bold;
@@ -158,42 +239,17 @@
       transition: var(--transition);
       word-wrap: break-word;
     }
-    
-    .success {
-      background: rgba(35, 134, 54, 0.2);
-      color: #3fb950;
-    }
-    
-    .error {
-      background: rgba(248, 81, 73, 0.2);
-      color: #f85149;
-    }
-    
-    .info {
-      background: rgba(88, 166, 255, 0.2);
-      color: var(--accent);
-    }
-    
+
+    .success { background: rgba(35, 134, 54, 0.2); color: #3fb950; }
+    .error   { background: rgba(248, 81, 73, 0.2); color: #f85149; }
+    .info    { background: rgba(88, 166, 255, 0.2); color: var(--accent); }
+
     @media (max-width: 600px) {
-      body {
-        padding: 15px;
-      }
-      
-      .container {
-        max-width: 100%;
-      }
-      
-      form {
-        padding: 20px;
-        min-width: unset;
-        resize: none;
-        width: 100%;
-        height: auto;
-      }
-      
-      h1 {
-        font-size: 1.7rem;
-      }
+      body { padding: 15px; }
+      .container { max-width: 100%; }
+      form { padding: 20px; min-width: unset; resize: none; width: 100%; height: auto; }
+      h1 { font-size: 1.7rem; }
+      #authBar { width: 100%; }
     }
   </style>
 </head>
@@ -201,28 +257,33 @@
   <div class="container">
     <h1>📸 JetPhotos Upload Center</h1>
     <p class="subtitle">Share your aviation photography with the world</p>
-    
+
+    <!-- Auth Bar -->
+    <div id="authBar">
+      <span style="color:#8b949e;font-size:0.85rem;">Loading…</span>
+    </div>
+
     <form id="uploadForm">
       <div class="form-group">
         <label for="photo">Select Photo:</label>
         <input type="file" id="photo" name="photo" accept="image/*" required>
       </div>
-      
+
       <div class="form-group">
         <label for="photographer">Photographer Name:</label>
         <input type="text" id="photographer" name="photographer" placeholder="Your name (optional)">
       </div>
-      
+
       <div class="form-group" style="flex-grow: 1;">
         <label for="caption">Description:</label>
         <textarea id="caption" name="caption" placeholder="e.g., EVA Air A321 taking off RCSS"></textarea>
       </div>
-      
+
       <div class="form-group">
         <label for="tags">Tags (comma separated):</label>
         <input type="text" id="tags" name="tags" placeholder="A321,EVA Air,RCSS">
       </div>
-      
+
       <div class="form-group">
         <label for="userId">User ID (optional):</label>
         <input type="text" id="userId" name="userId" placeholder="Your GeoFS User ID">
@@ -243,44 +304,92 @@
   </div>
 
   <script>
-    const form = document.getElementById('uploadForm');
-    const msg = document.getElementById('msg');
-    const submitBtn = document.getElementById('submitBtn');
+    const form       = document.getElementById('uploadForm');
+    const msg        = document.getElementById('msg');
+    const submitBtn  = document.getElementById('submitBtn');
+    const authBar    = document.getElementById('authBar');
 
+    let currentUser = null;
+
+    // ── Auth Check ──────────────────────────────────────────────
+    async function checkAuth() {
+      try {
+        const res = await fetch('/api/user/me');
+        if (res.ok) {
+          const data = await res.json();
+          currentUser = data.user;
+          renderLoggedIn(data.user);
+        } else {
+          renderLoggedOut();
+        }
+      } catch {
+        renderLoggedOut();
+      }
+    }
+
+    function renderLoggedIn(user) {
+      const avatar = user.photos?.[0] || `https://cdn.discordapp.com/embed/avatars/0.png`;
+      authBar.innerHTML = `
+        <div class="auth-user">
+          <img src="${avatar}" alt="">
+          <div>
+            <div class="name">${escHtml(user.displayName || user.username)}</div>
+          </div>
+          <span class="badge">✓ Discord linked — review results will be sent to your DMs</span>
+        </div>
+        <button class="btn-logout" onclick="logout()">Log out</button>
+      `;
+    }
+
+    function renderLoggedOut() {
+      authBar.innerHTML = `
+        <span class="auth-note">
+          <strong>Login with Discord</strong> to receive approval/rejection notifications in your DMs.
+        </span>
+        <a class="btn-discord" href="/auth/discord?return_to=/upload.html">
+          <svg width="18" height="18" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
+            <path d="M60.1 4.9A58.6 58.6 0 0 0 45.5.6a40.6 40.6 0 0 0-1.8 3.7 54.2 54.2 0 0 0-16.3 0A39 39 0 0 0 25.6.6 58.5 58.5 0 0 0 11 4.9C1.6 19 -.9 32.7.3 46.2a59 59 0 0 0 18 9.1 44.6 44.6 0 0 0 3.9-6.3 38.4 38.4 0 0 1-6.1-2.9l1.5-1.1a42.2 42.2 0 0 0 36 0l1.5 1.1a38.3 38.3 0 0 1-6.1 3 44.5 44.5 0 0 0 3.9 6.2 58.8 58.8 0 0 0 18-9C72.9 30.4 69 16.8 60.1 4.9ZM23.8 37.9c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Zm23.4 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Z"/>
+          </svg>
+          Login with Discord
+        </a>
+      `;
+    }
+
+    async function logout() {
+      await fetch('/auth/logout', { method: 'POST' });
+      currentUser = null;
+      renderLoggedOut();
+    }
+
+    function escHtml(str) {
+      return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // ── Upload ───────────────────────────────────────────────────
     form.addEventListener('submit', async e => {
       e.preventDefault();
-      
-      // 禁用按鈕防止重複提交
       submitBtn.disabled = true;
       msg.textContent = '⏳ Uploading...';
       msg.className = 'info';
-      
+
       const fd = new FormData(form);
 
       try {
-        console.log('uploadong...');
-        const res = await fetch('/api/upload', {
-          method: 'POST',
-          body: fd
-        });
-        
-        console.log('Response status:', res.status);
-        console.log('Response ok:', res.ok);
-        
+        const res = await fetch('/api/upload', { method: 'POST', body: fd });
         let data;
-        const contentType = res.headers.get('content-type');
-        if (contentType && contentType.includes('application/json')) {
+        const ct = res.headers.get('content-type');
+        if (ct && ct.includes('application/json')) {
           data = await res.json();
         } else {
           const text = await res.text();
-          console.error('Non-JSON response:', text);
           throw new Error('Server returned non-JSON response: ' + text.substring(0, 100));
         }
-        
-        console.log('Response data:', data);
-        
+
         if (res.ok) {
-          msg.textContent = '✅ Upload successful! Your photo will be displayed after admin approval.';
+          const notifNote = currentUser
+            ? ' We\'ll DM you on Discord when it\'s reviewed.'
+            : '';
+          msg.textContent = `✅ Upload successful! Your photo will be displayed after admin approval.${notifNote}`;
           msg.className = 'success';
           form.reset();
         } else {
@@ -288,16 +397,16 @@
           const details = data.details ? '\n\nDetails: ' + data.details : '';
           msg.textContent = '❌ Upload failed: ' + errorMsg + details;
           msg.className = 'error';
-          console.error('Upload failed:', data);
         }
       } catch (err) {
-        console.error('Upload error:', err);
         msg.textContent = '⚠️ Error: ' + err.message + '\n\nCheck console for details (F12)';
         msg.className = 'error';
       } finally {
         submitBtn.disabled = false;
       }
     });
+
+    checkAuth();
   </script>
 </body>
 </html>

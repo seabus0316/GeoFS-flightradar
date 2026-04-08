@@ -48,6 +48,18 @@ const PendingNotification = mongoose.model('PendingNotification', new mongoose.S
   createdAt:           { type: Date, default: Date.now },
 }, { versionKey: false }));
 
+// ── 照片審核通知
+const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schema({
+  discordId:    String,
+  photoId:      String,
+  type:         String, // 'approved' | 'rejected'
+  caption:      String,
+  thumbUrl:     String,
+  rejectReason: String,
+  sent:         { type: Boolean, default: false, index: true },
+  createdAt:    { type: Date, default: Date.now },
+}, { versionKey: false }));
+
 const FlightSession = mongoose.model('FlightSession', new mongoose.Schema({
   aircraftId:  String,
   discordId:   String,
@@ -561,10 +573,54 @@ async function processPendingNotifications() {
   }
 }
 
+// ============ 輪詢 PhotoNotification ============
+async function processPhotoNotifications() {
+  try {
+    const pending = await PhotoNotification.find({ sent: false }).lean();
+    for (const notif of pending) {
+      try {
+        const approved = notif.type === 'approved';
+        const embed = {
+          color: approved ? 0x238636 : 0xda3633,
+          title: approved ? '✅ Photo Approved!' : '❌ Photo Rejected',
+          description: notif.caption
+            ? `**"${notif.caption}"**`
+            : '*(No description)*',
+          fields: [],
+          footer: { text: 'JetPhotos · GeoFS Flightradar' },
+          timestamp: new Date().toISOString(),
+        };
+        if (notif.thumbUrl) embed.thumbnail = { url: notif.thumbUrl };
+        if (!approved && notif.rejectReason) {
+          embed.fields.push({ name: '📋 Reason', value: notif.rejectReason });
+        }
+        if (approved) {
+          embed.fields.push({ name: '🌐 View Gallery', value: `[Open Gallery](${process.env.RADAR_URL || 'https://geofs-flightradar.duckdns.org'}/gallery.html)` });
+        }
+
+        try {
+          const user = await client.users.fetch(notif.discordId);
+          await user.send({ embeds: [embed] });
+          await PhotoNotification.updateOne({ _id: notif._id }, { $set: { sent: true } });
+          console.log(`[PhotoNotif] ✅ Sent ${notif.type} to ${notif.discordId}`);
+        } catch (e) {
+          console.warn(`[PhotoNotif] Failed to DM ${notif.discordId}:`, e.message);
+        }
+      } catch (e) {
+        console.error('[PhotoNotif] Error processing:', e);
+      }
+    }
+  } catch (e) {
+    console.error('[PhotoNotif] Poll error:', e);
+  }
+}
+
 // ============ 啟動 ============
 registerCommands().then(() => {
   client.login(BOT_TOKEN).then(() => {
     setInterval(processPendingNotifications, 15_000);
+    setInterval(processPhotoNotifications, 15_000);
     console.log('⏱ Reminder polling started (every 15s)');
+    console.log('⏱ Photo notification polling started (every 15s)');
   });
 });

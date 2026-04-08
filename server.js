@@ -116,6 +116,8 @@ app.use(express.urlencoded({ extended: true }));
 const photoSchema = new mongoose.Schema({
   file: String, thumb: String, photographer: String, caption: String,
   tags: [String], lat: Number, userId: String, lon: Number,
+  discordId: { type: String, index: true, sparse: true },
+  rejectReason: String,
   status: { type: String, default: 'pending' },
   createdAt: { type: Date, default: Date.now }
 }, { versionKey: false });
@@ -205,6 +207,17 @@ const PendingNotification = mongoose.model('PendingNotification', new mongoose.S
   penultimateWaypoint: String,
   sent:                { type: Boolean, default: false, index: true },
   createdAt:           { type: Date, default: Date.now },
+}, { versionKey: false }));
+
+const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schema({
+  discordId:    String,
+  photoId:      String,
+  type:         { type: String, enum: ['approved', 'rejected'] },
+  caption:      String,
+  thumbUrl:     String,
+  rejectReason: String,
+  sent:         { type: Boolean, default: false, index: true },
+  createdAt:    { type: Date, default: Date.now },
 }, { versionKey: false }));
 // ============ MongoDB 連線 ============
 mongoose.connect(MONGODB_URI)
@@ -634,7 +647,9 @@ wss.on('connection', (ws) => {
 app.get('/auth/discord', (req, res) => {
   if (!DISCORD_CLIENT_ID) return res.status(500).send('Discord OAuth not configured');
   const state = Math.random().toString(36).slice(2);
+  const returnTo = req.query.return_to || '/';
   res.cookie('discord_oauth_state', state, { httpOnly: true, maxAge: 300_000 });
+  res.cookie('discord_return_to', returnTo, { httpOnly: true, maxAge: 300_000 });
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
     redirect_uri: DISCORD_REDIRECT_URI,
@@ -704,8 +719,10 @@ app.get('/auth/discord/callback', async (req, res) => {
       { expiresIn: '30d' }
     );
     res.clearCookie('discord_oauth_state');
+    res.clearCookie('discord_return_to');
+    const returnTo = req.cookies.discord_return_to || '/';
     res.cookie('auth_token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
-    res.redirect('/?discord_linked=1');
+    res.redirect(returnTo + (returnTo.includes('?') ? '&' : '?') + 'discord_linked=1');
   } catch (err) {
     console.error('Discord OAuth error', err);
     res.status(500).send('OAuth error: ' + err.message);
@@ -951,14 +968,32 @@ app.post('/admin/photos/:id/approve', checkAdminPass, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
-    photo.status = 'approved'; await photo.save(); res.json({ message: 'approved' });
+    photo.status = 'approved'; await photo.save();
+    if (photo.discordId) {
+      await PhotoNotification.create({
+        discordId: photo.discordId, photoId: String(photo._id),
+        type: 'approved', caption: photo.caption || '', thumbUrl: photo.thumb || ''
+      });
+    }
+    res.json({ message: 'approved' });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 app.post('/admin/photos/:id/reject', checkAdminPass, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
-    photo.status = 'rejected'; await photo.save(); res.json({ message: 'rejected' });
+    const reason = (req.body.reason || '').trim();
+    photo.status = 'rejected';
+    if (reason) photo.rejectReason = reason;
+    await photo.save();
+    if (photo.discordId) {
+      await PhotoNotification.create({
+        discordId: photo.discordId, photoId: String(photo._id),
+        type: 'rejected', caption: photo.caption || '', thumbUrl: photo.thumb || '',
+        rejectReason: reason || null
+      });
+    }
+    res.json({ message: 'rejected' });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 app.delete('/admin/photos/:id', checkAdminPass, async (req, res) => {
@@ -1038,13 +1073,23 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     if (!imgbbData.success) throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown'));
     fs.unlinkSync(file.path);
 
+    // 從 JWT cookie 取得登入者的 discordId（若有登入）
+    let discordId = null;
+    try {
+      const token = req.cookies.auth_token;
+      if (token) {
+        const decoded = jwt.verify(token, JWT_SECRET);
+        discordId = decoded.discordId || null;
+      }
+    } catch { /* 未登入，忽略 */ }
+
     const { photographer = 'anon', caption = '', tags = '', lat, lon, userId } = req.body;
     const photo = await Photo.create({
       file: imgbbData.data.url, thumb: imgbbData.data.url,
       photographer, caption,
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
       lat: lat ? Number(lat) : null, lon: lon ? Number(lon) : null,
-      userId: userId || null, status: 'pending'
+      userId: userId || null, discordId, status: 'pending'
     });
     res.json({ ok: true, photo });
   } catch (err) {
