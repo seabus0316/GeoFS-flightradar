@@ -873,5 +873,41 @@
     "iata": "LC",
     "country": "Nicaragua",
     "logo": "https://image2url.com/r2/default/images/1775664832472-75f1490b-2bdf-4b40-a2a6-49288548cf09.png"
+  },
+    "KXP": {
+    "name": "MJets Air",
+    "icao": "KXP",
+    "iata": "WW",
+    "country": "Malaysia",
+    "logo": "https://i.ibb.co/cc4V1j2x/image.jpg"
+  },
+    "JOY": {
+    "name": "Joy Air",
+    "icao": "JOY",
+    "iata": "JR",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/JR.png"
+  },
+    "AUA": {
+    "name": "Austrian Airlines",
+    "icao": "AUA",
+    "iata": "OS",
+    "country": "Austria",
+    "logo": "https://images.kiwi.com/airlines/64/OS.png"
+  },
+    "ACI": {
+    "name": "Aircalin",
+    "icao": "ACI",
+    "iata": "SB",
+    "country": "France",
+    "logo": "https://images.kiwi.com/airlines/64/SB.png"
+  },
+    "KMI": {
+    "name": "K-Mile Asia",
+    "icao": "KMI",
+    "iata": "8K",
+    "country": "Thailand",
+    "logo": "https://k-mile.co.th/wp-content/uploads/2022/10/k-mile.jpg"
   }
+  
 }
