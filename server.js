@@ -267,6 +267,42 @@ function getReplayBucketMs(startTime, endTime = Date.now()) {
   return Math.max(MIN_REPLAY_BUCKET_MS, targetBucketMs);
 }
 
+async function loadReplayTrackForAircraft(aircraftId, startTime, endTime, bucketMs) {
+  const docs = await FlightPoint.aggregate([
+    { $match: { aircraftId, ts: { $gte: startTime, $lte: endTime } } },
+    {
+      $project: {
+        _id: 0,
+        lat: 1,
+        lon: 1,
+        alt: { $ifNull: ['$alt', 0] },
+        speed: { $ifNull: ['$speed', 0] },
+        ts: 1,
+        bucket: { $subtract: ['$ts', { $mod: ['$ts', bucketMs] }] }
+      }
+    },
+    { $sort: { ts: 1 } },
+    {
+      $group: {
+        _id: '$bucket',
+        point: {
+          $first: {
+            lat: '$lat',
+            lon: '$lon',
+            alt: '$alt',
+            speed: '$speed',
+            ts: '$ts'
+          }
+        }
+      }
+    },
+    { $sort: { 'point.ts': 1 } }
+  ]);
+
+  if (!Array.isArray(docs) || docs.length < 2) return null;
+  return simplifyTrack(docs.map(doc => doc.point), MAX_REPLAY_POINTS_PER_AIRCRAFT);
+}
+
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
@@ -1066,48 +1102,25 @@ app.get('/api/tracks/all', async (req, res) => {
       ? Math.max(now - RETENTION_MS, parsedStart)
       : (now - DEFAULT_REPLAY_WINDOW_MS);
     const bucketMs = getReplayBucketMs(startTime, now);
-    const docs = await FlightPoint.aggregate([
-      { $match: { ts: { $gte: startTime, $lte: now } } },
-      {
-        $project: {
-          _id: 0,
-          aircraftId: 1,
-          lat: 1,
-          lon: 1,
-          alt: { $ifNull: ['$alt', 0] },
-          speed: { $ifNull: ['$speed', 0] },
-          ts: 1,
-          bucket: { $subtract: ['$ts', { $mod: ['$ts', bucketMs] }] }
-        }
-      },
-      { $sort: { aircraftId: 1, ts: 1 } },
-      {
-        $group: {
-          _id: { aircraftId: '$aircraftId', bucket: '$bucket' },
-          point: {
-            $first: {
-              lat: '$lat',
-              lon: '$lon',
-              alt: '$alt',
-              speed: '$speed',
-              ts: '$ts'
-            }
-          }
-        }
-      },
-      { $sort: { '_id.aircraftId': 1, 'point.ts': 1 } },
-      {
-        $group: {
-          _id: '$_id.aircraftId',
-          track: { $push: '$point' }
-        }
-      }
-    ]).allowDiskUse(true);
+    const aircraftIds = await FlightPoint.distinct('aircraftId', { ts: { $gte: startTime, $lte: now } });
     const grouped = {};
-    docs.forEach(d => {
-      if (!Array.isArray(d.track) || d.track.length < 2) return;
-      grouped[d._id] = simplifyTrack(d.track, MAX_REPLAY_POINTS_PER_AIRCRAFT);
-    });
+    const batchSize = 8;
+    for (let i = 0; i < aircraftIds.length; i += batchSize) {
+      const batch = aircraftIds.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(async aircraftId => {
+        try {
+          const track = await loadReplayTrackForAircraft(aircraftId, startTime, now, bucketMs);
+          return track ? [aircraftId, track] : null;
+        } catch (err) {
+          console.error(`Failed to fetch replay track for ${aircraftId}`, err);
+          return null;
+        }
+      }));
+      results.forEach(entry => {
+        if (!entry) return;
+        grouped[entry[0]] = entry[1];
+      });
+    }
     res.json(grouped);
   } catch (err) {
     console.error('Failed to fetch replay tracks', err);
