@@ -908,6 +908,53 @@
     "iata": "8K",
     "country": "Thailand",
     "logo": "https://k-mile.co.th/wp-content/uploads/2022/10/k-mile.jpg"
+  },
+    "CSZ": {
+    "name": "Shenzhen Airlines",
+    "icao": "CSZ",
+    "iata": "ZH",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/ZH.png"
+  },
+    "CHB": {
+    "name": "West Air",
+    "icao": "CHB",
+    "iata": "PN",
+    "country": "China",
+    "logo": "https://www.westair.cn/dotCms/webfile//content/hearderbar/logo%20-dark_zh_CN.png?language_id=1"
+  },
+    "AMU": {
+    "name": "Air Macau",
+    "icao": "AMU",
+    "iata": "NX",
+    "country": "Macau",
+    "logo": "https://images.kiwi.com/airlines/64/NX.png"
+  },
+    "SEJ": {
+    "name": "Spice Jet",
+    "icao": "SEJ",
+    "iata": "SG",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/SG.png"
+  },
+    "ALK": {
+    "name": "Sri Lankan",
+    "icao": "ALK",
+    "iata": "UL",
+    "country": "Sri Lanka",
+    "logo": "https://images.kiwi.com/airlines/64/UL.png"
+  },
+    "AKJ": {
+    "name": "Akasa Air | GeoFS VA",
+    "icao": "AKJ",
+    "iata": "QP",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/QP.png"
+  },
+    "CNA": {
+    "name": "China National Airlines",
+    "icao": "CNA",
+    "iata": "CW",
+    "country": "China"
   }
-  
 }

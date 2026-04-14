@@ -432,6 +432,16 @@ function authMiddleware(req, res, next) {
   }
 }
 
+function getOptionalAuthUser(req) {
+  const token = req.cookies.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
+  if (!token) return null;
+  try {
+    return jwt.verify(token, JWT_SECRET);
+  } catch {
+    return null;
+  }
+}
+
 function checkAdminPass(req, res, next) {
   if (req.headers['x-admin-pass'] === ADMIN_PASSWORD) next();
   else res.status(401).json({ error: 'Unauthorized' });
@@ -924,6 +934,11 @@ app.post('/api/airline', async (req, res) => {
     if (!icao || !iata || !name || !country)
       return res.status(400).json({ error: 'Missing required fields: icao, iata, name, country' });
 
+    const authUser = getOptionalAuthUser(req);
+    const submitter = authUser?.discordId
+      ? await User.findOne({ discordId: authUser.discordId }).select('discordId username displayName').lean()
+      : null;
+
     const entry = { name, icao, iata, country };
     if (logo) entry.logo = logo;
     const jsonStr = JSON.stringify({ [icao]: entry }, null, 2);
@@ -934,6 +949,10 @@ app.post('/api/airline', async (req, res) => {
       body: JSON.stringify({
         username: 'Airline Registry',
         avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
+        ...(submitter?.discordId ? {
+          content: `<@${submitter.discordId}>`,
+          allowed_mentions: { users: [submitter.discordId] }
+        } : {}),
         embeds: [{
           title: `✈ New Airline — ${name}`,
           color: 0xf0a500,

@@ -95,6 +95,54 @@
     .card-meta { font-family: var(--mono); font-size: 0.72rem; color: var(--muted); margin-top: 3px; }
     .card-badges { display: flex; gap: 6px; margin-top: 6px; }
     .badge { background: rgba(0,212,255,0.1); border: 1px solid rgba(0,212,255,0.25); border-radius: 3px; padding: 2px 7px; font-family: var(--mono); font-size: 0.7rem; color: var(--cyan); }
+    #authBar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 14px 18px;
+      background: rgba(88,101,242,0.1);
+      border: 1px solid rgba(88,101,242,0.28);
+      border-radius: 8px;
+    }
+    .auth-user { display: flex; align-items: center; gap: 12px; min-width: 0; }
+    .auth-user img {
+      width: 42px;
+      height: 42px;
+      border-radius: 50%;
+      border: 1px solid rgba(255,255,255,0.12);
+      object-fit: cover;
+    }
+    .auth-copy { min-width: 0; }
+    .auth-name { font-size: 1rem; font-weight: 700; color: #fff; }
+    .auth-sub { font-family: var(--mono); font-size: 0.72rem; color: #aab2ff; }
+    .auth-note { font-size: 0.95rem; color: var(--text); }
+    .btn-discord, .btn-logout {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-family: var(--sans);
+      font-weight: 700;
+      letter-spacing: 0.04em;
+      cursor: pointer;
+      transition: transform 0.2s, opacity 0.2s, background 0.2s;
+      white-space: nowrap;
+    }
+    .btn-discord {
+      color: #fff;
+      background: #5865f2;
+      border: 1px solid rgba(255,255,255,0.08);
+    }
+    .btn-discord:hover, .btn-logout:hover { transform: translateY(-1px); }
+    .btn-logout {
+      color: var(--text);
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
     .submit-row { display: flex; gap: 12px; }
     .btn { flex: 1; padding: 14px; border: none; border-radius: 6px; font-family: var(--sans); font-weight: 700; font-size: 1rem; letter-spacing: 0.1em; text-transform: uppercase; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }
     .btn-primary { background: var(--amber); color: #000; box-shadow: 0 0 20px rgba(240,165,0,0.25); }
@@ -115,6 +163,10 @@
     .hi-name { flex: 1; color: var(--text); }
     .hi-time { font-family: var(--mono); font-size: 0.7rem; color: var(--muted); }
     .hi-ok { color: var(--green); } .hi-err { color: var(--red); }
+    @media (max-width: 640px) {
+      #authBar { flex-direction: column; align-items: stretch; }
+      .btn-discord, .btn-logout { width: 100%; }
+    }
     ::-webkit-scrollbar { width: 4px; height: 4px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 4px; }
@@ -130,6 +182,10 @@
     </div>
     <p class="tagline">// submit airline data · broadcast to discord</p>
   </header>
+
+  <div id="authBar">
+    <span class="auth-note">Loading Discord login...</span>
+  </div>
 
   <div class="main-grid">
 
@@ -205,6 +261,60 @@
 
 <script>
   const $ = id => document.getElementById(id);
+  let currentUser = null;
+
+  async function checkAuth() {
+    try {
+      const res = await fetch('/api/user/me');
+      if (!res.ok) return renderLoggedOut();
+      const data = await res.json();
+      currentUser = data.user || null;
+      if (currentUser) renderLoggedIn(currentUser);
+      else renderLoggedOut();
+    } catch {
+      renderLoggedOut();
+    }
+  }
+
+  function renderLoggedIn(user) {
+    const avatar = user.photos?.[0] || 'https://cdn.discordapp.com/embed/avatars/0.png';
+    $('authBar').innerHTML = `
+      <div class="auth-user">
+        <img src="${avatar}" alt="">
+        <div class="auth-copy">
+          <div class="auth-name">${escHtml(user.displayName || user.username || 'Discord User')}</div>
+          <div class="auth-sub">Submissions will ping your Discord account in the webhook.</div>
+        </div>
+      </div>
+      <button class="btn-logout" type="button" onclick="logout()">Log out</button>
+    `;
+  }
+
+  function renderLoggedOut() {
+    $('authBar').innerHTML = `
+      <span class="auth-note">Login with Discord if you want the webhook message to mention you.</span>
+      <a class="btn-discord" href="/auth/discord?return_to=/airline.html">
+        <svg width="18" height="18" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
+          <path d="M60.1 4.9A58.6 58.6 0 0 0 45.5.6a40.6 40.6 0 0 0-1.8 3.7 54.2 54.2 0 0 0-16.3 0A39 39 0 0 0 25.6.6 58.5 58.5 0 0 0 11 4.9C1.6 19 -.9 32.7.3 46.2a59 59 0 0 0 18 9.1 44.6 44.6 0 0 0 3.9-6.3 38.4 38.4 0 0 1-6.1-2.9l1.5-1.1a42.2 42.2 0 0 0 36 0l1.5 1.1a38.3 38.3 0 0 1-6.1 3 44.5 44.5 0 0 0 3.9 6.2 58.8 58.8 0 0 0 18-9C72.9 30.4 69 16.8 60.1 4.9ZM23.8 37.9c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Zm23.4 0c-3.5 0-6.4-3.2-6.4-7.2s2.8-7.2 6.4-7.2c3.5 0 6.4 3.2 6.3 7.2 0 4-2.8 7.2-6.3 7.2Z"/>
+        </svg>
+        Login with Discord
+      </a>
+    `;
+  }
+
+  async function logout() {
+    await fetch('/auth/logout', { method: 'POST' });
+    currentUser = null;
+    renderLoggedOut();
+  }
+
+  function escHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
 
   function buildPayload() {
     const icao = $('icao').value.trim(), iata = $('iata').value.trim();
@@ -308,6 +418,10 @@
   }
 
   document.addEventListener('keydown', e => { if ((e.ctrlKey||e.metaKey) && e.key==='Enter') submit(); });
+  checkAuth();
+  if (location.search.includes('discord_linked=1')) {
+    toast('Discord login connected. New submissions can mention you.', 'success');
+  }
   update();
 </script>
 </body>
