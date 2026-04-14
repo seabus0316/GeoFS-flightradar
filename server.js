@@ -37,6 +37,10 @@ const JWT_SECRET            = process.env.JWT_SECRET            || 'change_this_
 // ============ 共用變數 ============
 const aircrafts    = new Map();
 const RETENTION_MS = 12 * 60 * 60 * 1000;
+const DEFAULT_REPLAY_WINDOW_MS = 6 * 60 * 60 * 1000;
+const MAX_REPLAY_POINTS_PER_AIRCRAFT = 720;
+const MIN_REPLAY_BUCKET_MS = 15 * 1000;
+const PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 
 const clients         = new Set();
 const atcClients      = new Set();
@@ -47,6 +51,8 @@ const ioPlayerClients = new Set();
 const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
 const waypointState = new Map(); // aircraftId → { planHash, triggered }
  
+let lastFlightPointPruneAt = 0;
+
 function normalizeFlightLookup(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -255,11 +261,22 @@ function simplifyTrack(track, maxPoints = 1000) {
   return simplified;
 }
 
+function getReplayBucketMs(startTime, endTime = Date.now()) {
+  const windowMs = Math.max(60 * 1000, endTime - startTime);
+  const targetBucketMs = Math.ceil(windowMs / MAX_REPLAY_POINTS_PER_AIRCRAFT / 1000) * 1000;
+  return Math.max(MIN_REPLAY_BUCKET_MS, targetBucketMs);
+}
+
 async function saveFlightPoint(pt) {
   try {
     await FlightPoint.create(pt);
-    const cutoff = Date.now() - RETENTION_MS;
-    await FlightPoint.deleteMany({ aircraftId: pt.aircraftId, ts: { $lt: cutoff } });
+    const now = Date.now();
+    if (now - lastFlightPointPruneAt >= PRUNE_INTERVAL_MS) {
+      lastFlightPointPruneAt = now;
+      const cutoff = now - RETENTION_MS;
+      FlightPoint.deleteMany({ ts: { $lt: cutoff } })
+        .catch(err => console.error('Prune error', err));
+    }
   } catch (err) {
     console.error('saveFlightPoint error', err);
   }
@@ -1043,17 +1060,59 @@ app.delete('/clear/:aircraftId', async (req, res) => {
 
 app.get('/api/tracks/all', async (req, res) => {
   try {
-    const startTime = parseInt(req.query.start) || (Date.now() - 6 * 60 * 60 * 1000);
-    const docs = await FlightPoint.find({ ts: { $gte: startTime } })
-      .sort({ ts: 1 }).lean();
+    const now = Date.now();
+    const parsedStart = Number.parseInt(req.query.start, 10);
+    const startTime = Number.isFinite(parsedStart)
+      ? Math.max(now - RETENTION_MS, parsedStart)
+      : (now - DEFAULT_REPLAY_WINDOW_MS);
+    const bucketMs = getReplayBucketMs(startTime, now);
+    const docs = await FlightPoint.aggregate([
+      { $match: { ts: { $gte: startTime, $lte: now } } },
+      {
+        $project: {
+          _id: 0,
+          aircraftId: 1,
+          lat: 1,
+          lon: 1,
+          alt: { $ifNull: ['$alt', 0] },
+          speed: { $ifNull: ['$speed', 0] },
+          ts: 1,
+          bucket: { $subtract: ['$ts', { $mod: ['$ts', bucketMs] }] }
+        }
+      },
+      { $sort: { aircraftId: 1, ts: 1 } },
+      {
+        $group: {
+          _id: { aircraftId: '$aircraftId', bucket: '$bucket' },
+          point: {
+            $first: {
+              lat: '$lat',
+              lon: '$lon',
+              alt: '$alt',
+              speed: '$speed',
+              ts: '$ts'
+            }
+          }
+        }
+      },
+      { $sort: { '_id.aircraftId': 1, 'point.ts': 1 } },
+      {
+        $group: {
+          _id: '$_id.aircraftId',
+          track: { $push: '$point' }
+        }
+      }
+    ]).allowDiskUse(true);
     const grouped = {};
     docs.forEach(d => {
-      if (!grouped[d.aircraftId]) grouped[d.aircraftId] = [];
-      grouped[d.aircraftId].push({ lat: d.lat, lon: d.lon, alt: d.alt || 0, speed: d.speed || 0, ts: d.ts });
+      if (!Array.isArray(d.track) || d.track.length < 2) return;
+      grouped[d._id] = simplifyTrack(d.track, MAX_REPLAY_POINTS_PER_AIRCRAFT);
     });
-    Object.keys(grouped).forEach(id => { grouped[id] = simplifyTrack(grouped[id], 2000); });
     res.json(grouped);
-  } catch { res.status(500).json({ error: 'Failed to fetch all tracks' }); }
+  } catch (err) {
+    console.error('Failed to fetch replay tracks', err);
+    res.status(500).json({ error: 'Failed to fetch all tracks' });
+  }
 });
 
 app.get('/api/tracks/:aircraftId', async (req, res) => {
