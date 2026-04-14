@@ -949,10 +949,6 @@ app.post('/api/airline', async (req, res) => {
       body: JSON.stringify({
         username: 'Airline Registry',
         avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
-        ...(submitter?.discordId ? {
-          content: `<@${submitter.discordId}>`,
-          allowed_mentions: { users: [submitter.discordId] }
-        } : {}),
         embeds: [{
           title: `✈ New Airline — ${name}`,
           color: 0xf0a500,
@@ -960,6 +956,11 @@ app.post('/api/airline', async (req, res) => {
             { name: 'ICAO', value: `\`${icao}\``, inline: true },
             { name: 'IATA', value: `\`${iata}\``, inline: true },
             { name: 'Country', value: country, inline: true },
+            ...(submitter ? [{
+              name: 'Submitted by',
+              value: submitter.displayName || submitter.username || `Discord User ${submitter.discordId}`,
+              inline: true
+            }] : []),
             { name: 'JSON Payload', value: `\`\`\`json\n${jsonStr}\n\`\`\`` }
           ],
           ...(logo && { thumbnail: { url: logo } }),
