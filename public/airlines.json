@@ -956,5 +956,12 @@
     "icao": "CNA",
     "iata": "CW",
     "country": "China"
+  },
+    "CRL": {
+    "name": "Corsair International",
+    "icao": "CRL",
+    "iata": "SS",
+    "country": "France",
+    "logo": "https://images.kiwi.com/airlines/64/SS.png"
   }
 }
