@@ -126,5 +126,6 @@
   { "model": "Cessna 152", "icon": "cessna.svg" },
   { "model": "Tupolev Tu-204-100Spice_9 & AF267", "icon": "a320.svg" },
   { "model": "Piper PA-28-161 Warrior II Aerobility", "icon": "cessna.svg" },
-  { "model": "Bombardier Challenger 650", "icon": "learjet.svg" }
+  { "model": "Bombardier Challenger 650", "icon": "learjet.svg" },
+  { "model": "Airbus A220-300", "icon": "a320.svg" }
 ]
