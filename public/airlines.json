@@ -963,5 +963,47 @@
     "iata": "SS",
     "country": "France",
     "logo": "https://images.kiwi.com/airlines/64/SS.png"
+  },
+    "KSK": {
+    "name": "FlySK",
+    "icao": "KSK",
+    "iata": "KS",
+    "country": "Canada",
+    "logo": "https://i.ibb.co/DHzCXgr8/Fly-SK-New-Logo.png"
+  },
+    "CHH": {
+    "name": "Henan Airlines",
+    "icao": "CHH",
+    "iata": "HU",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/HU.png"
+  },
+    "CQN": {
+    "name": "Chongqing Airlines",
+    "icao": "CQN",
+    "iata": "OQ",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/OQ.png"
+  },
+    "LNI": {
+    "name": "Lion AIr",
+    "icao": "LNI",
+    "iata": "JT",
+    "country": "Indonesia",
+    "logo": "https://images.kiwi.com/airlines/64/JT.png"
+  },
+    "RAM": {
+    "name": "Royal Air Maroc",
+    "icao": "RAM",
+    "iata": "AT",
+    "country": "Morocco",
+    "logo": "https://images.kiwi.com/airlines/64/AT.png"
+  },
+    "DQA": {
+    "name": "Maldivian",
+    "icao": "DQA",
+    "iata": "Q2",
+    "country": "Maldives",
+    "logo": "https://images.kiwi.com/airlines/64/Q2.png"
   }
 }

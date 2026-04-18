@@ -1011,7 +1011,7 @@ app.post('/api/airline', async (req, res) => {
             { name: 'Country', value: country, inline: true },
             ...(submitter ? [{
               name: 'Submitted by',
-              value: submitter.displayName || submitter.username || `Discord User ${submitter.discordId}`,
+              value: `<@${submitter.discordId}>`,
               inline: true
             }] : []),
             { name: 'JSON Payload', value: `\`\`\`json\n${jsonStr}\n\`\`\`` }
