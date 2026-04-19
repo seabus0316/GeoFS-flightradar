@@ -118,6 +118,59 @@ let flightInfo = window.geofsFlightInfo;
   }
 
   function getExportedFlightPlan() {
+    function looksLikeWaypoint(value) {
+      if (!value || typeof value !== 'object' || Array.isArray(value)) return false;
+      return (
+        typeof value.ident === 'string' ||
+        typeof value.name === 'string' ||
+        typeof value.icao === 'string' ||
+        typeof value.iata === 'string' ||
+        typeof value.airport === 'string' ||
+        typeof value.code === 'string' ||
+        typeof value.label === 'string' ||
+        (typeof value.lat === 'number' && typeof value.lon === 'number')
+      );
+    }
+
+    function findWaypointArray(root) {
+      const queue = [root];
+      const seen = new Set();
+      let inspected = 0;
+
+      while (queue.length && inspected < 200) {
+        const current = queue.shift();
+        if (!current || typeof current !== 'object' || seen.has(current)) continue;
+        seen.add(current);
+        inspected += 1;
+
+        if (Array.isArray(current)) {
+          if (current.length && current.some(looksLikeWaypoint)) {
+            return current;
+          }
+          for (const item of current) {
+            if (item && typeof item === 'object') queue.push(item);
+          }
+          continue;
+        }
+
+        for (const value of Object.values(current)) {
+          if (!value) continue;
+          if (Array.isArray(value)) {
+            if (value.length && value.some(looksLikeWaypoint)) {
+              return value;
+            }
+            queue.push(value);
+            continue;
+          }
+          if (typeof value === 'object') {
+            queue.push(value);
+          }
+        }
+      }
+
+      return [];
+    }
+
     try {
       const flightPlan = geofs?.flightPlan;
       if (!flightPlan) return [];
@@ -126,26 +179,12 @@ let flightInfo = window.geofsFlightInfo;
         const exported = flightPlan.export();
         if (Array.isArray(exported)) return exported;
 
-        const exportedCollections = [
-          exported?.waypoints,
-          exported?.items,
-          exported?.points,
-          exported?.route
-        ];
-        for (const collection of exportedCollections) {
-          if (Array.isArray(collection)) return collection;
-        }
+        const exportedPlan = findWaypointArray(exported);
+        if (exportedPlan.length) return exportedPlan;
       }
 
-      const liveCollections = [
-        flightPlan.waypoints,
-        flightPlan.items,
-        flightPlan.points,
-        flightPlan.route
-      ];
-      for (const collection of liveCollections) {
-        if (Array.isArray(collection)) return collection;
-      }
+      const livePlan = findWaypointArray(flightPlan);
+      if (livePlan.length) return livePlan;
     } catch (e) {}
     return [];
   }
@@ -170,6 +209,36 @@ let flightInfo = window.geofsFlightInfo;
     }
 
     return '';
+  }
+
+  function sanitizeWaypoint(waypoint) {
+    if (!waypoint) return null;
+    if (typeof waypoint === 'string') {
+      const label = waypoint.trim();
+      return label ? { ident: label.toUpperCase() } : null;
+    }
+    if (typeof waypoint !== 'object') return null;
+
+    const lat = Number(waypoint.lat ?? waypoint.latitude ?? waypoint.location?.[0]);
+    const lon = Number(waypoint.lon ?? waypoint.lng ?? waypoint.longitude ?? waypoint.location?.[1]);
+
+    const sanitized = {
+      ident: extractWaypointLabel(waypoint) || undefined,
+      name: typeof waypoint.name === 'string' && waypoint.name.trim() ? waypoint.name.trim() : undefined,
+      lat: Number.isFinite(lat) ? lat : undefined,
+      lon: Number.isFinite(lon) ? lon : undefined
+    };
+
+    if (!sanitized.ident && !sanitized.name && sanitized.lat === undefined && sanitized.lon === undefined) {
+      return null;
+    }
+
+    return sanitized;
+  }
+
+  function sanitizeFlightPlan(plan) {
+    if (!Array.isArray(plan)) return [];
+    return plan.map(sanitizeWaypoint).filter(Boolean);
   }
 
   // --- 工具函式 ---
@@ -239,7 +308,7 @@ let flightInfo = window.geofsFlightInfo;
   // --- 組裝 payload ----
 function buildPayload(snap) {
   checkTakeoff();
-  const flightPlan = getExportedFlightPlan();
+  const flightPlan = sanitizeFlightPlan(getExportedFlightPlan());
  const userId = geofs?.userRecord?.id || null;
   return {
     id: getPlayerCallsign(),
@@ -321,6 +390,7 @@ function buildPayload(snap) {
     fetchPlanBtn.onclick = () => {
       const plan = getExportedFlightPlan();
       if (plan.length < 2) {
+        console.log('[ATC-Reporter] geofs.flightPlan debug:', geofs?.flightPlan);
         showToast('Flight plan needs at least 2 waypoints');
         return;
       }
