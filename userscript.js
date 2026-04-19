@@ -364,6 +364,14 @@ function buildPayload(snap) {
   }
 
   // --- UI 注入 ---
+  function createFetchPlanIcon() {
+    return `
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+        <path fill="currentColor" d="M6 4.75A2.75 2.75 0 0 1 8.75 2h6.5A2.75 2.75 0 0 1 18 4.75v10.5A2.75 2.75 0 0 1 15.25 18H14v1.05a.95.95 0 0 1-1.62.67l-2.08-2.09A1 1 0 0 1 10 16.93V18H8.75A2.75 2.75 0 0 1 6 15.25Zm2.75-1.25c-.69 0-1.25.56-1.25 1.25v10.5c0 .69.56 1.25 1.25 1.25H10v-.57a.95.95 0 0 1 1.62-.67L13 16.64V16.5h2.25c.69 0 1.25-.56 1.25-1.25V4.75c0-.69-.56-1.25-1.25-1.25Zm.75 3a.75.75 0 0 1 .75-.75h4.5a.75.75 0 0 1 0 1.5h-4.5a.75.75 0 0 1-.75-.75Zm0 3a.75.75 0 0 1 .75-.75h3a.75.75 0 0 1 0 1.5h-3a.75.75 0 0 1-.75-.75Zm8.78 9.03a.75.75 0 0 1-1.06 0l-.97-.97V21a.75.75 0 0 1-1.5 0v-3.44l-.97.97a.75.75 0 1 1-1.06-1.06l2.25-2.25a.75.75 0 0 1 1.06 0l2.25 2.25a.75.75 0 0 1 0 1.06Z"/>
+      </svg>
+    `;
+  }
+
   function injectFlightUI() {
     flightUI = document.createElement("div");
     flightUI.style.cssText =
@@ -374,8 +382,10 @@ function buildPayload(snap) {
       <div>Arr <input id="arrInput" style="width:60px"></div>
       <div>Flt <input id="fltInput" style="width:60px"></div>
       <div>SQK <input id="sqkInput" style="width:60px"></div>
-      <button id="fetchPlanBtn" style="margin-right:4px">Fetch from flight plan</button>
-      <button id="saveBtn">Save</button>
+      <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
+        <button id="fetchPlanBtn" type="button" title="Fetch departure and arrival from the first and last flight plan waypoint" aria-label="Fetch departure and arrival from flight plan" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid #4eaaff;border-radius:6px;background:#1e3f6e;color:#d7ecff;cursor:pointer">${createFetchPlanIcon()}</button>
+        <button id="saveBtn">Save</button>
+      </div>
     `;
 
     document.body.appendChild(flightUI);
@@ -385,6 +395,13 @@ function buildPayload(snap) {
       input.addEventListener('input', () => {
         input.value = input.value.toUpperCase();
       });
+    });
+
+    fetchPlanBtn.addEventListener('mouseenter', () => {
+      fetchPlanBtn.style.background = '#1552a1';
+    });
+    fetchPlanBtn.addEventListener('mouseleave', () => {
+      fetchPlanBtn.style.background = '#1e3f6e';
     });
 
     fetchPlanBtn.onclick = () => {
