@@ -119,9 +119,32 @@ let flightInfo = window.geofsFlightInfo;
 
   function getExportedFlightPlan() {
     try {
-      if (geofs?.flightPlan && typeof geofs.flightPlan.export === 'function') {
-        const plan = geofs.flightPlan.export();
-        return Array.isArray(plan) ? plan : [];
+      const flightPlan = geofs?.flightPlan;
+      if (!flightPlan) return [];
+
+      if (typeof flightPlan.export === 'function') {
+        const exported = flightPlan.export();
+        if (Array.isArray(exported)) return exported;
+
+        const exportedCollections = [
+          exported?.waypoints,
+          exported?.items,
+          exported?.points,
+          exported?.route
+        ];
+        for (const collection of exportedCollections) {
+          if (Array.isArray(collection)) return collection;
+        }
+      }
+
+      const liveCollections = [
+        flightPlan.waypoints,
+        flightPlan.items,
+        flightPlan.points,
+        flightPlan.route
+      ];
+      for (const collection of liveCollections) {
+        if (Array.isArray(collection)) return collection;
       }
     } catch (e) {}
     return [];
