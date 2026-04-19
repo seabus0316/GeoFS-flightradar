@@ -117,6 +117,38 @@ let flightInfo = window.geofsFlightInfo;
     }
   }
 
+  function getExportedFlightPlan() {
+    try {
+      if (geofs?.flightPlan && typeof geofs.flightPlan.export === 'function') {
+        const plan = geofs.flightPlan.export();
+        return Array.isArray(plan) ? plan : [];
+      }
+    } catch (e) {}
+    return [];
+  }
+
+  function extractWaypointLabel(waypoint) {
+    if (!waypoint) return '';
+    if (typeof waypoint === 'string') return waypoint.trim().toUpperCase();
+
+    const candidates = [
+      waypoint.ident,
+      waypoint.name,
+      waypoint.icao,
+      waypoint.iata,
+      waypoint.airport,
+      waypoint.code
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim()) {
+        return value.trim().toUpperCase();
+      }
+    }
+
+    return '';
+  }
+
   // --- 工具函式 ---
   function getAircraftName() {
     return geofs?.aircraft?.instance?.aircraftRecord?.name || 'Unknown';
@@ -184,12 +216,7 @@ let flightInfo = window.geofsFlightInfo;
   // --- 組裝 payload ----
 function buildPayload(snap) {
   checkTakeoff();
-  let flightPlan = [];
-  try {
-    if (geofs.flightPlan && typeof geofs.flightPlan.export === "function") {
-      flightPlan = geofs.flightPlan.export();
-    }
-  } catch (e) {}
+  const flightPlan = getExportedFlightPlan();
  const userId = geofs?.userRecord?.id || null;
   return {
     id: getPlayerCallsign(),
@@ -255,6 +282,7 @@ function buildPayload(snap) {
       <div>Arr <input id="arrInput" style="width:60px"></div>
       <div>Flt <input id="fltInput" style="width:60px"></div>
       <div>SQK <input id="sqkInput" style="width:60px"></div>
+      <button id="fetchPlanBtn" style="margin-right:4px">Fetch from flight plan</button>
       <button id="saveBtn">Save</button>
     `;
 
@@ -266,6 +294,28 @@ function buildPayload(snap) {
         input.value = input.value.toUpperCase();
       });
     });
+
+    fetchPlanBtn.onclick = () => {
+      const plan = getExportedFlightPlan();
+      if (plan.length < 2) {
+        showToast('Flight plan needs at least 2 waypoints');
+        return;
+      }
+
+      const departure = extractWaypointLabel(plan[0]);
+      const arrival = extractWaypointLabel(plan[plan.length - 1]);
+
+      if (!departure || !arrival) {
+        showToast('Unable to read first/last waypoint');
+        return;
+      }
+
+      depInput.value = departure;
+      arrInput.value = arrival;
+      flightInfo.departure = departure;
+      flightInfo.arrival = arrival;
+      showToast(`Fetched ${departure} -> ${arrival}`);
+    };
 
     saveBtn.onclick = () => {
       flightInfo.departure = depInput.value.trim();
