@@ -199,7 +199,7 @@
 
   <header>
     <div class="logo-row">
-      <div class="logo-icon">??/div>
+      <div class="logo-icon">✈</div>
       <h1>Airline Registry</h1>
     </div>
     <p class="tagline">// submit airline data · broadcast to discord</p>
@@ -257,7 +257,7 @@
     <div class="panel json-panel">
       <div class="panel-header"><div class="dot"></div>JSON Preview</div>
       <div class="airline-card empty" id="airlineCard">
-        <div class="card-logo placeholder" id="cardLogoPlaceholder">??/div>
+        <div class="card-logo placeholder" id="cardLogoPlaceholder">✈</div>
         <img class="card-logo" id="cardLogo" style="display:none" alt="">
         <div class="card-info">
           <div class="card-name" id="cardName">Airline Name</div>
@@ -384,7 +384,7 @@
     const card = $('airlineCard');
     if (name || icao) {
       card.classList.remove('empty');
-      $('cardName').textContent = name || '??;
+      $('cardName').textContent = name || '?';
       $('cardMeta').textContent = [icao||'?', iata||'?', country||'?'].join(' · ');
       $('badgeIcao').textContent = icao || 'ICAO';
       $('badgeIata').textContent = iata || 'IATA';
@@ -473,6 +473,3 @@
 </script>
 </body>
 </html>
-
-
-
