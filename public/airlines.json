@@ -1005,5 +1005,13 @@
     "iata": "Q2",
     "country": "Maldives",
     "logo": "https://images.kiwi.com/airlines/64/Q2.png"
+  },
+    "ASL": {
+    "name": "AirSERBIA",
+    "icao": "ASL",
+    "iata": "JU",
+    "country": "Serbia",
+    "logo": "https://images.kiwi.com/airlines/64/JU.png"
   }
+  
 }

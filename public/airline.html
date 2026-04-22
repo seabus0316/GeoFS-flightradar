@@ -199,7 +199,7 @@
 
   <header>
     <div class="logo-row">
-      <div class="logo-icon">✈</div>
+      <div class="logo-icon">??/div>
       <h1>Airline Registry</h1>
     </div>
     <p class="tagline">// submit airline data · broadcast to discord</p>
@@ -249,7 +249,7 @@
         </div>
         <div class="field">
           <label style="margin-bottom:2px;">Auto-fill Logo</label>
-          <button class="btn btn-secondary" style="padding:9px; font-size:0.82rem; flex:none; width:100%;" onclick="autoLogo()">⚡ Generate from IATA</button>
+          <button class="btn btn-secondary" style="padding:9px; font-size:0.82rem; flex:none; width:100%;" onclick="autoLogo()">Generate from IATA</button>
         </div>
       </div>
     </div>
@@ -257,7 +257,7 @@
     <div class="panel json-panel">
       <div class="panel-header"><div class="dot"></div>JSON Preview</div>
       <div class="airline-card empty" id="airlineCard">
-        <div class="card-logo placeholder" id="cardLogoPlaceholder">✈</div>
+        <div class="card-logo placeholder" id="cardLogoPlaceholder">??/div>
         <img class="card-logo" id="cardLogo" style="display:none" alt="">
         <div class="card-info">
           <div class="card-name" id="cardName">Airline Name</div>
@@ -274,7 +274,7 @@
     <div class="panel history-panel">
       <div class="panel-header">
         <div class="dot"></div>Session Log
-        <span style="margin-left:auto; cursor:pointer; color:var(--muted);" onclick="document.getElementById('historyList').innerHTML=''">⌫ Clear</span>
+        <span style="margin-left:auto; cursor:pointer; color:var(--muted);" onclick="document.getElementById('historyList').innerHTML=''">Clear</span>
       </div>
       <div class="history-list" id="historyList"></div>
     </div>
@@ -282,8 +282,8 @@
   </div>
 
   <div class="submit-row">
-    <button class="btn btn-secondary" onclick="resetForm()">↺ Reset</button>
-    <button class="btn btn-primary" id="submitBtn" onclick="submit()"><span>▶</span> Send to Discord</button>
+    <button class="btn btn-secondary" onclick="resetForm()">Reset</button>
+    <button class="btn btn-primary" id="submitBtn" onclick="submit()"><span>Send</span> Send to Discord</button>
   </div>
 
 </div>
@@ -298,8 +298,8 @@
     if (!btn) return;
     btn.disabled = !currentUser;
     btn.innerHTML = currentUser
-      ? '<span>??/span> Send to Discord'
-      : '<span>??</span> Login Required';
+      ? '<span>Send</span> Send to Discord'
+      : '<span>Lock</span> Login Required';
   }
 
   async function checkAuth() {
@@ -384,7 +384,7 @@
     const card = $('airlineCard');
     if (name || icao) {
       card.classList.remove('empty');
-      $('cardName').textContent = name || '—';
+      $('cardName').textContent = name || '??;
       $('cardMeta').textContent = [icao||'?', iata||'?', country||'?'].join(' · ');
       $('badgeIcao').textContent = icao || 'ICAO';
       $('badgeIata').textContent = iata || 'IATA';
@@ -419,10 +419,10 @@
     const icao = $('icao').value.trim(), iata = $('iata').value.trim();
     const name = $('name').value.trim(), country = $('country').value.trim();
     const logo = $('logo').value.trim();
-    if (!icao || !iata || !name || !country) { toast('⚠ Fill in all required fields', 'error'); return; }
+    if (!icao || !iata || !name || !country) { toast('Fill in all required fields', 'error'); return; }
 
     const btn = $('submitBtn');
-    btn.disabled = true; btn.innerHTML = '<span>⏳</span> Sending...';
+    btn.disabled = true; btn.innerHTML = '<span>Wait</span> Sending...';
 
     try {
       const res = await fetch('/api/airline', {
@@ -432,18 +432,18 @@
       });
       const data = await res.json();
       if (res.ok) {
-        toast(`✅ ${name} (${icao}) sent to Discord!`, 'success');
+        toast(`${name} (${icao}) sent to Discord!`, 'success');
         addHistory(icao, name, true); resetForm();
       } else {
-        toast(`❌ ${data.error || 'Unknown error'}`, 'error');
+        toast(`${data.error || 'Unknown error'}`, 'error');
         addHistory(icao, name, false);
       }
     } catch (err) {
-      toast('❌ Network error: ' + err.message, 'error');
+      toast('Network error: ' + err.message, 'error');
       addHistory(icao, '', false);
     }
 
-    btn.disabled = false; btn.innerHTML = '<span>▶</span> Send to Discord';
+    btn.disabled = false; syncSubmitState();
   }
 
   function toast(msg, type = 'info') {
@@ -454,7 +454,7 @@
   function addHistory(icao, name, ok) {
     const list = $('historyList'), time = new Date().toLocaleTimeString();
     const item = document.createElement('div'); item.className = 'history-item';
-    item.innerHTML = `<span class="${ok?'hi-ok':'hi-err'}">${ok?'✔':'✖'}</span><span class="hi-icao">${icao}</span><span class="hi-name">${name}</span><span class="hi-time">${time}</span>`;
+    item.innerHTML = `<span class="${ok?'hi-ok':'hi-err'}">${ok ? 'OK' : 'ERR'}</span><span class="hi-icao">${icao}</span><span class="hi-name">${name}</span><span class="hi-time">${time}</span>`;
     list.prepend(item);
   }
 
@@ -473,3 +473,6 @@
 </script>
 </body>
 </html>
+
+
+
