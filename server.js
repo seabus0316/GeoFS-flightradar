@@ -980,7 +980,7 @@ app.delete('/admin/flights/:sessionId', checkAdminPass, async (req, res) => {
 });
 
 // ============ Airline Registry API ============
-app.post('/api/airline', async (req, res) => {
+app.post('/api/airline', authMiddleware, async (req, res) => {
   try {
     if (!AIRLINE_WEBHOOK_URL) return res.status(500).json({ error: 'Webhook not configured' });
     const { icao, iata, name, country, logo } = req.body;
