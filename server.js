@@ -37,10 +37,12 @@ const JWT_SECRET            = process.env.JWT_SECRET            || 'change_this_
 // ============ 共用變數 ============
 const aircrafts    = new Map();
 const RETENTION_MS = 12 * 60 * 60 * 1000;
+const FLIGHT_SESSION_RETENTION_MS = 60 * 24 * 60 * 60 * 1000;
 const DEFAULT_REPLAY_WINDOW_MS = 6 * 60 * 60 * 1000;
 const MAX_REPLAY_POINTS_PER_AIRCRAFT = 720;
 const MIN_REPLAY_BUCKET_MS = 15 * 1000;
 const PRUNE_INTERVAL_MS = 5 * 60 * 1000;
+const SESSION_SNAPSHOT_MAX_POINTS = 40;
 
 const clients         = new Set();
 const atcClients      = new Set();
@@ -236,6 +238,7 @@ mongoose.connect(MONGODB_URI)
     await User.collection.createIndex({ discordId: 1 }, { unique: true });
     await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
     console.log('✅ MongoDB indexes created');
+    await maintainFlightSessions();
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -259,6 +262,44 @@ function simplifyTrack(track, maxPoints = 1000) {
   }
   simplified.push(track[track.length - 1]);
   return simplified;
+}
+
+function buildSessionTrackSnapshot(track) {
+  return simplifyTrack(track, SESSION_SNAPSHOT_MAX_POINTS)
+    .map(({ lat, lon, alt, ts }) => ({ lat, lon, alt, ts }));
+}
+
+async function maintainFlightSessions() {
+  try {
+    const cutoff = Date.now() - FLIGHT_SESSION_RETENTION_MS;
+    const pruneResult = await FlightSession.deleteMany({ startTime: { $lt: cutoff } });
+    if (pruneResult.deletedCount) {
+      console.log(`[FlightSession] Pruned ${pruneResult.deletedCount} sessions older than ${new Date(cutoff).toISOString()}`);
+    }
+
+    const oversized = await FlightSession.find({
+      [`trackSnapshot.${SESSION_SNAPSHOT_MAX_POINTS}`]: { $exists: true }
+    })
+      .select('_id trackSnapshot')
+      .limit(200)
+      .lean();
+
+    if (!oversized.length) return;
+
+    let compacted = 0;
+    for (const session of oversized) {
+      const compactedSnapshot = buildSessionTrackSnapshot(session.trackSnapshot || []);
+      await FlightSession.updateOne(
+        { _id: session._id },
+        { $set: { trackSnapshot: compactedSnapshot } }
+      );
+      compacted += 1;
+    }
+
+    console.log(`[FlightSession] Compacted ${compacted} oversized session snapshots`);
+  } catch (err) {
+    console.error('FlightSession maintenance error', err);
+  }
 }
 
 function getReplayBucketMs(startTime, endTime = Date.now()) {
@@ -373,8 +414,8 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     const startTime     = docs[0].ts;
     const endTime       = docs[docs.length - 1].ts;
     const duration      = Math.round((endTime - startTime) / 1000);
-    const trackSnapshot = simplifyTrack(
-      docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, ts: d.ts })), 500
+    const trackSnapshot = buildSessionTrackSnapshot(
+      docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, ts: d.ts }))
     );
 
     const session = await FlightSession.create({
@@ -1235,6 +1276,11 @@ setInterval(async () => {
   } catch (err) {
     console.error('Prune error', err);
   }
+}, 6 * 60 * 60 * 1000);
+
+// 清理與壓縮 FlightSession（每 6 小時）
+setInterval(() => {
+  maintainFlightSessions();
 }, 6 * 60 * 60 * 1000);
 
 // ============ 啟動 ============
