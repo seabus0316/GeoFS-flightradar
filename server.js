@@ -135,7 +135,10 @@ const flightPointSchema = new mongoose.Schema({
   aircraftId: { type: String, index: true },
   callsign: String, type: String,
   lat: Number, lon: Number, alt: Number,
-  userId: String, speed: Number, heading: Number,
+  userId: String, flightNo: String,
+  departure: String, arrival: String,
+  takeoffTime: String, squawk: String,
+  speed: Number, heading: Number,
   ts: { type: Number, index: true }
 }, { versionKey: false });
 const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
@@ -146,6 +149,7 @@ const flightSessionSchema = new mongoose.Schema({
   discordId:     { type: String, index: true, sparse: true },
   geofsUserId:   { type: String, sparse: true },
   callsign:      String,
+  flightNo:      String,
   type:          String,
   departure:     String,
   arrival:       String,
@@ -342,6 +346,56 @@ async function loadReplayTrackForAircraft(aircraftId, startTime, endTime, bucket
 
   if (!Array.isArray(docs) || docs.length < 2) return null;
   return simplifyTrack(docs.map(doc => doc.point), MAX_REPLAY_POINTS_PER_AIRCRAFT);
+}
+
+async function loadReplayMetaForAircraft(aircraftId, startTime, endTime) {
+  const livePayload = aircrafts.get(aircraftId)?.payload;
+  if (livePayload) {
+    return {
+      id: aircraftId,
+      callsign: livePayload.callsign || aircraftId,
+      flightNo: livePayload.flightNo || '',
+      type: livePayload.type || '',
+      departure: livePayload.departure || '',
+      arrival: livePayload.arrival || '',
+      takeoffTime: livePayload.takeoffTime || '',
+      squawk: livePayload.squawk || '',
+      userId: livePayload.userId || null,
+      flightPlan: Array.isArray(livePayload.flightPlan) ? livePayload.flightPlan : []
+    };
+  }
+
+  const [pointMeta, sessionMeta] = await Promise.all([
+    FlightPoint.findOne({ aircraftId, ts: { $gte: startTime, $lte: endTime } })
+      .sort({ ts: -1 })
+      .select('callsign type userId flightNo departure arrival takeoffTime squawk -_id')
+      .lean(),
+    FlightSession.findOne({
+      aircraftId,
+      startTime: { $lte: endTime },
+      $or: [
+        { endTime: { $gte: startTime } },
+        { endTime: { $exists: false } },
+        { endTime: null }
+      ]
+    })
+      .sort({ endTime: -1, startTime: -1 })
+      .select('callsign flightNo type departure arrival geofsUserId -_id')
+      .lean()
+  ]);
+
+  return {
+    id: aircraftId,
+    callsign: pointMeta?.callsign || sessionMeta?.callsign || aircraftId,
+    flightNo: pointMeta?.flightNo || sessionMeta?.flightNo || '',
+    type: pointMeta?.type || sessionMeta?.type || '',
+    departure: pointMeta?.departure || sessionMeta?.departure || '',
+    arrival: pointMeta?.arrival || sessionMeta?.arrival || '',
+    takeoffTime: pointMeta?.takeoffTime || '',
+    squawk: pointMeta?.squawk || '',
+    userId: pointMeta?.userId || sessionMeta?.geofsUserId || null,
+    flightPlan: []
+  };
 }
 
 async function saveFlightPoint(pt) {
@@ -600,9 +654,23 @@ io.on('connection', async (socket) => {
     };
 
     aircrafts.set(id, { payload, lastSeen: Date.now() });
-    await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
-      lat: payload.lat, lon: payload.lon, alt: payload.alt,
-      speed: payload.speed, heading: payload.heading, ts: payload.ts });
+    await saveFlightPoint({
+      aircraftId: id,
+      callsign: payload.callsign,
+      type: payload.type,
+      userId: payload.userId || null,
+      flightNo: payload.flightNo || '',
+      departure: payload.departure || '',
+      arrival: payload.arrival || '',
+      takeoffTime: payload.takeoffTime || '',
+      squawk: payload.squawk || '',
+      lat: payload.lat,
+      lon: payload.lon,
+      alt: payload.alt,
+      speed: payload.speed,
+      heading: payload.heading,
+      ts: payload.ts
+    });
     try {
       await checkWaypointReminder(payload);
     } catch (err) {
@@ -693,9 +761,23 @@ wss.on('connection', (ws) => {
         };
 
         aircrafts.set(id, { payload, lastSeen: Date.now() });
-        await saveFlightPoint({ aircraftId: id, callsign: payload.callsign, type: payload.type,
-          lat: payload.lat, lon: payload.lon, alt: payload.alt,
-          speed: payload.speed, heading: payload.heading, ts: payload.ts });
+        await saveFlightPoint({
+          aircraftId: id,
+          callsign: payload.callsign,
+          type: payload.type,
+          userId: payload.userId || null,
+          flightNo: payload.flightNo || '',
+          departure: payload.departure || '',
+          arrival: payload.arrival || '',
+          takeoffTime: payload.takeoffTime || '',
+          squawk: payload.squawk || '',
+          lat: payload.lat,
+          lon: payload.lon,
+          alt: payload.alt,
+          speed: payload.speed,
+          heading: payload.heading,
+          ts: payload.ts
+        });
         try {
           await checkWaypointReminder(payload);
         } catch (err) {
@@ -1150,8 +1232,11 @@ app.get('/api/tracks/all', async (req, res) => {
       const batch = aircraftIds.slice(i, i + batchSize);
       const results = await Promise.all(batch.map(async aircraftId => {
         try {
-          const track = await loadReplayTrackForAircraft(aircraftId, startTime, now, bucketMs);
-          return track ? [aircraftId, track] : null;
+          const [track, meta] = await Promise.all([
+            loadReplayTrackForAircraft(aircraftId, startTime, now, bucketMs),
+            loadReplayMetaForAircraft(aircraftId, startTime, now)
+          ]);
+          return track ? [aircraftId, { track, meta }] : null;
         } catch (err) {
           console.error(`Failed to fetch replay track for ${aircraftId}`, err);
           return null;

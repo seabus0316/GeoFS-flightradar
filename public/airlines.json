@@ -1012,6 +1012,26 @@
     "iata": "JU",
     "country": "Serbia",
     "logo": "https://images.kiwi.com/airlines/64/JU.png"
+  },
+    "DLA": {
+    "name": "Air Dolomiti",
+    "icao": "DLA",
+    "iata": "EN",
+    "country": "Italy",
+    "logo": "https://images.kiwi.com/airlines/64/EN.png"
+  },
+    "KEM": {
+    "name": "CemAir",
+    "icao": "KEM",
+    "iata": "5Z",
+    "country": "South Africa",
+    "logo": "https://images.kiwi.com/airlines/64/5Z.png"
+  },
+    "KLU": {
+    "name": "Kalitus Airlines",
+    "icao": "KLU",
+    "iata": "KT",
+    "country": "India"
   }
   
 }

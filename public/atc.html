@@ -1969,6 +1969,16 @@ const replayState = {
   liveMeta: new Map()
 };
 
+function normalizeReplayTrackEntry(entry) {
+  if (Array.isArray(entry)) {
+    return { track: entry, meta: null };
+  }
+  if (entry && Array.isArray(entry.track)) {
+    return { track: entry.track, meta: entry.meta || null };
+  }
+  return { track: null, meta: null };
+}
+
 function getReplayControls() {
   return {
     panel: document.getElementById('replayPanel'),
@@ -2262,16 +2272,21 @@ async function loadReplayData() {
 
     const raw = await response.json();
     const nextTracks = new Map();
+    const nextMeta = snapshotLiveAircraftMeta();
     let minTs = Infinity;
     let maxTs = -Infinity;
 
-    Object.entries(raw || {}).forEach(([id, track]) => {
+    Object.entries(raw || {}).forEach(([id, entry]) => {
+      const { track, meta } = normalizeReplayTrackEntry(entry);
       if (!Array.isArray(track) || track.length < 2) return;
       const cleaned = track
         .filter(p => Number.isFinite(p?.lat) && Number.isFinite(p?.lon) && Number.isFinite(p?.ts))
         .sort((a, b) => a.ts - b.ts);
       if (cleaned.length < 2) return;
       nextTracks.set(id, cleaned);
+      if (meta && typeof meta === 'object') {
+        nextMeta.set(id, { ...(nextMeta.get(id) || {}), ...meta });
+      }
       minTs = Math.min(minTs, cleaned[0].ts);
       maxTs = Math.max(maxTs, cleaned[cleaned.length - 1].ts);
     });
@@ -2281,6 +2296,7 @@ async function loadReplayData() {
     }
 
     replayState.tracks = nextTracks;
+    replayState.liveMeta = nextMeta;
     replayState.startTs = minTs;
     replayState.endTs = maxTs;
     replayState.currentTs = minTs;
@@ -2624,7 +2640,9 @@ async function loadAllHistoryFromBackend() {
     const allTracks = await response.json();
     
     // 將歷史資料合併到現有飛機
-    for (const [aircraftId, tracks] of Object.entries(allTracks)) {
+    for (const [aircraftId, entry] of Object.entries(allTracks)) {
+      const { track: tracks } = normalizeReplayTrackEntry(entry);
+      if (!Array.isArray(tracks)) continue;
       if (aircrafts.has(aircraftId)) {
         const obj = aircrafts.get(aircraftId);
         if (!obj.rawTrack) obj.rawTrack = [];
