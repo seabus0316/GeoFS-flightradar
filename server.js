@@ -37,7 +37,7 @@ const JWT_SECRET            = process.env.JWT_SECRET            || 'change_this_
 // ============ 共用變數 ============
 const aircrafts    = new Map();
 const RETENTION_MS = 12 * 60 * 60 * 1000;
-const FLIGHT_SESSION_RETENTION_MS = 60 * 24 * 60 * 60 * 1000;
+const FLIGHT_SESSION_RETENTION_MS = 2 * 24 * 60 * 60 * 1000;
 const DEFAULT_REPLAY_WINDOW_MS = 6 * 60 * 60 * 1000;
 const MAX_REPLAY_POINTS_PER_AIRCRAFT = 720;
 const MIN_REPLAY_BUCKET_MS = 15 * 1000;
@@ -159,9 +159,11 @@ const flightSessionSchema = new mongoose.Schema({
   maxAlt:        Number,    // 英尺
   maxSpeed:      Number,    // 節
   distanceNm:    Number,    // 海里
+  expiresAt:     { type: Date, index: true },
   trackSnapshot: [{ lat: Number, lon: Number, alt: Number, ts: Number }],
   status:        { type: String, default: 'completed' } // 'completed' | 'aborted'
 }, { versionKey: false, timestamps: true });
+flightSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
 
 // ✅ 新增：Discord 用戶帳號
@@ -239,6 +241,7 @@ mongoose.connect(MONGODB_URI)
     await FlightPoint.collection.createIndex({ ts: 1 });
     await FlightSession.collection.createIndex({ startTime: -1 });
     await FlightSession.collection.createIndex({ discordId: 1 });
+    await FlightSession.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
     await User.collection.createIndex({ discordId: 1 }, { unique: true });
     await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
     console.log('✅ MongoDB indexes created');
@@ -273,12 +276,51 @@ function buildSessionTrackSnapshot(track) {
     .map(({ lat, lon, alt, ts }) => ({ lat, lon, alt, ts }));
 }
 
+function getFlightSessionExpiryDate(baseTime) {
+  const baseMs = Number.isFinite(baseTime) ? baseTime : Date.now();
+  return new Date(baseMs + FLIGHT_SESSION_RETENTION_MS);
+}
+
 async function maintainFlightSessions() {
   try {
     const cutoff = Date.now() - FLIGHT_SESSION_RETENTION_MS;
     const pruneResult = await FlightSession.deleteMany({ startTime: { $lt: cutoff } });
     if (pruneResult.deletedCount) {
       console.log(`[FlightSession] Pruned ${pruneResult.deletedCount} sessions older than ${new Date(cutoff).toISOString()}`);
+    }
+
+    let backfilled = 0;
+    while (true) {
+      const missingExpiry = await FlightSession.find({
+        $or: [
+          { expiresAt: { $exists: false } },
+          { expiresAt: null }
+        ]
+      })
+        .select('_id endTime startTime createdAt')
+        .limit(500)
+        .lean();
+
+      if (!missingExpiry.length) break;
+
+      const updates = missingExpiry.map(session => {
+        const expiryBase = session.endTime || session.startTime || session.createdAt?.getTime();
+        return {
+          updateOne: {
+            filter: { _id: session._id },
+            update: { $set: { expiresAt: getFlightSessionExpiryDate(expiryBase) } }
+          }
+        };
+      });
+
+      await FlightSession.bulkWrite(updates, { ordered: false });
+      backfilled += missingExpiry.length;
+
+      if (missingExpiry.length < 500) break;
+    }
+
+    if (backfilled) {
+      console.log(`[FlightSession] Backfilled expiresAt for ${backfilled} sessions`);
     }
 
     const oversized = await FlightSession.find({
@@ -481,6 +523,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
       type:        payload.type     || docs[0].type     || '',
       departure:   payload.departure || '',
       arrival:     payload.arrival   || '',
+      expiresAt:   getFlightSessionExpiryDate(endTime),
       startTime, endTime, duration,
       maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
       trackSnapshot, status
