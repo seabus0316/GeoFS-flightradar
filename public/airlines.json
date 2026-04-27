@@ -1032,6 +1032,12 @@
     "icao": "KLU",
     "iata": "KT",
     "country": "India"
+  },
+    "GIA": {
+    "name": "Garuda Indonesia",
+    "icao": "GIA",
+    "iata": "GA",
+    "country": "Indonesia",
+    "logo": "https://images.kiwi.com/airlines/64/GA.png"
   }
-  
 }
