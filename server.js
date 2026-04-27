@@ -59,6 +59,39 @@ function normalizeFlightLookup(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
 
+function normalizeAirlineRegistryValue(value) {
+  return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+}
+
+function loadAirlineRegistry() {
+  const registryPath = path.join(__dirname, 'public', 'airlines.json');
+  return JSON.parse(fs.readFileSync(registryPath, 'utf8'));
+}
+
+function findExistingAirlineEntry(registry, { icao, iata, name }) {
+  const normalizedIcao = normalizeAirlineRegistryValue(icao);
+  const normalizedIata = normalizeAirlineRegistryValue(iata);
+  const normalizedName = normalizeAirlineRegistryValue(name);
+
+  for (const [key, entry] of Object.entries(registry || {})) {
+    const entryIcao = normalizeAirlineRegistryValue(entry?.icao || key);
+    const entryIata = normalizeAirlineRegistryValue(entry?.iata);
+    const entryName = normalizeAirlineRegistryValue(entry?.name);
+
+    if (normalizedIcao && entryIcao === normalizedIcao) {
+      return { field: 'icao', entry };
+    }
+    if (normalizedIata && entryIata && entryIata === normalizedIata) {
+      return { field: 'iata', entry };
+    }
+    if (normalizedName && entryName && entryName === normalizedName) {
+      return { field: 'name', entry };
+    }
+  }
+
+  return null;
+}
+
 function haversineNm(lat1, lon1, lat2, lon2) {
   const R = 3440.065; // Earth radius in nautical miles
   const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -1152,6 +1185,16 @@ app.post('/api/airline', authMiddleware, async (req, res) => {
     const { icao, iata, name, country, logo } = req.body;
     if (!icao || !iata || !name || !country)
       return res.status(400).json({ error: 'Missing required fields: icao, iata, name, country' });
+
+    const registry = loadAirlineRegistry();
+    const duplicate = findExistingAirlineEntry(registry, { icao, iata, name });
+    if (duplicate) {
+      const existingName = duplicate.entry?.name || name;
+      const existingIcao = duplicate.entry?.icao || icao;
+      return res.status(409).json({
+        error: `Airline already exists in database (${duplicate.field}: ${existingName} / ${existingIcao})`
+      });
+    }
 
     const authUser = getOptionalAuthUser(req);
     const submitter = authUser?.discordId

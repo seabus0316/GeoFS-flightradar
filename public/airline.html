@@ -292,6 +292,7 @@
 <script>
   const $ = id => document.getElementById(id);
   let currentUser = null;
+  let airlinesRegistry = null;
 
   function syncSubmitState() {
     const btn = $('submitBtn');
@@ -367,6 +368,43 @@
     return { [icao]: entry };
   }
 
+  function normalizeAirlineText(value) {
+    return String(value || '').trim().toUpperCase().replace(/\s+/g, ' ');
+  }
+
+  async function loadAirlinesRegistry() {
+    if (airlinesRegistry) return airlinesRegistry;
+    const res = await fetch('/airlines.json', { cache: 'no-store' });
+    if (!res.ok) throw new Error('Failed to load airline registry');
+    airlinesRegistry = await res.json();
+    return airlinesRegistry;
+  }
+
+  async function findExistingAirline({ icao, iata, name }) {
+    const registry = await loadAirlinesRegistry();
+    const normalizedIcao = normalizeAirlineText(icao);
+    const normalizedIata = normalizeAirlineText(iata);
+    const normalizedName = normalizeAirlineText(name);
+
+    for (const [key, entry] of Object.entries(registry || {})) {
+      const entryIcao = normalizeAirlineText(entry?.icao || key);
+      const entryIata = normalizeAirlineText(entry?.iata);
+      const entryName = normalizeAirlineText(entry?.name);
+
+      if (normalizedIcao && entryIcao === normalizedIcao) {
+        return { field: 'ICAO', entry };
+      }
+      if (normalizedIata && entryIata && entryIata === normalizedIata) {
+        return { field: 'IATA', entry };
+      }
+      if (normalizedName && entryName && entryName === normalizedName) {
+        return { field: 'name', entry };
+      }
+    }
+
+    return null;
+  }
+
   function highlight(obj) {
     return JSON.stringify(obj, null, 2)
       .replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')
@@ -420,6 +458,21 @@
     const name = $('name').value.trim(), country = $('country').value.trim();
     const logo = $('logo').value.trim();
     if (!icao || !iata || !name || !country) { toast('Fill in all required fields', 'error'); return; }
+
+    try {
+      const duplicate = await findExistingAirline({ icao, iata, name });
+      if (duplicate) {
+        const existingName = duplicate.entry?.name || name;
+        const existingIcao = duplicate.entry?.icao || icao;
+        toast(`This airline already exists in the database (${duplicate.field}: ${existingName} / ${existingIcao}).`, 'error');
+        addHistory(icao, name, false);
+        return;
+      }
+    } catch (err) {
+      toast('Unable to verify airline registry: ' + err.message, 'error');
+      addHistory(icao, name, false);
+      return;
+    }
 
     const btn = $('submitBtn');
     btn.disabled = true; btn.innerHTML = '<span>Wait</span> Sending...';
