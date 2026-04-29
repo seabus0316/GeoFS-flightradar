@@ -1039,5 +1039,26 @@
     "iata": "GA",
     "country": "Indonesia",
     "logo": "https://images.kiwi.com/airlines/64/GA.png"
+  },
+    "MYM": {
+    "name": "MY Air",
+    "icao": "MYM",
+    "iata": "Z9",
+    "country": "Malaysia",
+    "logo": "https://images.kiwi.com/airlines/64/Z9.png"
+  },
+    "BTK": {
+    "name": "Batik Air Indonesia",
+    "icao": "BTK",
+    "iata": "ID",
+    "country": "Indonesia",
+    "logo": "https://images.kiwi.com/airlines/64/ID.png"
+  },
+    "MXD": {
+    "name": "Batik Air Malaysia",
+    "icao": "MXD",
+    "iata": "OD",
+    "country": "Malaysia",
+    "logo": "https://images.kiwi.com/airlines/64/OD.png"
   }
 }
