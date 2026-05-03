@@ -1060,5 +1060,25 @@
     "iata": "OD",
     "country": "Malaysia",
     "logo": "https://images.kiwi.com/airlines/64/OD.png"
+  },
+    "GKA": {
+    "name": "GlazedKimpabAir",
+    "icao": "GKA",
+    "iata": "GZ",
+    "country": "South Korea",
+    "logo": "https://i.ibb.co/X6Kd5t3/Screenshot-2026-04-25-164714.png"
+  },
+    "MAU": {
+    "name": "Air Mauritius",
+    "icao": "MAU",
+    "iata": "MK",
+    "country": "Mauritius",
+    "logo": "https://images.kiwi.com/airlines/64/MK.png"
+  },
+    "VIC": {
+    "name": "Victorian Airways AG",
+    "icao": "VIC",
+    "iata": "VC",
+    "country": "United Kingdom"
   }
 }
