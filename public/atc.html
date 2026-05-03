@@ -615,6 +615,23 @@ let _outsidePanelPointerDown = null;
 function _armOutsidePanelCloseGuard(ms = 250) {
   _ignoreOutsidePanelCloseUntil = Date.now() + ms;
 }
+function _isAircraftPanelSafeUiTarget(target) {
+  return !!target.closest([
+    '#customMapBar',
+    '#whatsNewBtn',
+    '#whatsNewPanel',
+    '#photoToggle',
+    '#photoSidebar',
+    '#metarToggle',
+    '.metar-widget',
+    '#flightListOpenBtn',
+    '#flightListPanel',
+    '#openReplayBtn',
+    '#replayPanel',
+    '#menuToggle',
+    '#sideMenu'
+  ].join(','));
+}
 
 document.addEventListener('pointerdown', e => {
   _outsidePanelPointerDown = { x: e.clientX, y: e.clientY };
@@ -631,6 +648,7 @@ document.addEventListener('click', e => {
   }
   if (Date.now() < _ignoreOutsidePanelCloseUntil) return;
   if (e.target.closest('#aircraftPanel')) return;
+  if (_isAircraftPanelSafeUiTarget(e.target)) return;
   if (e.target.closest('.leaflet-aircraft-icon, .leaflet-marker-icon, .atc-radar-blip')) return;
   closeAircraftPanel();
 });
