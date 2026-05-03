@@ -3,7 +3,18 @@
 // 跟 server.js 共用同一個 MongoDB
 require('dotenv').config();
 
-const { Client, GatewayIntentBits, REST, Routes, SlashCommandBuilder, EmbedBuilder, ActivityType } = require('discord.js');
+const {
+  Client,
+  GatewayIntentBits,
+  REST,
+  Routes,
+  SlashCommandBuilder,
+  EmbedBuilder,
+  ActivityType,
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
+} = require('discord.js');
 const mongoose = require('mongoose');
 const fetch = global.fetch || require('node-fetch');
 
@@ -93,6 +104,70 @@ function fmtDateShort(ts) {
   return `<t:${Math.floor(ts / 1000)}:d>`;
 }
 
+const FLIGHTS_PAGE_LIMIT = 5;
+
+async function buildFlightsPage({ targetUser, ownerId, page }) {
+  const safePage = Math.max(0, Number(page) || 0);
+  const [flights, total] = await Promise.all([
+    FlightSession.find({ discordId: targetUser.id })
+      .sort({ startTime: -1 })
+      .skip(safePage * FLIGHTS_PAGE_LIMIT)
+      .limit(FLIGHTS_PAGE_LIMIT)
+      .lean(),
+    FlightSession.countDocuments({ discordId: targetUser.id })
+  ]);
+
+  const pages = Math.max(1, Math.ceil(total / FLIGHTS_PAGE_LIMIT));
+  const currentPage = Math.min(safePage, pages - 1);
+  if (currentPage !== safePage) {
+    return buildFlightsPage({ targetUser, ownerId, page: currentPage });
+  }
+  if (!flights.length) return null;
+
+  const lines = flights.map((f) => {
+    const dep  = f.departure  || 'N/A';
+    const arr  = f.arrival    || 'N/A';
+    const dur  = fmtDuration(f.duration);
+    const dist = f.distanceNm ? `${f.distanceNm} nm` : '—';
+    const status = f.status === 'aborted' ? '⚠️' : '✅';
+    return `${status} **${f.callsign || 'N/A'}** \`${dep} → ${arr}\`\n📅 ${fmtDateShort(f.startTime)} · ${dur} · ${dist}`;
+  }).join('\n\n');
+
+  const embed = new EmbedBuilder()
+    .setColor(0x00ff85)
+    .setTitle(`📋 Flights · ${targetUser.displayName || targetUser.username}`)
+    .setThumbnail(targetUser.displayAvatarURL())
+    .setDescription(lines)
+    .addFields({ name: 'Total', value: `${total} flights`, inline: true })
+    .setFooter({ text: `Page ${currentPage + 1}/${pages} · GeoFS Radar` })
+    .setURL(`${RADAR_URL}/history.html`);
+
+  const row = new ActionRowBuilder().addComponents(
+    new ButtonBuilder()
+      .setCustomId(`flights:${ownerId}:${targetUser.id}:0`)
+      .setLabel('First')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage === 0),
+    new ButtonBuilder()
+      .setCustomId(`flights:${ownerId}:${targetUser.id}:${currentPage - 1}`)
+      .setLabel('Prev')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(currentPage === 0),
+    new ButtonBuilder()
+      .setCustomId(`flights:${ownerId}:${targetUser.id}:${currentPage + 1}`)
+      .setLabel('Next')
+      .setStyle(ButtonStyle.Primary)
+      .setDisabled(currentPage >= pages - 1),
+    new ButtonBuilder()
+      .setCustomId(`flights:${ownerId}:${targetUser.id}:${pages - 1}`)
+      .setLabel('Last')
+      .setStyle(ButtonStyle.Secondary)
+      .setDisabled(currentPage >= pages - 1),
+  );
+
+  return { embeds: [embed], components: [row] };
+}
+
 // ============ 定義 Slash Commands ============
 const commands = [
   new SlashCommandBuilder()
@@ -171,6 +246,34 @@ client.once('ready', () => {
 });
 
 client.on('interactionCreate', async interaction => {
+  if (interaction.isButton()) {
+    const parts = interaction.customId.split(':');
+    if (parts[0] !== 'flights') return;
+
+    const [, ownerId, targetUserId, pageRaw] = parts;
+    if (interaction.user.id !== ownerId) {
+      return interaction.reply({ content: 'Only the user who ran this query can use these page buttons.', ephemeral: true });
+    }
+
+    try {
+      const targetUser = await client.users.fetch(targetUserId);
+      const pagePayload = await buildFlightsPage({
+        targetUser,
+        ownerId,
+        page: Number(pageRaw)
+      });
+
+      if (!pagePayload) {
+        return interaction.update({ content: '📋 No flight records found.', embeds: [], components: [] });
+      }
+
+      return interaction.update(pagePayload);
+    } catch (err) {
+      console.error('/flights button error', err);
+      return interaction.reply({ content: '❌ Server error.', ephemeral: true });
+    }
+  }
+
   if (!interaction.isChatInputCommand()) return;
 
   const { commandName } = interaction;
@@ -386,39 +489,17 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      const [flights, total] = await Promise.all([
-        FlightSession.find({ discordId: targetUser.id })
-          .sort({ startTime: -1 })
-          .skip(page * LIMIT)
-          .limit(LIMIT)
-          .lean(),
-        FlightSession.countDocuments({ discordId: targetUser.id })
-      ]);
+      const pagePayload = await buildFlightsPage({
+        targetUser,
+        ownerId: interaction.user.id,
+        page
+      });
 
-      if (!flights.length) {
+      if (!pagePayload) {
         return interaction.editReply({ content: '📋 No flight records found.' });
       }
 
-      const pages = Math.ceil(total / LIMIT);
-      const lines = flights.map((f) => {
-        const dep  = f.departure  || 'N/A';
-        const arr  = f.arrival    || 'N/A';
-        const dur  = fmtDuration(f.duration);
-        const dist = f.distanceNm ? `${f.distanceNm} nm` : '—';
-        const status = f.status === 'aborted' ? '⚠️' : '✅';
-        return `${status} **${f.callsign || 'N/A'}** \`${dep} → ${arr}\`\n↳ ${fmtDateShort(f.startTime)} · ${dur} · ${dist}`;
-      }).join('\n\n');
-
-      const embed = new EmbedBuilder()
-        .setColor(0x00ff85)
-        .setTitle(`✈ Flights — ${targetUser.displayName || targetUser.username}`)
-        .setThumbnail(targetUser.displayAvatarURL())
-        .setDescription(lines)
-        .addFields({ name: 'Total', value: `${total} flights`, inline: true })
-        .setFooter({ text: `Page ${page + 1}/${pages} · Use /flights page:${page + 2} for next · GeoFS Radar` })
-        .setURL(`${RADAR_URL}/history.html`);
-
-      interaction.editReply({ embeds: [embed] });
+      return interaction.editReply(pagePayload);
     } catch (err) {
       console.error('/flights error', err);
       interaction.editReply({ content: '❌ Server error.' });
