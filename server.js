@@ -1030,11 +1030,14 @@ app.post('/api/user/regenerate-key', authMiddleware, async (req, res) => {
 // 綁定 GeoFS userId ↔ Discord 帳號
 app.post('/api/user/link', authMiddleware, async (req, res) => {
   try {
-    const { geofsUserId } = req.body;
+    const geofsUserId = String(req.body.geofsUserId || '').trim();
     if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
+    if (!/^\d+$/.test(geofsUserId)) return res.status(400).json({ error: 'GeoFS ID must be numbers' });
+    const taken = await User.findOne({ geofsUserId, discordId: { $ne: req.jwtUser.discordId } }).lean();
+    if (taken) return res.status(409).json({ error: 'GeoFS ID is already linked to another user' });
     await User.findOneAndUpdate(
       { discordId: req.jwtUser.discordId },
-      { geofsUserId: String(geofsUserId), linkedAt: new Date() }
+      { geofsUserId, linkedAt: new Date() }
     );
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'server error' }); }
@@ -1242,6 +1245,63 @@ app.post('/api/airline', authMiddleware, async (req, res) => {
 });
 
 // ============ Photo Admin Routes ============
+app.get('/admin/users/search', checkAdminPass, async (req, res) => {
+  try {
+    const q = String(req.query.q || '').trim();
+    if (!q) return res.status(400).json({ error: 'search query required' });
+
+    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const users = await User.find({
+      $or: [
+        { discordId: q },
+        { geofsUserId: q },
+        { username: new RegExp(escaped, 'i') },
+        { displayName: new RegExp(escaped, 'i') }
+      ]
+    })
+      .select('discordId username displayName geofsUserId linkedAt createdAt')
+      .sort({ createdAt: -1 })
+      .limit(20)
+      .lean();
+
+    res.json(users);
+  } catch (err) {
+    console.error('Admin user search error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.patch('/admin/users/:discordId/geofs', checkAdminPass, async (req, res) => {
+  try {
+    const geofsUserId = String(req.body.geofsUserId || '').trim();
+    if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
+    if (!/^\d+$/.test(geofsUserId)) return res.status(400).json({ error: 'GeoFS ID must be numbers' });
+
+    const taken = await User.findOne({
+      geofsUserId,
+      discordId: { $ne: req.params.discordId }
+    }).select('discordId username displayName geofsUserId').lean();
+    if (taken) {
+      return res.status(409).json({
+        error: 'GeoFS ID is already linked to another user',
+        user: taken
+      });
+    }
+
+    const user = await User.findOneAndUpdate(
+      { discordId: req.params.discordId },
+      { geofsUserId, linkedAt: new Date() },
+      { new: true }
+    ).select('discordId username displayName geofsUserId linkedAt createdAt').lean();
+
+    if (!user) return res.status(404).json({ error: 'user not found' });
+    res.json({ ok: true, user });
+  } catch (err) {
+    console.error('Admin GeoFS update error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
   try { res.json(await Photo.find({ status: 'pending' }).sort({ createdAt: -1 })); }
   catch { res.status(500).json({ error: 'server error' }); }

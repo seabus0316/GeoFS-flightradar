@@ -83,10 +83,14 @@
   max-height: 90vh;
   overflow-y: auto;
   z-index: 100001 !important;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 #aircraftPanel button {
   transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 /* Photo Map Toggle */
 #photoMapToggle {

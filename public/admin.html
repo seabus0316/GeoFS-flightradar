@@ -147,6 +147,80 @@
       font-weight: 600;
     }
     .modal-actions .btn-confirm:hover { background: #b91c1a; }
+    .admin-section {
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      padding: 16px;
+      margin: 18px 0;
+    }
+    .admin-section h2 {
+      margin: 0 0 12px;
+      color: #e6edf3;
+      font-size: 20px;
+    }
+    .user-tools {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+    .user-tools input {
+      min-width: 260px;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+    }
+    #userResults {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .user-row {
+      display: grid;
+      grid-template-columns: minmax(220px, 1fr) minmax(130px, 180px) auto;
+      gap: 10px;
+      align-items: center;
+      border-top: 1px solid #30363d;
+      padding-top: 10px;
+    }
+    .user-meta {
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      min-width: 0;
+    }
+    .user-meta strong,
+    .user-meta small {
+      overflow-wrap: anywhere;
+    }
+    .user-meta small,
+    .status {
+      color: #8b949e;
+      font-size: 12px;
+    }
+    .geofs-edit {
+      width: 100%;
+      box-sizing: border-box;
+      background: #0d1117;
+      border: 1px solid #30363d;
+      color: #e6edf3;
+    }
+    .status {
+      min-height: 20px;
+      font-size: 13px;
+    }
+    .status.ok { color: #3fb950; }
+    .status.err { color: #f85149; }
+    @media (max-width: 720px) {
+      .user-row {
+        grid-template-columns: 1fr;
+      }
+      .user-tools input {
+        min-width: 0;
+        width: 100%;
+      }
+    }
   </style>
 </head>
 <body>
@@ -158,6 +232,16 @@
   </div>
 
   <div id="panel" style="display:none;">
+    <section class="admin-section">
+      <h2>User Link Manager</h2>
+      <div class="user-tools">
+        <input id="userSearch" type="text" placeholder="Discord ID, GeoFS ID, username, or display name">
+        <button onclick="searchUsers()">Search</button>
+      </div>
+      <div id="userStatus" class="status"></div>
+      <div id="userResults"></div>
+    </section>
+
     <h2>Pending Photos</h2>
     <div id="photos"></div>
   </div>
@@ -232,6 +316,89 @@
         `;
         box.appendChild(div);
       });
+    }
+
+    function escapeHtml(value) {
+      return String(value || '').replace(/[&<>"']/g, ch => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+      }[ch]));
+    }
+
+    function setUserStatus(message, kind = '') {
+      const status = document.getElementById('userStatus');
+      status.textContent = message;
+      status.className = `status ${kind}`.trim();
+    }
+
+    async function searchUsers() {
+      const q = document.getElementById('userSearch').value.trim();
+      if (!q) return setUserStatus('Enter something to search.', 'err');
+
+      setUserStatus('Searching...');
+      const res = await fetch(`/admin/users/search?q=${encodeURIComponent(q)}`, {
+        headers: { 'x-admin-pass': adminPass }
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return setUserStatus(err.error || 'Search failed.', 'err');
+      }
+
+      const users = await res.json();
+      const box = document.getElementById('userResults');
+      box.innerHTML = '';
+      if (!users.length) {
+        setUserStatus('No users found.', 'err');
+        return;
+      }
+
+      setUserStatus(`Found ${users.length} user(s).`);
+      users.forEach(user => {
+        const row = document.createElement('div');
+        row.className = 'user-row';
+        row.innerHTML = `
+          <div class="user-meta">
+            <strong>${escapeHtml(user.displayName || user.username || 'Unknown')}</strong>
+            <small>@${escapeHtml(user.username || 'unknown')} · Discord: ${escapeHtml(user.discordId)}</small>
+            <small>Current GeoFS ID: ${escapeHtml(user.geofsUserId || 'not linked')}</small>
+          </div>
+          <input class="geofs-edit" inputmode="numeric" value="${escapeHtml(user.geofsUserId || '')}" placeholder="Correct GeoFS ID">
+          <button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>
+        `;
+        box.appendChild(row);
+      });
+    }
+
+    async function updateUserGeofsId(discordId, button) {
+      const row = button.closest('.user-row');
+      const input = row.querySelector('.geofs-edit');
+      const geofsUserId = input.value.trim();
+      if (!/^\d+$/.test(geofsUserId)) {
+        return setUserStatus('GeoFS ID must be numbers only.', 'err');
+      }
+
+      button.disabled = true;
+      setUserStatus('Updating...');
+      const res = await fetch(`/admin/users/${encodeURIComponent(discordId)}/geofs`, {
+        method: 'PATCH',
+        headers: {
+          'x-admin-pass': adminPass,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ geofsUserId })
+      });
+      button.disabled = false;
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        return setUserStatus(data.error || 'Update failed.', 'err');
+      }
+
+      row.querySelector('.user-meta small:nth-of-type(2)').textContent = `Current GeoFS ID: ${data.user.geofsUserId}`;
+      setUserStatus('GeoFS ID updated.', 'ok');
     }
 
     async function approve(id) {

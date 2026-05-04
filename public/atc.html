@@ -203,6 +203,24 @@
              oninput="applySettings()">
     </div>
 
+    <!-- Flight Plan toggle -->
+    <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
+                border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
+      <span style="font-size:12px;color:#cdd;">
+        <i data-lucide="map" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+        Flight Plan
+      </span>
+      <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;">
+        <input type="checkbox" id="flightPlanToggle" checked style="opacity:0;width:0;height:0;"
+               onchange="applySettings()">
+        <span id="flightPlanTrack" style="position:absolute;inset:0;border-radius:20px;
+              background:#00cfff;cursor:pointer;transition:background .2s;">
+          <span id="flightPlanThumb" style="position:absolute;left:2px;top:2px;width:16px;height:16px;
+                border-radius:50%;background:#fff;transition:transform .2s;transform:translateX(16px);"></span>
+        </span>
+      </label>
+    </div>
+
     <!-- Follow aircraft -->
     <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
                 border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
@@ -308,6 +326,7 @@ const DS_DEFAULTS = {
   followAircraft: false,
   followUpdateAmount: 3,
   showLabels: true,
+  showFlightPlan: true,
   speedUnit: 'knots',
   altitudeUnit: 'auto'
 };
@@ -405,6 +424,9 @@ function getFollowAircraftEnabled() {
 function getFollowUpdateAmountMs() {
   return Math.max(1, Number(_dsLoad().followUpdateAmount) || 3) * 1000;
 }
+function getShowFlightPlanEnabled() {
+  return !!_dsLoad().showFlightPlan;
+}
 function _refreshDisplayUnits() {
   let activeId = null;
   let atcEnabled = false;
@@ -434,6 +456,7 @@ function applySettings() {
   const fa  = document.getElementById('followAircraftToggle')?.checked ?? current.followAircraft;
   const fua = Number(document.getElementById('followUpdateSlider')?.value ?? current.followUpdateAmount);
   const lbl = document.getElementById('labelsToggle')?.checked ?? current.showLabels;
+  const fp  = document.getElementById('flightPlanToggle')?.checked ?? current.showFlightPlan;
 
   const poV = document.getElementById('panelOpacityVal');
   const pbV = document.getElementById('panelBlurVal');
@@ -452,6 +475,10 @@ function applySettings() {
   const thumb = document.getElementById('labelsThumb');
   if (track) track.style.background = lbl ? '#00cfff' : '#555';
   if (thumb) thumb.style.transform  = lbl ? 'translateX(16px)' : 'translateX(0)';
+  const flightPlanTrack = document.getElementById('flightPlanTrack');
+  const flightPlanThumb = document.getElementById('flightPlanThumb');
+  if (flightPlanTrack) flightPlanTrack.style.background = fp ? '#00cfff' : '#555';
+  if (flightPlanThumb) flightPlanThumb.style.transform = fp ? 'translateX(16px)' : 'translateX(0)';
   const followTrack = document.getElementById('followAircraftTrack');
   const followThumb = document.getElementById('followAircraftThumb');
   const followSection = document.getElementById('followUpdateSection');
@@ -484,6 +511,9 @@ function applySettings() {
       });
     });
   }
+  if (!fp && typeof clearFlightPlanMarkers === 'function') {
+    clearFlightPlanMarkers();
+  }
 
   _dsSave({
     panelOpacity: po,
@@ -493,7 +523,8 @@ function applySettings() {
     trailOpacity: to,
     followAircraft: fa,
     followUpdateAmount: fua,
-    showLabels: lbl
+    showLabels: lbl,
+    showFlightPlan: fp
   });
   if (fa && typeof aircrafts !== 'undefined' && focusedAircraftId && aircrafts.has(focusedAircraftId)) {
     aircrafts.get(focusedAircraftId).lastFollowUpdate = 0;
@@ -511,6 +542,7 @@ function resetSettings() {
   const fat = document.getElementById('followAircraftToggle');
   const fus = document.getElementById('followUpdateSlider');
   const lb = document.getElementById('labelsToggle');
+  const fpt = document.getElementById('flightPlanToggle');
   if (sl) sl.value = DS_DEFAULTS.panelOpacity;
   if (bl) bl.value = DS_DEFAULTS.panelBlur;
   if (bol) bol.value = DS_DEFAULTS.buttonOpacity;
@@ -519,6 +551,7 @@ function resetSettings() {
   if (fat) fat.checked = DS_DEFAULTS.followAircraft;
   if (fus) fus.value = DS_DEFAULTS.followUpdateAmount;
   if (lb) lb.checked = DS_DEFAULTS.showLabels;
+  if (fpt) fpt.checked = DS_DEFAULTS.showFlightPlan;
   _dsSave({ speedUnit: DS_DEFAULTS.speedUnit, altitudeUnit: DS_DEFAULTS.altitudeUnit });
   applySettings();
 }
@@ -534,6 +567,7 @@ function resetSettings() {
   const fat = document.getElementById('followAircraftToggle');
   const fus = document.getElementById('followUpdateSlider');
   const lb = document.getElementById('labelsToggle');
+  const fpt = document.getElementById('flightPlanToggle');
   if (sl) sl.value = s.panelOpacity;
   if (bl) bl.value = s.panelBlur;
   if (bol) bol.value = s.buttonOpacity;
@@ -542,6 +576,7 @@ function resetSettings() {
   if (fat) fat.checked = s.followAircraft;
   if (fus) fus.value = s.followUpdateAmount;
   if (lb) lb.checked = s.showLabels;
+  if (fpt) fpt.checked = s.showFlightPlan;
   applySettings();
 })();
 
@@ -612,6 +647,7 @@ function closeAircraftPanel() {
 
 let _ignoreOutsidePanelCloseUntil = 0;
 let _outsidePanelPointerDown = null;
+let _aircraftPanelPointerActive = false;
 function _armOutsidePanelCloseGuard(ms = 250) {
   _ignoreOutsidePanelCloseUntil = Date.now() + ms;
 }
@@ -632,10 +668,28 @@ function _isAircraftPanelSafeUiTarget(target) {
     '#sideMenu'
   ].join(','));
 }
+function _isSelectingInsideAircraftPanel() {
+  const panel = document.getElementById('aircraftPanel');
+  const selection = window.getSelection?.();
+  if (!panel || !selection || selection.isCollapsed || selection.rangeCount === 0) return false;
+  const containsNode = node => {
+    if (!node) return false;
+    return panel.contains(node.nodeType === Node.ELEMENT_NODE ? node : node.parentElement);
+  };
+  const range = selection.getRangeAt(0);
+  return containsNode(selection.anchorNode) || containsNode(selection.focusNode) || containsNode(range.commonAncestorContainer);
+}
 
 document.addEventListener('pointerdown', e => {
   _outsidePanelPointerDown = { x: e.clientX, y: e.clientY };
+  _aircraftPanelPointerActive = !!e.target.closest('#aircraftPanel');
 }, true);
+document.addEventListener('pointerup', () => {
+  setTimeout(() => { _aircraftPanelPointerActive = false; }, 0);
+}, true);
+window.addEventListener('blur', () => {
+  _aircraftPanelPointerActive = false;
+});
 
 document.addEventListener('click', e => {
   const panel = document.getElementById('aircraftPanel');
@@ -2991,6 +3045,7 @@ function updateNextWaypointMarker(data) {
     map.removeLayer(nextWaypointMarker);
     nextWaypointMarker = null;
   }
+  if (!getShowFlightPlanEnabled()) return;
   if (data.nextWaypoint && data.flightPlan && Array.isArray(data.flightPlan)) {
     const nextWp = data.flightPlan.find(wp => (wp.ident || wp.name) === data.nextWaypoint);
     if (nextWp && !isNaN(Number(nextWp.lat)) && !isNaN(Number(nextWp.lon))) {
@@ -3141,6 +3196,10 @@ function countryToFlag(country) {
   return map[country] || "🌐";
 }
 async function showAircraftPanel(data, id) {
+  const oldPanel = document.getElementById('aircraftPanel');
+  if (oldPanel?.dataset.aircraftId === String(id) && (_aircraftPanelPointerActive || _isSelectingInsideAircraftPanel())) {
+    return;
+  }
   clearFlightPlanMarkers();
   
   // 🔥 在這裡添加：確保 flightStatus 存在
@@ -3152,7 +3211,6 @@ async function showAircraftPanel(data, id) {
   
   // 保存展開狀態
   let wasExpanded = false;
-  const oldPanel = document.getElementById('aircraftPanel');
   if (oldPanel) {
     const oldContent = oldPanel.querySelector('#expandedContent');
     wasExpanded = oldContent && oldContent.style.display === 'block';
@@ -3173,7 +3231,7 @@ async function showAircraftPanel(data, id) {
   }
   
   // 顯示 waypoints (保留現有代碼...)
-  if (plan && Array.isArray(plan) && plan.length) {
+  if (getShowFlightPlanEnabled() && plan && Array.isArray(plan) && plan.length) {
     const latlngs = [];
     plan.forEach((wp, i) => {
       const lat = Number(wp.lat), lon = normalizeLon(Number(wp.lon));
@@ -3295,6 +3353,7 @@ async function showAircraftPanel(data, id) {
     // Animate in for mobile
     if (isMobile) requestAnimationFrame(() => { p.style.transform = 'translateY(0)'; });
   }
+  p.dataset.aircraftId = String(id);
 
   // Shift right-side UI — desktop only
   const panelShift = '396px';
@@ -4739,6 +4798,10 @@ toggleDayNight();
   window.linkGeofsId = function() {
     const id = geofsInput.value.trim();
     if (!id) return;
+    if (!/^\d+$/.test(id)) {
+      alert('GeoFS ID must be numbers only.');
+      return;
+    }
     fetch('/api/user/link', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -4748,6 +4811,8 @@ toggleDayNight();
         linkedBadge.textContent   = '\u2705 GeoFS ID: ' + id;
         linkedBadge.style.display = 'block';
         linkForm.style.display    = 'none';
+      } else {
+        alert(data.error || 'Link failed, please try again.');
       }
     }).catch(() => alert('Link failed, please try again.'));
   };
