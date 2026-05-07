@@ -1505,30 +1505,45 @@ async function loadAirlines() {
 // 優化後的航空公司識別邏輯
 function getAirlineInfo(callsign, flightNo) {
   if (!callsign && !flightNo) return null;
+
+  const findByIata = (iataCode, source) => {
+    if (!iataCode) return null;
+    for (const icao in airlinesData) {
+      if (String(airlinesData[icao]?.iata || '').toUpperCase() === iataCode) {
+        return { ...airlinesData[icao], source };
+      }
+    }
+    return null;
+  };
   
   // 第一優先：從 flightNo (航班號欄位) 尋找
   if (flightNo) {
-    const fn = String(flightNo).toUpperCase();
-    const looksLikeIcaoFlightNo = /^[A-Z]{3}[0-9]/.test(fn);
-    if (looksLikeIcaoFlightNo) {
-      const icaoPrefix = fn.substring(0, 3);
-      if (airlinesData[icaoPrefix]) {
-        return { ...airlinesData[icaoPrefix], source: 'flightNo-icao' };
-      }
+    const fn = String(flightNo).trim().toUpperCase();
+    const exactCode = fn.replace(/[^A-Z]/g, '');
+
+    // Pure airline codes must respect length: CAL is ICAO, CA is IATA.
+    if (/^[A-Z]{3}$/.test(exactCode) && airlinesData[exactCode]) {
+      return { ...airlinesData[exactCode], source: 'flightNo-icao' };
+    }
+    if (/^[A-Z]{2}$/.test(exactCode)) {
+      const exactIataMatch = findByIata(exactCode, 'flightNo-iata');
+      if (exactIataMatch) return exactIataMatch;
+    }
+
+    const icaoPrefix = fn.match(/^([A-Z]{3})(?=\d)/)?.[1];
+    if (icaoPrefix && airlinesData[icaoPrefix]) {
+      return { ...airlinesData[icaoPrefix], source: 'flightNo-icao' };
     }
     
     // 階段 1: 嘗試匹配 IATA (通常是前 2 碼，如 CX872 -> CX)
-    const iataPrefix = fn.substring(0, 2);
-    for (const icao in airlinesData) {
-      if (airlinesData[icao].iata === iataPrefix) {
-        return { ...airlinesData[icao], source: 'flightNo-iata' };
-      }
-    }
+    const iataPrefix = fn.match(/^([A-Z]{2})(?=\d)/)?.[1];
+    const iataMatch = findByIata(iataPrefix, 'flightNo-iata');
+    if (iataMatch) return iataMatch;
 
     // 階段 2: 您要求的修改 — 如果 IATA 查不到，用同一個 flightNo 查 ICAO (如 CPA872 -> CPA)
-    const icaoPrefix = fn.substring(0, 3);
-    if (airlinesData[icaoPrefix]) {
-      return { ...airlinesData[icaoPrefix], source: 'flightNo-icao' };
+    const fallbackIcaoPrefix = fn.substring(0, 3);
+    if (airlinesData[fallbackIcaoPrefix]) {
+      return { ...airlinesData[fallbackIcaoPrefix], source: 'flightNo-icao' };
     }
   }
   
@@ -1536,7 +1551,13 @@ function getAirlineInfo(callsign, flightNo) {
   // 增加嚴格條件：只有符合航空公司格式 (3個大寫字母+數字，如 CPA123) 才會處理
   // 這樣可以避免把 Peter (前三碼 PET) 誤判為 Petroleum Air Services
   if (callsign) {
-    const cs = String(callsign).toUpperCase();
+    const cs = String(callsign).trim().toUpperCase();
+    const exactCode = cs.replace(/[^A-Z]/g, '');
+
+    if (/^[A-Z]{3}$/.test(exactCode) && airlinesData[exactCode]) {
+      return { ...airlinesData[exactCode], source: 'callsign-icao' };
+    }
+
     const isAirlineFormat = /^[A-Z]{3}[0-9]/.test(cs); 
     
     if (isAirlineFormat) {
