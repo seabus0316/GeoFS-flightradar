@@ -6,6 +6,8 @@
   const SEND_INTERVAL_MS = 1500;
   /*************/
 
+  let loggedSpeedMode = false;
+
     // ===== 新增 Modal 函數 =====
   function showModal(msg, duration = null, updateBtnUrl = null) {
     if (document.getElementById("geofs-atc-modal")) return;
@@ -77,6 +79,52 @@
 
   function log(...args) {
     console.log('[ATC-Reporter]', ...args);
+  }
+
+  function readGeoFSSpeedKnots() {
+    const kias = geofs?.animation?.values?.kias;
+    return typeof kias === 'number' && Number.isFinite(kias) ? kias : null;
+  }
+
+  function readGeoFSVersionString() {
+    const candidates = [
+      geofs?.version,
+      geofs?.VERSION,
+      geofs?.release,
+      geofs?.api?.version,
+      geofs?.preferences?.version,
+      window?.geofsVersion,
+      window?.GeoFSVersion,
+      window?.GEofsVersion,
+      window?.GEoFSVersion
+    ];
+
+    for (const value of candidates) {
+      if (typeof value === 'string' && value.trim()) return value.trim();
+      if (typeof value === 'number' && Number.isFinite(value)) return String(value);
+    }
+
+    return '';
+  }
+
+  function getGeoFSMajorMinorVersion() {
+    const version = readGeoFSVersionString();
+    const match = version.match(/(\d+)\.(\d+)/);
+    return match ? `${match[1]}.${match[2]}` : '';
+  }
+
+  function shouldUseLegacyKiasSpeed() {
+    return getGeoFSMajorMinorVersion() === '3.9';
+  }
+
+  function readReportedSpeedKnots() {
+    const legacyKias = shouldUseLegacyKiasSpeed();
+    if (!loggedSpeedMode) {
+      log(`Speed mode: ${legacyKias ? 'GeoFS 3.9 legacy speed' : 'GeoFS 4.x speed'}`);
+      loggedSpeedMode = true;
+    }
+
+    return readGeoFSSpeedKnots() ?? 0;
   }
 
   // --- 全域變數 ---
@@ -296,7 +344,7 @@ let flightInfo = window.geofsFlightInfo;
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      const speed =  geofs.animation.values.kias ? geofs.animation.values.kias.toFixed(1) : 'N/A';
+      const speed = readReportedSpeedKnots();
 
       return { lat, lon, altMSL, altAGL, heading, speed };
     } catch (e) {
