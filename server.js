@@ -15,6 +15,7 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const jwt = require('jsonwebtoken');
 const { Server: IOServer } = require('socket.io');
+const { appendAirlineSubmission } = require('./airline-submission-log');
 
 const app = express();
 const server = http.createServer(app);
@@ -1307,6 +1308,16 @@ app.post('/api/airline', authMiddleware, async (req, res) => {
       const errText = await webhookRes.text();
       return res.status(502).json({ error: `Discord error: ${webhookRes.status} ${errText}` });
     }
+
+    appendAirlineSubmission({
+      payload: { [icao]: entry },
+      submitter: submitter ? {
+        discordId: submitter.discordId,
+        username: submitter.username || null,
+        displayName: submitter.displayName || null,
+      } : null,
+    });
+
     res.json({ ok: true });
   } catch (err) {
     console.error('Airline API error:', err);

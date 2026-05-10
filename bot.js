@@ -14,15 +14,18 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  AttachmentBuilder,
 } = require('discord.js');
 const mongoose = require('mongoose');
 const fetch = global.fetch || require('node-fetch');
+const { buildAirlineExportBatch } = require('./airline-submission-log');
 
 // ============ 環境變數 ============
 const BOT_TOKEN          = process.env.DISCORD_BOT_TOKEN    || '';
 const CLIENT_ID          = process.env.DISCORD_CLIENT_ID    || '';
 const MONGODB_URI        = process.env.MONGODB_URI          || 'mongodb://localhost:27017/geofs_flightradar';
 const RADAR_URL          = process.env.RADAR_URL            || 'https://geofs-flightradar.duckdns.org';
+const AIRLINE_EXPORT_USER_ID = '1268961758102556757';
 const REMINDER_CHANNEL_ID = process.env.REMINDER_CHANNEL_ID || ''; // 固定提醒頻道
 
 if (!BOT_TOKEN)  { console.error('❌ DISCORD_BOT_TOKEN not set'); process.exit(1); }
@@ -219,7 +222,13 @@ async function registerCommands() {
 }
 
 // ============ Bot Client ============
-const client = new Client({ intents: [GatewayIntentBits.Guilds] });
+const client = new Client({
+  intents: [
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.MessageContent,
+  ],
+});
 
 const activities = [
   { name: 'GeoFS-Flightradar', type: ActivityType.Watching },
@@ -243,6 +252,35 @@ client.once('ready', () => {
   console.log(`✅ Bot logged in as ${client.user.tag}`);
   setRandomActivity();
   setInterval(setRandomActivity, 60_000);
+});
+
+client.on('messageCreate', async message => {
+  if (message.author.bot) return;
+  if (message.content.trim() !== '?export') return;
+
+  if (message.author.id !== AIRLINE_EXPORT_USER_ID) {
+    return message.reply('Only the airline export owner can use this command.');
+  }
+
+  try {
+    const batch = buildAirlineExportBatch(50);
+    if (!batch.count) {
+      return message.reply('No new airline submissions to export.');
+    }
+
+    const json = `${JSON.stringify(batch.payload, null, 2)}\n`;
+    const attachment = new AttachmentBuilder(Buffer.from(json, 'utf8'), {
+      name: `airline-export-${batch.exportedAt.replace(/[:.]/g, '-')}.json`,
+    });
+
+    return message.reply({
+      content: `Exported ${batch.count} new airline submission${batch.count === 1 ? '' : 's'}.`,
+      files: [attachment],
+    });
+  } catch (err) {
+    console.error('?export error', err);
+    return message.reply('Failed to export airline submissions.');
+  }
 });
 
 client.on('interactionCreate', async interaction => {
