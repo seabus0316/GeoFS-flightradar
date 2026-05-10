@@ -24,7 +24,12 @@ const wss = new WebSocket.Server({ noServer: true });
 const PORT                = process.env.PORT                || 3000;
 const MONGODB_URI         = process.env.MONGODB_URI         || 'mongodb://localhost:27017/geofs_flightradar';
 const IMGBB_API_KEY       = process.env.IMGBB_API_KEY       || '';
-const ADMIN_PASSWORD      = process.env.ADMIN_PASS          || 'mysecret';
+const DISCORD_ADMIN_IDS   = new Set(
+  String(process.env.DISCORD_ADMIN_IDS || '')
+    .split(',')
+    .map(id => id.trim())
+    .filter(Boolean)
+);
 const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
 const FLIGHT_WEBHOOK_URL  = process.env.FLIGHT_WEBHOOK_URL  || ''; // 飛行完成通報
 const ALERT_WEBHOOK_URL   = process.env.ALERT_WEBHOOK_URL   || ''; // 緊急 Squawk 警報
@@ -211,12 +216,34 @@ const userSchema = new mongoose.Schema({
   // 管理員權限
   isSuperAdmin:     { type: Boolean, default: false },
   managedAirlines:  { type: [String], default: [] }, // e.g. ['EVA', 'CAL']
+  geofsUpdatedBy:   {
+    discordId: String,
+    username: String,
+    displayName: String,
+    previousGeofsUserId: String,
+    at: Date
+  },
   accessToken:      String,
   refreshToken:     String,
   linkedAt:         Date,
   createdAt:        { type: Date, default: Date.now }
 }, { versionKey: false });
 const User = mongoose.model('User', userSchema);
+
+const adminAuditSchema = new mongoose.Schema({
+  action:      { type: String, index: true },
+  targetType:  { type: String, index: true },
+  targetId:    { type: String, index: true },
+  admin: {
+    discordId:   String,
+    username:    String,
+    displayName: String
+  },
+  before:      mongoose.Schema.Types.Mixed,
+  after:       mongoose.Schema.Types.Mixed,
+  createdAt:   { type: Date, default: Date.now, index: true }
+}, { versionKey: false });
+const AdminAudit = mongoose.model('AdminAudit', adminAuditSchema);
 
 // 產生隨機 API Key
 function generateApiKey() {
@@ -666,9 +693,40 @@ function getOptionalAuthUser(req) {
   }
 }
 
-function checkAdminPass(req, res, next) {
-  if (req.headers['x-admin-pass'] === ADMIN_PASSWORD) next();
-  else res.status(401).json({ error: 'Unauthorized' });
+async function requireAdmin(req, res, next) {
+  try {
+    const token = req.cookies.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Not authenticated' });
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const user = await User.findOne({ discordId: decoded.discordId })
+      .select('discordId username displayName isSuperAdmin')
+      .lean();
+
+    if (!user) return res.status(401).json({ error: 'User not found' });
+    if (!DISCORD_ADMIN_IDS.has(user.discordId) && !user.isSuperAdmin) {
+      return res.status(403).json({ error: 'Admin access denied' });
+    }
+
+    req.adminUser = {
+      discordId: user.discordId,
+      username: user.username,
+      displayName: user.displayName || user.username
+    };
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid token' });
+  }
+}
+
+function getAdminActor(req) {
+  return req.adminUser || null;
+}
+
+async function logAdminAction(req, { action, targetType, targetId, before = null, after = null }) {
+  const admin = getAdminActor(req);
+  if (!admin) return;
+  await AdminAudit.create({ action, targetType, targetId, admin, before, after });
 }
 
 // ============ Socket.IO ============
@@ -1174,9 +1232,21 @@ app.get('/api/whois/:callsign', async (req, res) => {
   }
 });
 
-app.delete('/admin/flights/:sessionId', checkAdminPass, async (req, res) => {
+app.get('/admin/me', requireAdmin, async (req, res) => {
+  res.json({ ok: true, admin: req.adminUser });
+});
+
+app.delete('/admin/flights/:sessionId', requireAdmin, async (req, res) => {
   try {
-    await FlightSession.findByIdAndDelete(req.params.sessionId);
+    const flight = await FlightSession.findByIdAndDelete(req.params.sessionId).lean();
+    if (flight) {
+      await logAdminAction(req, {
+        action: 'flight.delete',
+        targetType: 'flight',
+        targetId: req.params.sessionId,
+        before: flight
+      });
+    }
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
@@ -1245,7 +1315,7 @@ app.post('/api/airline', authMiddleware, async (req, res) => {
 });
 
 // ============ Photo Admin Routes ============
-app.get('/admin/users/search', checkAdminPass, async (req, res) => {
+app.get('/admin/users/search', requireAdmin, async (req, res) => {
   try {
     const q = String(req.query.q || '').trim();
     if (!q) return res.status(400).json({ error: 'search query required' });
@@ -1259,7 +1329,7 @@ app.get('/admin/users/search', checkAdminPass, async (req, res) => {
         { displayName: new RegExp(escaped, 'i') }
       ]
     })
-      .select('discordId username displayName geofsUserId linkedAt createdAt')
+      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy')
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -1271,7 +1341,26 @@ app.get('/admin/users/search', checkAdminPass, async (req, res) => {
   }
 });
 
-app.patch('/admin/users/:discordId/geofs', checkAdminPass, async (req, res) => {
+app.get('/admin/audit', requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);
+    const filter = {};
+    if (req.query.targetType) filter.targetType = String(req.query.targetType);
+    if (req.query.targetId) filter.targetId = String(req.query.targetId);
+    if (req.query.action) filter.action = String(req.query.action);
+
+    const entries = await AdminAudit.find(filter)
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .lean();
+    res.json(entries);
+  } catch (err) {
+    console.error('Admin audit error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.patch('/admin/users/:discordId/geofs', requireAdmin, async (req, res) => {
   try {
     const geofsUserId = String(req.body.geofsUserId || '').trim();
     if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
@@ -1288,13 +1377,33 @@ app.patch('/admin/users/:discordId/geofs', checkAdminPass, async (req, res) => {
       });
     }
 
+    const before = await User.findOne({ discordId: req.params.discordId })
+      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy')
+      .lean();
+    if (!before) return res.status(404).json({ error: 'user not found' });
+
+    const admin = getAdminActor(req);
     const user = await User.findOneAndUpdate(
       { discordId: req.params.discordId },
-      { geofsUserId, linkedAt: new Date() },
+      {
+        geofsUserId,
+        linkedAt: new Date(),
+        geofsUpdatedBy: {
+          ...admin,
+          previousGeofsUserId: before.geofsUserId || null,
+          at: new Date()
+        }
+      },
       { new: true }
-    ).select('discordId username displayName geofsUserId linkedAt createdAt').lean();
+    ).select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy').lean();
 
-    if (!user) return res.status(404).json({ error: 'user not found' });
+    await logAdminAction(req, {
+      action: 'user.geofs.update',
+      targetType: 'user',
+      targetId: req.params.discordId,
+      before: { geofsUserId: before.geofsUserId || null },
+      after: { geofsUserId: user.geofsUserId || null }
+    });
     res.json({ ok: true, user });
   } catch (err) {
     console.error('Admin GeoFS update error:', err);
@@ -1302,15 +1411,23 @@ app.patch('/admin/users/:discordId/geofs', checkAdminPass, async (req, res) => {
   }
 });
 
-app.get('/admin/photos/pending', checkAdminPass, async (req, res) => {
+app.get('/admin/photos/pending', requireAdmin, async (req, res) => {
   try { res.json(await Photo.find({ status: 'pending' }).sort({ createdAt: -1 })); }
   catch { res.status(500).json({ error: 'server error' }); }
 });
-app.post('/admin/photos/:id/approve', checkAdminPass, async (req, res) => {
+app.post('/admin/photos/:id/approve', requireAdmin, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
+    const before = photo.toObject();
     photo.status = 'approved'; await photo.save();
+    await logAdminAction(req, {
+      action: 'photo.approve',
+      targetType: 'photo',
+      targetId: String(photo._id),
+      before: { status: before.status },
+      after: { status: photo.status }
+    });
     if (photo.discordId) {
       await PhotoNotification.create({
         discordId: photo.discordId, photoId: String(photo._id),
@@ -1320,14 +1437,22 @@ app.post('/admin/photos/:id/approve', checkAdminPass, async (req, res) => {
     res.json({ message: 'approved' });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
-app.post('/admin/photos/:id/reject', checkAdminPass, async (req, res) => {
+app.post('/admin/photos/:id/reject', requireAdmin, async (req, res) => {
   try {
     const photo = await Photo.findById(req.params.id);
     if (!photo) return res.status(404).json({ error: 'not found' });
+    const before = photo.toObject();
     const reason = (req.body.reason || '').trim();
     photo.status = 'rejected';
     if (reason) photo.rejectReason = reason;
     await photo.save();
+    await logAdminAction(req, {
+      action: 'photo.reject',
+      targetType: 'photo',
+      targetId: String(photo._id),
+      before: { status: before.status, rejectReason: before.rejectReason || null },
+      after: { status: photo.status, rejectReason: photo.rejectReason || null }
+    });
     if (photo.discordId) {
       await PhotoNotification.create({
         discordId: photo.discordId, photoId: String(photo._id),
@@ -1338,8 +1463,19 @@ app.post('/admin/photos/:id/reject', checkAdminPass, async (req, res) => {
     res.json({ message: 'rejected' });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
-app.delete('/admin/photos/:id', checkAdminPass, async (req, res) => {
-  try { await Photo.findByIdAndDelete(req.params.id); res.json({ message: 'deleted' }); }
+app.delete('/admin/photos/:id', requireAdmin, async (req, res) => {
+  try {
+    const photo = await Photo.findByIdAndDelete(req.params.id).lean();
+    if (photo) {
+      await logAdminAction(req, {
+        action: 'photo.delete',
+        targetType: 'photo',
+        targetId: req.params.id,
+        before: photo
+      });
+    }
+    res.json({ message: 'deleted' });
+  }
   catch { res.status(500).json({ error: 'server error' }); }
 });
 

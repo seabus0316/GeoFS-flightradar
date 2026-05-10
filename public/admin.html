@@ -30,6 +30,34 @@
       background: #238636;
       color: white;
     }
+    .discord-login {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 6px;
+      background: #5865f2;
+      color: #fff;
+      text-decoration: none;
+      font-weight: 600;
+    }
+    .admin-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 14px;
+      background: #161b22;
+      border: 1px solid #30363d;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+    .admin-bar small {
+      color: #8b949e;
+      display: block;
+      margin-top: 2px;
+    }
     button.reject { background: #da3633; }
     button.delete { background: #8B0000; }
     #photos {
@@ -176,6 +204,13 @@
       flex-direction: column;
       gap: 10px;
     }
+    #auditResults {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      max-height: 340px;
+      overflow: auto;
+    }
     .user-row {
       display: grid;
       grid-template-columns: minmax(220px, 1fr) minmax(130px, 180px) auto;
@@ -195,10 +230,18 @@
       overflow-wrap: anywhere;
     }
     .user-meta small,
+    .audit-row,
     .status {
       color: #8b949e;
       font-size: 12px;
     }
+    .audit-row {
+      border-top: 1px solid #30363d;
+      padding-top: 8px;
+      line-height: 1.45;
+      overflow-wrap: anywhere;
+    }
+    .audit-row strong { color: #e6edf3; }
     .geofs-edit {
       width: 100%;
       box-sizing: border-box;
@@ -226,12 +269,19 @@
 <body>
   <h1>JetPhotos Review Panel</h1>
   <div id="login">
-    <p>Please enter admin password:</p>
-    <input id="pass" type="password" placeholder="Admin password">
-    <button onclick="login()">Login</button>
+    <p id="loginMessage">Checking Discord admin session...</p>
+    <a class="discord-login" href="/auth/discord?return_to=/admin.html" style="display:none;" id="discordLoginBtn">Login with Discord</a>
   </div>
 
   <div id="panel" style="display:none;">
+    <div class="admin-bar">
+      <div>
+        <strong id="adminName">Admin</strong>
+        <small id="adminDiscordId"></small>
+      </div>
+      <a class="discord-login" href="/auth/logout" style="background:#30363d;">Logout</a>
+    </div>
+
     <section class="admin-section">
       <h2>User Link Manager</h2>
       <div class="user-tools">
@@ -240,6 +290,13 @@
       </div>
       <div id="userStatus" class="status"></div>
       <div id="userResults"></div>
+    </section>
+
+    <section class="admin-section">
+      <h2>Recent Admin Changes</h2>
+      <button onclick="loadAudit()">Refresh</button>
+      <div id="auditStatus" class="status"></div>
+      <div id="auditResults"></div>
     </section>
 
     <h2>Pending Photos</h2>
@@ -251,7 +308,7 @@
     <div class="modal-box">
       <h3>✗ Reject Photo</h3>
       <p>Optionally provide a reason. It will be sent to the uploader via Discord DM (if they're logged in).</p>
-      <textarea id="rejectReason" placeholder="e.g., Low image quality, watermark detected, off-topic content…"></textarea>
+      <textarea id="rejectReason" placeholder="e.g., Low image quality, watermark detected, off-topic content"></textarea>
       <div class="modal-actions">
         <button class="btn-cancel" onclick="closeRejectModal()">Cancel</button>
         <button class="btn-confirm" onclick="confirmReject()">Reject</button>
@@ -260,23 +317,34 @@
   </div>
 
   <script>
-    let adminPass = '';
+    let currentAdmin = null;
     let rejectTargetId = null;
 
-    async function login() {
-      adminPass = document.getElementById('pass').value.trim();
-      if (!adminPass) return alert('Please enter password');
+    async function initAdmin() {
+      const res = await fetch('/admin/me', { credentials: 'same-origin' });
+      if (!res.ok) {
+        const message = document.getElementById('loginMessage');
+        message.textContent = res.status === 403
+          ? 'This Discord account is not authorized for admin access.'
+          : 'Login with an authorized Discord account to continue.';
+        document.getElementById('discordLoginBtn').style.display = 'inline-flex';
+        return;
+      }
+
+      const data = await res.json();
+      currentAdmin = data.admin;
+      document.getElementById('adminName').textContent = currentAdmin.displayName || currentAdmin.username || 'Admin';
+      document.getElementById('adminDiscordId').textContent = `Discord: ${currentAdmin.discordId}`;
       document.getElementById('login').style.display = 'none';
       document.getElementById('panel').style.display = 'block';
       loadPending();
+      loadAudit();
     }
 
     async function loadPending() {
-      const res = await fetch('/admin/photos/pending', {
-        headers: { 'x-admin-pass': adminPass }
-      });
+      const res = await fetch('/admin/photos/pending', { credentials: 'same-origin' });
       if (!res.ok) {
-        alert('Incorrect password or server error');
+        alert('Admin session expired or unauthorized.');
         location.reload();
         return;
       }
@@ -334,14 +402,35 @@
       status.className = `status ${kind}`.trim();
     }
 
+    function setAuditStatus(message, kind = '') {
+      const status = document.getElementById('auditStatus');
+      status.textContent = message;
+      status.className = `status ${kind}`.trim();
+    }
+
+    function formatDate(value) {
+      if (!value) return 'unknown time';
+      return new Date(value).toLocaleString();
+    }
+
+    function formatAdminLabel(admin) {
+      if (!admin) return 'Unknown admin';
+      const name = admin.displayName || admin.username || 'Admin';
+      return `${name} (${admin.discordId || 'unknown Discord ID'})`;
+    }
+
+    function renderGeofsUpdatedBy(user) {
+      const info = user.geofsUpdatedBy;
+      if (!info || !info.discordId) return '<small>Last admin edit: none</small>';
+      return `<small>Last admin edit: ${escapeHtml(formatAdminLabel(info))} at ${escapeHtml(formatDate(info.at))}</small>`;
+    }
+
     async function searchUsers() {
       const q = document.getElementById('userSearch').value.trim();
       if (!q) return setUserStatus('Enter something to search.', 'err');
 
       setUserStatus('Searching...');
-      const res = await fetch(`/admin/users/search?q=${encodeURIComponent(q)}`, {
-        headers: { 'x-admin-pass': adminPass }
-      });
+      const res = await fetch(`/admin/users/search?q=${encodeURIComponent(q)}`, { credentials: 'same-origin' });
       if (!res.ok) {
         const err = await res.json().catch(() => ({}));
         return setUserStatus(err.error || 'Search failed.', 'err');
@@ -364,6 +453,7 @@
             <strong>${escapeHtml(user.displayName || user.username || 'Unknown')}</strong>
             <small>@${escapeHtml(user.username || 'unknown')} · Discord: ${escapeHtml(user.discordId)}</small>
             <small>Current GeoFS ID: ${escapeHtml(user.geofsUserId || 'not linked')}</small>
+            ${renderGeofsUpdatedBy(user)}
           </div>
           <input class="geofs-edit" inputmode="numeric" value="${escapeHtml(user.geofsUserId || '')}" placeholder="Correct GeoFS ID">
           <button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>
@@ -385,9 +475,9 @@
       const res = await fetch(`/admin/users/${encodeURIComponent(discordId)}/geofs`, {
         method: 'PATCH',
         headers: {
-          'x-admin-pass': adminPass,
           'Content-Type': 'application/json'
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ geofsUserId })
       });
       button.disabled = false;
@@ -398,15 +488,46 @@
       }
 
       row.querySelector('.user-meta small:nth-of-type(2)').textContent = `Current GeoFS ID: ${data.user.geofsUserId}`;
+      row.querySelector('.user-meta small:nth-of-type(3)').textContent = `Last admin edit: ${formatAdminLabel(data.user.geofsUpdatedBy)} at ${formatDate(data.user.geofsUpdatedBy?.at)}`;
       setUserStatus('GeoFS ID updated.', 'ok');
+      loadAudit();
+    }
+
+    async function loadAudit() {
+      setAuditStatus('Loading...');
+      const res = await fetch('/admin/audit?limit=30', { credentials: 'same-origin' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return setAuditStatus(err.error || 'Failed to load audit log.', 'err');
+      }
+
+      const entries = await res.json();
+      const box = document.getElementById('auditResults');
+      box.innerHTML = '';
+      if (!entries.length) {
+        setAuditStatus('No admin changes recorded yet.');
+        return;
+      }
+
+      setAuditStatus(`Showing ${entries.length} recent change(s).`);
+      entries.forEach(entry => {
+        const row = document.createElement('div');
+        row.className = 'audit-row';
+        const before = entry.before?.geofsUserId ?? entry.before?.status ?? '';
+        const after = entry.after?.geofsUserId ?? entry.after?.status ?? '';
+        row.innerHTML = `
+          <strong>${escapeHtml(entry.action)}</strong> on ${escapeHtml(entry.targetType)} ${escapeHtml(entry.targetId)}
+          <br>by ${escapeHtml(formatAdminLabel(entry.admin))} at ${escapeHtml(formatDate(entry.createdAt))}
+          ${before || after ? `<br>${escapeHtml(String(before || 'empty'))} -> ${escapeHtml(String(after || 'empty'))}` : ''}
+        `;
+        box.appendChild(row);
+      });
     }
 
     async function approve(id) {
-      await fetch(`/admin/photos/${id}/approve`, {
-        method: 'POST',
-        headers: { 'x-admin-pass': adminPass }
-      });
+      await fetch(`/admin/photos/${id}/approve`, { method: 'POST', credentials: 'same-origin' });
       loadPending();
+      loadAudit();
     }
 
     function openRejectModal(id) {
@@ -427,22 +548,21 @@
       await fetch(`/admin/photos/${rejectTargetId}/reject`, {
         method: 'POST',
         headers: {
-          'x-admin-pass': adminPass,
           'Content-Type': 'application/json'
         },
+        credentials: 'same-origin',
         body: JSON.stringify({ reason })
       });
       closeRejectModal();
       loadPending();
+      loadAudit();
     }
 
     async function deletePhoto(id) {
       if (!confirm('Permanently delete this photo?')) return;
-      await fetch(`/admin/photos/${id}`, {
-        method: 'DELETE',
-        headers: { 'x-admin-pass': adminPass }
-      });
+      await fetch(`/admin/photos/${id}`, { method: 'DELETE', credentials: 'same-origin' });
       loadPending();
+      loadAudit();
     }
 
     // Close modal on overlay click
@@ -450,10 +570,12 @@
       if (e.target === this) closeRejectModal();
     });
 
-    // Enter key in reject textarea → confirm
+    // Enter key in reject textarea confirms rejection.
     document.getElementById('rejectReason').addEventListener('keydown', function(e) {
       if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) confirmReject();
     });
+
+    initAdmin();
   </script>
 </body>
 </html>
