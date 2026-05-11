@@ -1058,6 +1058,35 @@ new MutationObserver(() => {
 <div id="menuOverlay" style="position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; 
      background: rgba(0,0,0,0.5); z-index: 99998; display: none; opacity: 0; 
      transition: opacity 0.3s ease;"></div>
+<script>
+(function initMenuEarly() {
+  const menuToggle = document.getElementById('menuToggle');
+  const sideMenu = document.getElementById('sideMenu');
+  const menuOverlay = document.getElementById('menuOverlay');
+  if (!menuToggle || !sideMenu || !menuOverlay || menuToggle.dataset.menuReady === '1') return;
+
+  function openMenu() {
+    sideMenu.style.left = '0px';
+    menuOverlay.style.display = 'block';
+    setTimeout(() => menuOverlay.style.opacity = '1', 10);
+  }
+
+  function closeMenu() {
+    sideMenu.style.left = '-300px';
+    menuOverlay.style.opacity = '0';
+    setTimeout(() => menuOverlay.style.display = 'none', 300);
+  }
+
+  window.openSideMenu = openMenu;
+  window.closeSideMenu = closeMenu;
+  menuToggle.dataset.menuReady = '1';
+  menuToggle.addEventListener('click', () => {
+    if (sideMenu.style.left === '0px') closeMenu();
+    else openMenu();
+  });
+  menuOverlay.addEventListener('click', closeMenu);
+})();
+</script>
 
 <div id="replayPanel" style="display:none; position: fixed; left: 20px; bottom: 24px; z-index: 10002; width: min(460px, calc(100vw - 40px));
      background: rgba(16,22,31,0.94); border: 1px solid rgba(255,255,255,0.12); border-radius: 16px;
@@ -1424,34 +1453,41 @@ setTimeout(renderFlightList, 1500);
 <script src="https://unpkg.com/@joergdietrich/leaflet.terminator@1.0.0/L.Terminator.js"></script>
 <script>
   // ========== 選單系統 ==========
-window.addEventListener('load', function() {
+function initMenuControls() {
   const menuToggle = document.getElementById('menuToggle');
   const sideMenu = document.getElementById('sideMenu');
   const menuOverlay = document.getElementById('menuOverlay');
   const photoMapSwitch = document.getElementById('photoMapSwitch');
 
   if (menuToggle && sideMenu && menuOverlay) {
-    menuToggle.addEventListener('click', () => {
-      const isOpen = sideMenu.style.left === '0px';
-      if (isOpen) {
-        closeMenu();
-      } else {
-        openMenu();
+    if (menuToggle.dataset.menuReady !== '1') {
+      menuToggle.dataset.menuReady = '1';
+
+      function openMenu() {
+        sideMenu.style.left = '0px';
+        menuOverlay.style.display = 'block';
+        setTimeout(() => menuOverlay.style.opacity = '1', 10);
       }
-    });
 
-    menuOverlay.addEventListener('click', closeMenu);
+      function closeMenu() {
+        sideMenu.style.left = '-300px';
+        menuOverlay.style.opacity = '0';
+        setTimeout(() => menuOverlay.style.display = 'none', 300);
+      }
 
-    function openMenu() {
-      sideMenu.style.left = '0px';
-      menuOverlay.style.display = 'block';
-      setTimeout(() => menuOverlay.style.opacity = '1', 10);
-    }
+      window.openSideMenu = openMenu;
+      window.closeSideMenu = closeMenu;
 
-    function closeMenu() {
-      sideMenu.style.left = '-300px';
-      menuOverlay.style.opacity = '0';
-      setTimeout(() => menuOverlay.style.display = 'none', 300);
+      menuToggle.addEventListener('click', () => {
+        const isOpen = sideMenu.style.left === '0px';
+        if (isOpen) {
+          closeMenu();
+        } else {
+          openMenu();
+        }
+      });
+
+      menuOverlay.addEventListener('click', closeMenu);
     }
   }
 
@@ -1471,12 +1507,18 @@ window.addEventListener('load', function() {
 
   initReplayControls();
   const openReplayBtn = document.getElementById('openReplayBtn');
-  if (openReplayBtn && typeof closeMenu === 'function') {
+  if (openReplayBtn && typeof window.closeSideMenu === 'function') {
     openReplayBtn.addEventListener('click', () => {
-      closeMenu();
+      window.closeSideMenu();
     });
   }
-});
+}
+
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initMenuControls, { once: true });
+} else {
+  initMenuControls();
+}
 const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
 // Chart.js 仿 Flightradar24 風格
 const FLIGHT_STATUS_IMAGES = {
@@ -3987,8 +4029,6 @@ async function loadAirports() {
 // 在頁面載入時載入機場數據
 loadAirports();
 
-// 在頁面載入時載入機場數據
-loadAirports();
 connectWS();
 
 // Also listen via Socket.IO if available (server sends recent_update via io.emit)
