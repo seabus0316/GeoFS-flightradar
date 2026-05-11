@@ -5,7 +5,9 @@
   "main": "server.js",
   "scripts": {
     "start": "node server.js",
-    "dev": "nodemon server.js"
+    "dev": "nodemon server.js",
+    "bot": "node bot.js",
+    "dev:bot": "nodemon bot.js"
   },
   "keywords": [
     "geofs",
