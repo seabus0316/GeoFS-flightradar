@@ -1696,5 +1696,131 @@
     "iata": "VF",
     "country": "Türkiye",
     "logo": "https://images.kiwi.com/airlines/64/VF.png"
+  },
+  "REU": {
+    "name": "Air Ausral",
+    "icao": "REU",
+    "iata": "UU",
+    "country": "France",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQVX_XG3fR12W7lkUypseBqokafUfRvkYBKHQ&s"
+  },
+  "AXY": {
+    "name": "AirX Charter",
+    "icao": "AXY",
+    "iata": "AX",
+    "country": "Malta",
+    "logo": "https://images.seeklogo.com/logo-png/47/1/airx-logo-png_seeklogo-471449.png"
+  },
+  "OMA": {
+    "name": "Oman Air",
+    "icao": "OMA",
+    "iata": "WY",
+    "country": "Oman",
+    "logo": "https://1000logos.net/wp-content/uploads/2020/04/Oman-Air-logo.jpg"
+  },
+  "VLG": {
+    "name": "Vueling",
+    "icao": "VLG",
+    "iata": "VY",
+    "country": "Spain",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTrOSdXyKVhDvMI7iqhPVYlho8ryDy56laLrg&s"
+  },
+  "VOE": {
+    "name": "Volotea",
+    "icao": "VOE",
+    "iata": "V7",
+    "country": "Spain",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT66_WKFS0Greq5axvoHr94IZnfIblUkQWHoA&s"
+  },
+  "RZO": {
+    "name": "Azores Airlines",
+    "icao": "RZO",
+    "iata": "S4",
+    "country": "Portugal",
+    "logo": "https://images.seeklogo.com/logo-png/48/1/azores-airlines-logo-png_seeklogo-483622.png"
+  },
+  "WJA": {
+    "name": "Westjet",
+    "icao": "WJA",
+    "iata": "WS",
+    "country": "Canada",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcS3GK3YUlL_8Y47mNYoRVhLzqx81Jin5JwjflytWEW1KQ&s"
+  },
+  "UGD": {
+    "name": "Uganda Airlines",
+    "icao": "UGD",
+    "iata": "UR",
+    "country": "Uganda",
+    "logo": "https://images.kiwi.com/airlines/64/UR.png"
+  },
+  "ITY": {
+    "name": "ITA Airways",
+    "icao": "ITY",
+    "iata": "ITY",
+    "country": "Italy",
+    "logo": "https://images.kiwi.com/airlines/64/AZ.png"
+  },
+  "AEZ": {
+    "name": "Aeroitalia",
+    "icao": "AEZ",
+    "iata": "XZ",
+    "country": "Italy",
+    "logo": "https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/022025/aeroitalia-logo-25.png?BHzpkO9Pm4hz3sGQpx4bq5xtIEsHF0ZT&itok=lVNpD15e"
+  },
+  "PAA": {
+    "name": "Pan American Airways",
+    "icao": "PAA",
+    "iata": "PM",
+    "country": "United States",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcShvY9As03EGxKCrA_GWypJ3jWEIL9UGrZPvA&s"
+  },
+  "ELY": {
+    "name": "El Al",
+    "icao": "ELY",
+    "iata": "LY",
+    "country": "Israel",
+    "logo": "https://images.seeklogo.com/logo-png/4/1/el-al-israel-airlines-logo-png_seeklogo-46413.png"
+  },
+  "ABR": {
+    "name": "ASL Airlines",
+    "icao": "ABR",
+    "iata": "5H",
+    "country": "Ireland",
+    "logo": "https://media.licdn.com/dms/image/v2/C560BAQG7wuHIS1VhzA/company-logo_200_200/company-logo_200_200/0/1630570201838?e=2147483647&v=beta&t=Mzbz7C5vIrGCGzyVmRuXtO6KlrdR5ndrzFTEOi8LEf4"
+  },
+  "TAY": {
+    "name": "ASL Airlines Belgium",
+    "icao": "TAY",
+    "iata": "3V",
+    "country": "Belgium",
+    "logo": "https://media.licdn.com/dms/image/v2/C560BAQG7wuHIS1VhzA/company-logo_200_200/company-logo_200_200/0/1630570201838?e=2147483647&v=beta&t=Mzbz7C5vIrGCGzyVmRuXtO6KlrdR5ndrzFTEOi8LEf4"
+  },
+  "RXI": {
+    "name": "Riyadh Air",
+    "icao": "RXI",
+    "iata": "RX",
+    "country": "Saudia Arabia",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRa6WO21Qp-NmKoZNwXw_TFyp3ZAD-oNBm8OA&s"
+  },
+  "AIB": {
+    "name": "Airbus",
+    "icao": "AIB",
+    "iata": "AIB",
+    "country": "Europe",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSV-9tRbFDnGezfMd3bd0qSdErNaPx3RIiAVw&s"
+  },
+  "BOE": {
+    "name": "Boeing",
+    "icao": "BOE",
+    "iata": "BOE",
+    "country": "United States",
+    "logo": "https://aeroaffaires.fr/wp-content/uploads/2022/01/logo-boeing-credit-flickr.jpeg"
+  },
+  "EMB": {
+    "name": "Embraer",
+    "icao": "EMB",
+    "iata": "EMB",
+    "country": "Brazil",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdrdARJJVPA4KfQUq2xpMcemd3dHUBZkBnKg&s"
   }
 }
