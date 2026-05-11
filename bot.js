@@ -33,7 +33,20 @@ if (!CLIENT_ID)  { console.error('❌ DISCORD_CLIENT_ID not set');  process.exit
 if (!REMINDER_CHANNEL_ID) console.warn('⚠️  REMINDER_CHANNEL_ID not set — reminders will be sent as DM fallback');
 
 // ============ MongoDB Schemas（與 server.js 共用同一個 DB）============
-mongoose.connect(MONGODB_URI).then(() => console.log('✅ Bot: MongoDB connected'));
+mongoose.set('bufferCommands', false);
+
+const mongoReady = mongoose.connect(MONGODB_URI, {
+  serverSelectionTimeoutMS: 10_000,
+  bufferTimeoutMS: 10_000,
+}).then(() => console.log('✅ Bot: MongoDB connected'));
+
+mongoose.connection.on('disconnected', () => {
+  console.warn('⚠️ Bot: MongoDB disconnected');
+});
+
+mongoose.connection.on('error', (err) => {
+  console.error('❌ Bot: MongoDB error:', err);
+});
 
 const User = mongoose.model('User', new mongoose.Schema({
   discordId:       String,
@@ -107,6 +120,10 @@ function fmtDateShort(ts) {
   return `<t:${Math.floor(ts / 1000)}:d>`;
 }
 
+function isMongoReady() {
+  return mongoose.connection.readyState === 1;
+}
+
 const FLIGHTS_PAGE_LIMIT = 5;
 
 async function buildFlightsPage({ targetUser, ownerId, page }) {
@@ -116,8 +133,9 @@ async function buildFlightsPage({ targetUser, ownerId, page }) {
       .sort({ startTime: -1 })
       .skip(safePage * FLIGHTS_PAGE_LIMIT)
       .limit(FLIGHTS_PAGE_LIMIT)
+      .maxTimeMS(10_000)
       .lean(),
-    FlightSession.countDocuments({ discordId: targetUser.id })
+    FlightSession.countDocuments({ discordId: targetUser.id }).maxTimeMS(10_000)
   ]);
 
   const pages = Math.max(1, Math.ceil(total / FLIGHTS_PAGE_LIMIT));
@@ -294,6 +312,10 @@ client.on('interactionCreate', async interaction => {
     }
 
     try {
+      if (!isMongoReady()) {
+        return interaction.reply({ content: '❌ Database is temporarily unavailable. Please try again later.', ephemeral: true });
+      }
+
       const targetUser = await client.users.fetch(targetUserId);
       const pagePayload = await buildFlightsPage({
         targetUser,
@@ -463,7 +485,11 @@ client.on('interactionCreate', async interaction => {
     const targetUser = interaction.options.getUser('user') || interaction.user;
 
     try {
-      const dbUser = await User.findOne({ discordId: targetUser.id });
+      if (!isMongoReady()) {
+        return interaction.editReply({ content: '❌ Database is temporarily unavailable. Please try again later.' });
+      }
+
+      const dbUser = await User.findOne({ discordId: targetUser.id }).maxTimeMS(10_000);
       if (!dbUser || !dbUser.geofsUserId) {
         return interaction.editReply({
           content: targetUser.id === interaction.user.id
@@ -515,10 +541,13 @@ client.on('interactionCreate', async interaction => {
     await interaction.deferReply();
     const targetUser = interaction.options.getUser('user') || interaction.user;
     const page       = (interaction.options.getInteger('page') || 1) - 1;
-    const LIMIT      = 5;
 
     try {
-      const dbUser = await User.findOne({ discordId: targetUser.id });
+      if (!isMongoReady()) {
+        return interaction.editReply({ content: '❌ Database is temporarily unavailable. Please try again later.' });
+      }
+
+      const dbUser = await User.findOne({ discordId: targetUser.id }).maxTimeMS(10_000);
       if (!dbUser || !dbUser.geofsUserId) {
         return interaction.editReply({
           content: targetUser.id === interaction.user.id
@@ -540,7 +569,7 @@ client.on('interactionCreate', async interaction => {
       return interaction.editReply(pagePayload);
     } catch (err) {
       console.error('/flights error', err);
-      interaction.editReply({ content: '❌ Server error.' });
+      return interaction.editReply({ content: '❌ Server error.' });
     }
   }
 
@@ -735,11 +764,20 @@ async function processPhotoNotifications() {
 }
 
 // ============ 啟動 ============
-registerCommands().then(() => {
-  client.login(BOT_TOKEN).then(() => {
+async function main() {
+  try {
+    await mongoReady;
+    await registerCommands();
+    await client.login(BOT_TOKEN);
+
     setInterval(processPendingNotifications, 15_000);
     setInterval(processPhotoNotifications, 15_000);
     console.log('⏱ Reminder polling started (every 15s)');
     console.log('⏱ Photo notification polling started (every 15s)');
-  });
-});
+  } catch (err) {
+    console.error('❌ Bot failed to start:', err);
+    process.exit(1);
+  }
+}
+
+main();
