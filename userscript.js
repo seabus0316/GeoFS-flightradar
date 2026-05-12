@@ -81,9 +81,16 @@
     console.log('[ATC-Reporter]', ...args);
   }
 
-  function readGeoFSSpeedKnots() {
+  function readGeoFSAirspeedKnots() {
     const kias = geofs?.animation?.values?.kias;
     return typeof kias === 'number' && Number.isFinite(kias) ? kias : null;
+  }
+
+  function readGeoFSGroundSpeedKnots() {
+    const groundSpeed = geofs?.aircraft?.instance?.groundSpeed;
+    return typeof groundSpeed === 'number' && Number.isFinite(groundSpeed)
+      ? groundSpeed * 1.94384
+      : null;
   }
 
   function readGeoFSVersionString() {
@@ -117,14 +124,20 @@
     return getGeoFSMajorMinorVersion() === '3.9';
   }
 
-  function readReportedSpeedKnots() {
+  function readReportedSpeed() {
     const legacyKias = shouldUseLegacyKiasSpeed();
+    const groundSpeed = legacyKias ? null : readGeoFSGroundSpeedKnots();
+    const speedType = groundSpeed !== null ? 'ground' : 'air';
+
     if (!loggedSpeedMode) {
-      log(`Speed mode: ${legacyKias ? 'GeoFS 3.9 legacy speed' : 'GeoFS 4.x speed'}`);
+      log(`Speed mode: ${legacyKias ? 'GeoFS 3.9 legacy speed' : `GeoFS 4.x ${speedType} speed`}`);
       loggedSpeedMode = true;
     }
 
-    return readGeoFSSpeedKnots() ?? 0;
+    return {
+      knots: groundSpeed ?? readGeoFSAirspeedKnots() ?? 0,
+      type: speedType
+    };
   }
 
   // --- 全域變數 ---
@@ -344,7 +357,7 @@ let flightInfo = window.geofsFlightInfo;
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      const speed = readReportedSpeedKnots();
+      const speed = readReportedSpeed();
 
       return { lat, lon, altMSL, altAGL, heading, speed };
     } catch (e) {
@@ -367,7 +380,8 @@ function buildPayload(snap) {
     alt: (typeof snap.altAGL === 'number') ? snap.altAGL : Math.round(snap.altMSL || 0),
     altMSL: Math.round(snap.altMSL || 0),
     heading: Math.round(snap.heading || 0),
-    speed: Math.round(snap.speed || 0),
+    speed: Math.round(snap.speed?.knots || 0),
+    speedType: snap.speed?.type || 'air',
     geofsVersion: readGeoFSVersionString(),
     geofsMajorMinor: getGeoFSMajorMinorVersion(),
     flightNo: flightInfo.flightNo,

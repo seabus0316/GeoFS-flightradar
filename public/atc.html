@@ -375,8 +375,9 @@ function setDisplayUnit(group, value) {
   if (group === 'altitude') _dsSave({ altitudeUnit: value });
   applySettings();
 }
-function getSpeedKnots(speedRaw) {
+function getSpeedKnots(speedRaw, speedContext = null) {
   if (typeof speedRaw !== 'number') return null;
+  if (speedContext?.speedType === 'ground') return speedRaw;
   return speedRaw < 50 ? speedRaw * 1.94384 : speedRaw;
 }
 function getSpeedUnit() {
@@ -392,14 +393,14 @@ function convertSpeedValue(knots) {
 function getSpeedUnitSuffix() {
   return getSpeedUnit() === 'mach' ? 'Mach' : 'kt';
 }
-function formatSpeed(speedRaw) {
-  const knots = getSpeedKnots(speedRaw);
+function formatSpeed(speedRaw, speedContext = null) {
+  const knots = getSpeedKnots(speedRaw, speedContext);
   if (typeof knots !== 'number') return '---';
   const value = convertSpeedValue(knots);
   return getSpeedUnit() === 'mach' ? value.toFixed(2) : Math.round(value);
 }
-function formatSpeedWithUnit(speedRaw) {
-  const value = formatSpeed(speedRaw);
+function formatSpeedWithUnit(speedRaw, speedContext = null) {
+  const value = formatSpeed(speedRaw, speedContext);
   return value === '---' ? value : `${value} ${getSpeedUnitSuffix()}`;
 }
 function convertAltitudeValue(altFt) {
@@ -2013,7 +2014,7 @@ function makeDivIcon(data, isFocused){
       <div class="${labelClass} aircraft-tag" style="border-left:3px solid ${color};transition:background-color 0.2s ease;">
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
-          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed)}
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
@@ -2620,7 +2621,7 @@ function updateAtcLabel(obj, enable) {
     const squawk = d.squawk === '7700' ? `⚠ SQK 7700` : '';
     const labelHtml = `
       <span style="font-weight:700;font-size:11px;">${d.callsign || 'UNK'}</span><br>
-      <span style="font-size:10px;">${d.type || '??'} · ${formatAltitude(d.alt || 0)} · ${formatSpeedWithUnit(d.speed)}</span>
+      <span style="font-size:10px;">${d.type || '??'} · ${formatAltitude(d.alt || 0)} · ${formatSpeedWithUnit(d.speed, d)}</span>
       ${squawk ? `<br><span style="color:#ff4444;font-size:10px;">${squawk}</span>` : ''}
     `;
     marker.bindTooltip(labelHtml, {
@@ -2673,10 +2674,14 @@ function getIsaDensityRatio(altFt) {
 
 function getPredictionSpeedKnots(data) {
   const rawSpeed = Number(data?.speed);
+  if (data?.speedType === 'ground') {
+    return Number.isFinite(rawSpeed) ? rawSpeed : 0;
+  }
+
   const isGeoFS40 = isGeoFS40Aircraft(data);
   const speedKnots = isGeoFS40
     ? (Number.isFinite(rawSpeed) ? rawSpeed : 0)
-    : (getSpeedKnots(data?.speed) || 0);
+    : (getSpeedKnots(data?.speed, data) || 0);
 
   if (!isGeoFS40) return speedKnots;
 
@@ -2924,7 +2929,7 @@ function clearAllAircraftTracks() {
 // 飛行狀態預測函數 - 新邏輯
 function predictFlightStatus(data, prev) {
   const altAGL = data.alt || 0; // 假設 alt 已經是 AGL (Above Ground Level)
-  const speed = getSpeedKnots(data.speed) || 0;
+  const speed = getSpeedKnots(data.speed, data) || 0;
   const prevStatus = prev?.flightStatus?.status || null;
   
   // 計算垂直速度 (vspeed) - 單位: ft/min
@@ -3109,7 +3114,7 @@ function updateAircraft(id, data, trackPoint = null, options = {}) {
       label.innerHTML = `
         <strong>${escapeHtml(data.callsign||'UNK')}</strong>
         <div style="font-size:11px;">
-          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed)}
+          ${escapeHtml(data.type||'??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo||'')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
@@ -3265,7 +3270,7 @@ function calculateFlightProgress(data, airports) {
   }
   
   if (distRem > 0 && data.speed > 10) {
-    ete = (distRem / (getSpeedKnots(data.speed) || 0)) * 3600 * 1000; // 轉換為毫秒
+    ete = (distRem / (getSpeedKnots(data.speed, data) || 0)) * 3600 * 1000; // 轉換為毫秒
   }
 
   return {
@@ -3663,7 +3668,7 @@ async function showAircraftPanel(data, id) {
               grid-template-columns:1fr 1fr 1fr 1fr;gap:10px;">
     ${[
       ['ALTITUDE', formatAltitude(data.alt || 0)],
-      ['SPEED',    formatSpeedWithUnit(data.speed)],
+      ['SPEED',    formatSpeedWithUnit(data.speed, data)],
       ['HEADING',  Math.round(data.heading || 0) + '°'],
       ['SQUAWK',   data.squawk || '—'],
     ].map(([label, val]) => `
@@ -4656,7 +4661,7 @@ function displaySearchResults(results) {
               <div style="font-size: 13px; color: #666; margin-top: 2px;">
                 ${escapeHtml(data.type || '??')} • 
                 <span style="color: ${color}; font-weight: 600;">${formatAltitude(data.alt || 0)}</span> •
-                ${formatSpeedWithUnit(data.speed)}
+                ${formatSpeedWithUnit(data.speed, data)}
               </div>
               ${data.departure && data.arrival ? `
                 <div style="font-size: 12px; color: #999; margin-top: 2px;">
