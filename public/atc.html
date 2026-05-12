@@ -2649,6 +2649,44 @@ function normalizeLongitude(lon) {
   return ((lon + 540) % 360) - 180;
 }
 
+function isGeoFS40Aircraft(data) {
+  return String(data?.geofsMajorMinor || '') === '4.0';
+}
+
+function getIsaDensityRatio(altFt) {
+  const altitudeFt = Math.max(0, Math.min(Number(altFt) || 0, 60000));
+  const altitudeM = altitudeFt * 0.3048;
+  const seaLevelTempK = 288.15;
+  const lapseRate = 0.0065;
+  const tropopauseM = 11000;
+
+  if (altitudeM <= tropopauseM) {
+    const tempRatio = (seaLevelTempK - lapseRate * altitudeM) / seaLevelTempK;
+    return Math.pow(tempRatio, 4.2558797);
+  }
+
+  const tropopauseTempRatio = (seaLevelTempK - lapseRate * tropopauseM) / seaLevelTempK;
+  const tropopauseDensityRatio = Math.pow(tropopauseTempRatio, 4.2558797);
+  const scaleHeightM = 6341.62;
+  return tropopauseDensityRatio * Math.exp(-(altitudeM - tropopauseM) / scaleHeightM);
+}
+
+function getPredictionSpeedKnots(data) {
+  const rawSpeed = Number(data?.speed);
+  const isGeoFS40 = isGeoFS40Aircraft(data);
+  const speedKnots = isGeoFS40
+    ? (Number.isFinite(rawSpeed) ? rawSpeed : 0)
+    : (getSpeedKnots(data?.speed) || 0);
+
+  if (!isGeoFS40) return speedKnots;
+
+  const altitudeFt = Number.isFinite(Number(data?.altMSL)) ? Number(data.altMSL) : Number(data?.alt || 0);
+  const densityRatio = getIsaDensityRatio(altitudeFt);
+  if (!Number.isFinite(densityRatio) || densityRatio <= 0) return speedKnots;
+
+  return speedKnots / Math.sqrt(densityRatio);
+}
+
 function predictAircraftPosition(data, lookaheadSeconds) {
   const lat = Number(data?.lat);
   const lon = Number(data?.lon);
@@ -2656,7 +2694,7 @@ function predictAircraftPosition(data, lookaheadSeconds) {
     return { lat: data?.lat, lon: data?.lon };
   }
 
-  const speedKnots = getSpeedKnots(data?.speed) || 0;
+  const speedKnots = getPredictionSpeedKnots(data);
   const heading = Number(data?.heading || 0);
   const seconds = Math.max(0, Math.min(lookaheadSeconds || 0, 8));
 

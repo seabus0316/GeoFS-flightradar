@@ -368,6 +368,8 @@ function buildPayload(snap) {
     altMSL: Math.round(snap.altMSL || 0),
     heading: Math.round(snap.heading || 0),
     speed: Math.round(snap.speed || 0),
+    geofsVersion: readGeoFSVersionString(),
+    geofsMajorMinor: getGeoFSMajorMinorVersion(),
     flightNo: flightInfo.flightNo,
     departure: flightInfo.departure,
     arrival: flightInfo.arrival,

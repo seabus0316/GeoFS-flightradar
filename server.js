@@ -781,7 +781,10 @@ io.on('connection', async (socket) => {
     const payload = {
       id, callsign: p.callsign || 'UNK', type: p.type || '',
       lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
+      altMSL: (typeof p.altMSL !== 'undefined') ? +p.altMSL || 0 : null,
       heading: +p.heading || 0, speed: +p.speed || 0,
+      geofsVersion: typeof p.geofsVersion === 'string' ? p.geofsVersion.slice(0, 32) : '',
+      geofsMajorMinor: typeof p.geofsMajorMinor === 'string' ? p.geofsMajorMinor.slice(0, 8) : '',
       flightNo: p.flightNo || '', userId: p.userId || null,
       departure: p.departure || '', arrival: p.arrival || '',
       takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
@@ -887,8 +890,11 @@ wss.on('connection', (ws) => {
         const payload = {
           id, callsign: p.callsign || 'UNK', type: p.type || '',
           lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
+          altMSL: (typeof p.altMSL !== 'undefined') ? +p.altMSL || 0 : null,
           heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
           speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
+          geofsVersion: typeof p.geofsVersion === 'string' ? p.geofsVersion.slice(0, 32) : '',
+          geofsMajorMinor: typeof p.geofsMajorMinor === 'string' ? p.geofsMajorMinor.slice(0, 8) : '',
           userId: p.userId || null, flightNo: p.flightNo || '',
           departure: p.departure || '', arrival: p.arrival || '',
           takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
