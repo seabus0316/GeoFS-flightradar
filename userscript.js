@@ -7,6 +7,7 @@
   /*************/
 
   let loggedSpeedMode = false;
+  let loggedPayloadSpeed = false;
 
     // ===== 新增 Modal 函數 =====
   function showModal(msg, duration = null, updateBtnUrl = null) {
@@ -86,11 +87,36 @@
     return typeof kias === 'number' && Number.isFinite(kias) ? kias : null;
   }
 
-  function readGeoFSGroundSpeedKnots() {
-    const groundSpeed = geofs?.aircraft?.instance?.groundSpeed;
-    return typeof groundSpeed === 'number' && Number.isFinite(groundSpeed)
-      ? groundSpeed * 1.94384
-      : null;
+  function readFiniteNumber(...values) {
+    for (const value of values) {
+      if (typeof value === 'number' && Number.isFinite(value)) return value;
+    }
+    return null;
+  }
+
+  function vectorMagnitude(vector) {
+    if (!Array.isArray(vector) || vector.length < 2) return null;
+    const x = Number(vector[0]);
+    const y = Number(vector[1]);
+    const z = Number(vector[2] || 0);
+    if (!Number.isFinite(x) || !Number.isFinite(y) || !Number.isFinite(z)) return null;
+    return Math.sqrt(x * x + y * y + z * z);
+  }
+
+  function readGeoFSGroundSpeed(inst = geofs?.aircraft?.instance) {
+    const metersPerSecond = readFiniteNumber(
+      inst?.groundSpeed,
+      inst?.velocityScalar,
+      vectorMagnitude(inst?.velocity)
+    );
+
+    return metersPerSecond === null
+      ? null
+      : {
+        knots: metersPerSecond * 1.94384,
+        raw: metersPerSecond,
+        source: inst?.groundSpeed !== undefined ? 'groundSpeed' : inst?.velocityScalar !== undefined ? 'velocityScalar' : 'velocity'
+      };
   }
 
   function readGeoFSVersionString() {
@@ -124,19 +150,30 @@
     return getGeoFSMajorMinorVersion() === '3.9';
   }
 
-  function readReportedSpeed() {
+  function readReportedSpeed(inst = geofs?.aircraft?.instance) {
     const legacyKias = shouldUseLegacyKiasSpeed();
-    const groundSpeed = legacyKias ? null : readGeoFSGroundSpeedKnots();
-    const speedType = groundSpeed !== null ? 'ground' : 'air';
+    const groundSpeed = legacyKias ? null : readGeoFSGroundSpeed(inst);
+    const airspeed = readGeoFSAirspeedKnots();
+    const speedType = groundSpeed ? 'ground' : 'air';
 
     if (!loggedSpeedMode) {
-      log(`Speed mode: ${legacyKias ? 'GeoFS 3.9 legacy speed' : `GeoFS 4.x ${speedType} speed`}`);
+      log('Speed mode:', legacyKias ? 'GeoFS 3.9 legacy speed' : `GeoFS 4.x ${speedType} speed`, {
+        geofsVersion: readGeoFSVersionString(),
+        geofsMajorMinor: getGeoFSMajorMinorVersion(),
+        groundSpeedRaw: groundSpeed?.raw ?? null,
+        groundSpeedKnots: groundSpeed?.knots ?? null,
+        groundSpeedSource: groundSpeed?.source ?? null,
+        airspeedKnots: airspeed
+      });
       loggedSpeedMode = true;
     }
 
     return {
-      knots: groundSpeed ?? readGeoFSAirspeedKnots() ?? 0,
-      type: speedType
+      knots: groundSpeed?.knots ?? airspeed ?? 0,
+      type: speedType,
+      source: groundSpeed?.source || 'kias',
+      unit: 'kt',
+      raw: groundSpeed?.raw ?? airspeed ?? 0
     };
   }
 
@@ -357,7 +394,7 @@ let flightInfo = window.geofsFlightInfo;
       const altMSL = (typeof altMeters === 'number') ? altMeters * 3.28084 : geofs?.animation?.values?.altitude ?? 0;
       const altAGL = calculateAGL();
       const heading = geofs?.animation?.values?.heading360 ?? 0;
-      const speed = readReportedSpeed();
+      const speed = readReportedSpeed(inst);
 
       return { lat, lon, altMSL, altAGL, heading, speed };
     } catch (e) {
@@ -382,6 +419,9 @@ function buildPayload(snap) {
     heading: Math.round(snap.heading || 0),
     speed: Math.round(snap.speed?.knots || 0),
     speedType: snap.speed?.type || 'air',
+    speedSource: snap.speed?.source || '',
+    speedUnit: snap.speed?.unit || 'kt',
+    speedRaw: Math.round((snap.speed?.raw || 0) * 10) / 10,
     geofsVersion: readGeoFSVersionString(),
     geofsMajorMinor: getGeoFSMajorMinorVersion(),
     flightNo: flightInfo.flightNo,
@@ -401,6 +441,17 @@ function buildPayload(snap) {
     const snap = readSnapshot();
     if (!snap) return;
     const payload = buildPayload(snap);
+    if (!loggedPayloadSpeed) {
+      log('Position payload speed:', {
+        speed: payload.speed,
+        speedType: payload.speedType,
+        speedSource: payload.speedSource,
+        speedUnit: payload.speedUnit,
+        speedRaw: payload.speedRaw,
+        geofsMajorMinor: payload.geofsMajorMinor
+      });
+      loggedPayloadSpeed = true;
+    }
     safeSend({ type: 'position_update', payload });
   }, SEND_INTERVAL_MS);
 

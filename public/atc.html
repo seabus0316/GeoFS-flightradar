@@ -377,6 +377,7 @@ function setDisplayUnit(group, value) {
 }
 function getSpeedKnots(speedRaw, speedContext = null) {
   if (typeof speedRaw !== 'number') return null;
+  if (speedContext?.speedUnit === 'kt') return speedRaw;
   if (speedContext?.speedType === 'ground') return speedRaw;
   return speedRaw < 50 ? speedRaw * 1.94384 : speedRaw;
 }
