@@ -18,7 +18,11 @@ const {
 } = require('discord.js');
 const mongoose = require('mongoose');
 const fetch = global.fetch || require('node-fetch');
-const { buildAirlineExportBatch } = require('./airline-submission-log');
+const {
+  buildAirlineExportBatch,
+  getPendingAirlineSubmissions,
+  skipLatestAirlineSubmission,
+} = require('./airline-submission-log');
 
 // ============ 環境變數 ============
 const BOT_TOKEN          = process.env.DISCORD_BOT_TOKEN    || '';
@@ -274,13 +278,58 @@ client.once('ready', () => {
 
 client.on('messageCreate', async message => {
   if (message.author.bot) return;
-  if (message.content.trim() !== '?export') return;
+  const content = message.content.trim();
+  if (!/^\?export(?:\s|$)/.test(content)) return;
 
   if (message.author.id !== AIRLINE_EXPORT_USER_ID) {
     return message.reply('Only the airline export owner can use this command.');
   }
 
   try {
+    const [, subcommandRaw, ...args] = content.split(/\s+/);
+    const subcommand = String(subcommandRaw || '').toLowerCase();
+
+    if (subcommand === 'pending') {
+      const pending = getPendingAirlineSubmissions(50);
+      if (!pending.length) {
+        return message.reply('No pending airline submissions.');
+      }
+
+      const lines = pending.map((entry, index) => {
+        const key = entry.key || Object.keys(entry.payload || {})[0] || 'UNKNOWN';
+        const airline = entry.payload?.[key] || Object.values(entry.payload || {})[0] || {};
+        return `${index + 1}. ${key} - ${airline.name || 'Unnamed'} (${airline.iata || 'N/A'}, ${airline.country || 'N/A'})`;
+      });
+
+      return message.reply([
+        `Pending airline submissions: ${pending.length}`,
+        'Use `?export skip ICAO reason` to exclude a bad one.',
+        '```text',
+        lines.join('\n').slice(0, 1800),
+        '```',
+      ].join('\n'));
+    }
+
+    if (subcommand === 'skip') {
+      const key = args.shift();
+      if (!key) {
+        return message.reply('Usage: `?export skip ICAO reason`');
+      }
+
+      const skipped = skipLatestAirlineSubmission(key, args.join(' '));
+      if (!skipped) {
+        return message.reply(`No pending airline submission found for \`${key.toUpperCase()}\`.`);
+      }
+
+      const skippedKey = skipped.key || key.toUpperCase();
+      const airline = skipped.payload?.[skippedKey] || Object.values(skipped.payload || {})[0] || {};
+      return message.reply(`Skipped \`${skippedKey}\` - ${airline.name || 'Unnamed airline'}.`);
+    }
+
+    if (subcommand && subcommand !== 'run') {
+      return message.reply('Usage: `?export`, `?export pending`, or `?export skip ICAO reason`');
+    }
+
     const batch = buildAirlineExportBatch(50);
     if (!batch.count) {
       return message.reply('No new airline submissions to export.');

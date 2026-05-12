@@ -47,11 +47,13 @@ function appendAirlineSubmission({ payload, submitter = null }) {
     payload,
     submitter,
     exportedAt: null,
+    skippedAt: null,
+    skipReason: null,
   });
   writeLog(entries);
 }
 
-function buildAirlineExportBatch(limit = 50) {
+function getPendingAirlineSubmissions(limit = 50) {
   const entries = readLog();
   const exportedKeys = new Set(
     entries
@@ -64,7 +66,7 @@ function buildAirlineExportBatch(limit = 50) {
 
   for (let i = entries.length - 1; i >= 0 && selected.length < limit; i -= 1) {
     const entry = entries[i];
-    if (entry.exportedAt) continue;
+    if (entry.exportedAt || entry.skippedAt) continue;
 
     const key = normalizeKey(entry.key || getPayloadKey(entry.payload));
     if (!key || exportedKeys.has(key) || seenKeys.has(key)) continue;
@@ -73,6 +75,12 @@ function buildAirlineExportBatch(limit = 50) {
     seenKeys.add(key);
   }
 
+  return selected;
+}
+
+function buildAirlineExportBatch(limit = 50) {
+  const entries = readLog();
+  const selected = getPendingAirlineSubmissions(limit);
   const exportedAt = new Date().toISOString();
   const selectedIds = new Set(selected.map(entry => entry.id));
   let changed = false;
@@ -93,8 +101,30 @@ function buildAirlineExportBatch(limit = 50) {
   return { payload, count: selected.length, exportedAt };
 }
 
+function skipLatestAirlineSubmission(key, reason = '') {
+  const normalizedKey = normalizeKey(key);
+  if (!normalizedKey) return null;
+
+  const entries = readLog();
+  for (let i = entries.length - 1; i >= 0; i -= 1) {
+    const entry = entries[i];
+    if (entry.exportedAt || entry.skippedAt) continue;
+    const entryKey = normalizeKey(entry.key || getPayloadKey(entry.payload));
+    if (entryKey !== normalizedKey) continue;
+
+    entry.skippedAt = new Date().toISOString();
+    entry.skipReason = String(reason || '').trim() || null;
+    writeLog(entries);
+    return entry;
+  }
+
+  return null;
+}
+
 module.exports = {
   LOG_PATH,
   appendAirlineSubmission,
   buildAirlineExportBatch,
+  getPendingAirlineSubmissions,
+  skipLatestAirlineSubmission,
 };
