@@ -127,7 +127,15 @@ function fmtDateShort(ts) {
 function isMongoReady() {
   return mongoose.connection.readyState === 1;
 }
-
+// 在檔案頂部加這個 helper
+function withTimeout(promise, ms, label = 'Operation') {
+  return Promise.race([
+    promise,
+    new Promise((_, rej) =>
+      setTimeout(() => rej(new Error(`${label} timed out after ${ms}ms`)), ms)
+    )
+  ]);
+}
 const FLIGHTS_PAGE_LIMIT = 5;
 
 async function buildFlightsPage({ targetUser, ownerId, page }) {
@@ -487,7 +495,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   // ── /link ──────────────────────────────────────────────────
-  if (commandName === 'link') {
+  else if (commandName === 'link') {
     await interaction.deferReply({ ephemeral: true });
     const geofsId = interaction.options.getString('geofs_id').trim();
 
@@ -586,6 +594,7 @@ client.on('interactionCreate', async interaction => {
   }
 
   // ── /flights ───────────────────────────────────────────────
+// ── /flights ───────────────────────────────────────────────
   else if (commandName === 'flights') {
     await interaction.deferReply();
     const targetUser = interaction.options.getUser('user') || interaction.user;
@@ -596,7 +605,11 @@ client.on('interactionCreate', async interaction => {
         return interaction.editReply({ content: '❌ Database is temporarily unavailable. Please try again later.' });
       }
 
-      const dbUser = await User.findOne({ discordId: targetUser.id }).maxTimeMS(10_000);
+      const dbUser = await withTimeout(
+        User.findOne({ discordId: targetUser.id }).lean(),
+        10_000, 'User lookup'
+      );
+
       if (!dbUser || !dbUser.geofsUserId) {
         return interaction.editReply({
           content: targetUser.id === interaction.user.id
@@ -605,11 +618,10 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      const pagePayload = await buildFlightsPage({
-        targetUser,
-        ownerId: interaction.user.id,
-        page
-      });
+      const pagePayload = await withTimeout(
+        buildFlightsPage({ targetUser, ownerId: interaction.user.id, page }),
+        12_000, 'buildFlightsPage'
+      );
 
       if (!pagePayload) {
         return interaction.editReply({ content: '📋 No flight records found.' });
@@ -617,63 +629,12 @@ client.on('interactionCreate', async interaction => {
 
       return interaction.editReply(pagePayload);
     } catch (err) {
-      console.error('/flights error', err);
-      return interaction.editReply({ content: '❌ Server error.' });
+      console.error('/flights error:', err.message);
+      await interaction.editReply({ content: '❌ Server error. Please try again later.' })
+        .catch(e => console.error('/flights editReply failed:', e.message));
     }
   }
 
-  // ── /whois ─────────────────────────────────────────────────
-  else if (commandName === 'whois') {
-    await interaction.deferReply();
-    const callsign = interaction.options.getString('callsign').trim().toUpperCase();
-
-    try {
-      const recent = await FlightSession.findOne({ callsign: new RegExp(`^${callsign}$`, 'i') })
-        .sort({ startTime: -1 })
-        .lean();
-
-      if (!recent) {
-        return interaction.editReply({ content: `🔍 No records found for callsign **${callsign}**.` });
-      }
-
-      const embed = new EmbedBuilder()
-        .setColor(0xffd700)
-        .setTitle(`🔍 Whois: ${callsign}`);
-
-      const dbUser = recent.discordId
-        ? await User.findOne({ discordId: recent.discordId }).lean()
-        : recent.geofsUserId
-          ? await User.findOne({ geofsUserId: recent.geofsUserId }).lean()
-          : null;
-
-      if (dbUser) {
-        const discordUser = await client.users.fetch(dbUser.discordId).catch(() => null);
-        embed.setDescription(`**${callsign}** is operated by <@${dbUser.discordId}>`);
-        if (discordUser) embed.setThumbnail(discordUser.displayAvatarURL());
-        embed.addFields(
-          { name: '👤 Discord',   value: `<@${dbUser.discordId}>`, inline: true },
-          { name: '🎮 GeoFS ID', value: dbUser.geofsUserId || '—', inline: true },
-        );
-      } else {
-        embed.setDescription(`**${callsign}** — pilot not linked to any Discord account`);
-        if (recent.geofsUserId) {
-          embed.addFields({ name: '🎮 GeoFS ID', value: recent.geofsUserId, inline: true });
-        }
-      }
-
-      embed.addFields(
-        { name: '✈ Aircraft',    value: recent.type        || '—', inline: true },
-        { name: '🛫 Last Route', value: `${recent.departure || 'N/A'} → ${recent.arrival || 'N/A'}`, inline: true },
-        { name: '📅 Last Seen',  value: fmtDate(recent.startTime), inline: true },
-      );
-      embed.setFooter({ text: 'GeoFS Radar', iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
-
-      interaction.editReply({ embeds: [embed] });
-    } catch (err) {
-      console.error('/whois error', err);
-      interaction.editReply({ content: '❌ Server error.' });
-    }
-  }
 
   // ── /reminder ──────────────────────────────────────────────
   else if (commandName === 'reminder') {
