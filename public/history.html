@@ -422,8 +422,8 @@
           <div class="modal-field"><label>Max Speed</label><value>${f.maxSpeed ? f.maxSpeed + ' kts' : '—'}</value></div>
         </div>
         <div style="margin-top:8px;padding:10px 14px;background:rgba(0,255,133,0.05);border-radius:8px;border:1px solid var(--border)">
-          <span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Track Points</span>
-          <span style="font-family:var(--mono);font-size:14px;margin-left:10px">${(f.trackSnapshot||[]).length} pts stored</span>
+          <span style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase">Storage</span>
+          <span style="font-family:var(--mono);font-size:14px;margin-left:10px">summary only</span>
         </div>`;
     } catch(e) {
       body.innerHTML = '<div class="placeholder"><i class="fa-solid fa-circle-exclamation"></i>Failed to load details.</div>';

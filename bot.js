@@ -109,6 +109,29 @@ const FlightSession = mongoose.model('FlightSession', new mongoose.Schema({
 }, { versionKey: false, strict: false }));
 
 // ============ 工具函數 ============
+const FlightHistory = mongoose.model('FlightHistory', new mongoose.Schema({
+  sessionId:   mongoose.Schema.Types.ObjectId,
+  aircraftId:  String,
+  discordId:   String,
+  geofsUserId: String,
+  username:    String,
+  displayName: String,
+  callsign:    String,
+  flightNo:    String,
+  type:        String,
+  departure:   String,
+  arrival:     String,
+  startTime:   Number,
+  endTime:     Number,
+  takeoffTime: Number,
+  landingTime: Number,
+  duration:    Number,
+  maxAlt:      Number,
+  maxSpeed:    Number,
+  distanceNm:  Number,
+  status:      String,
+}, { versionKey: false, strict: false }), 'flightHistory');
+
 function fmtDuration(secs) {
   if (!secs) return '—';
   const h = Math.floor(secs / 3600);
@@ -141,13 +164,13 @@ const FLIGHTS_PAGE_LIMIT = 5;
 async function buildFlightsPage({ targetUser, ownerId, page }) {
   const safePage = Math.max(0, Number(page) || 0);
   const [flights, total] = await Promise.all([
-    FlightSession.find({ discordId: targetUser.id })
+    FlightHistory.find({ discordId: targetUser.id })
       .sort({ startTime: -1 })
       .skip(safePage * FLIGHTS_PAGE_LIMIT)
       .limit(FLIGHTS_PAGE_LIMIT)
       .maxTimeMS(10_000)
       .lean(),
-    FlightSession.countDocuments({ discordId: targetUser.id }).maxTimeMS(10_000)
+    FlightHistory.countDocuments({ discordId: targetUser.id }).maxTimeMS(10_000)
   ]);
 
   const pages = Math.max(1, Math.ceil(total / FLIGHTS_PAGE_LIMIT));
@@ -443,7 +466,7 @@ client.on('interactionCreate', async interaction => {
           { name: 'Status', value: 'Live now', inline: true },
         );
       } else {
-        const recent = await FlightSession.findOne({
+        const recent = await FlightHistory.findOne({
           $or: [
             { callsign: new RegExp(`^${callsign}$`, 'i') },
             { flightNo: new RegExp(`^${callsign}$`, 'i') },
@@ -555,7 +578,7 @@ client.on('interactionCreate', async interaction => {
         });
       }
 
-      const stats = await FlightSession.aggregate([
+      const stats = await FlightHistory.aggregate([
         { $match: { discordId: targetUser.id } },
         { $group: {
           _id: null,

@@ -205,6 +205,31 @@ const flightSessionSchema = new mongoose.Schema({
 flightSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
 
+const flightHistorySchema = new mongoose.Schema({
+  sessionId:     { type: mongoose.Schema.Types.ObjectId, index: true, sparse: true },
+  aircraftId:    { type: String, index: true },
+  discordId:     { type: String, index: true, sparse: true },
+  geofsUserId:   { type: String, index: true, sparse: true },
+  username:      String,
+  displayName:   String,
+  callsign:      { type: String, index: true },
+  flightNo:      String,
+  type:          String,
+  departure:     { type: String, index: true },
+  arrival:       { type: String, index: true },
+  startTime:     { type: Number, index: true },
+  endTime:       Number,
+  takeoffTime:   Number,
+  landingTime:   Number,
+  duration:      Number,
+  maxAlt:        Number,
+  maxSpeed:      Number,
+  distanceNm:    Number,
+  status:        { type: String, default: 'completed', index: true }
+}, { versionKey: false, timestamps: true });
+flightHistorySchema.index({ sessionId: 1 }, { unique: true, sparse: true });
+const FlightHistory = mongoose.model('FlightHistory', flightHistorySchema, 'flightHistory');
+
 // ✅ 新增：Discord 用戶帳號
 const userSchema = new mongoose.Schema({
   discordId:        { type: String, unique: true, index: true },
@@ -303,10 +328,15 @@ mongoose.connect(MONGODB_URI)
     await FlightSession.collection.createIndex({ startTime: -1 });
     await FlightSession.collection.createIndex({ discordId: 1 });
     await FlightSession.collection.createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 });
+    await FlightHistory.collection.createIndex({ startTime: -1 });
+    await FlightHistory.collection.createIndex({ discordId: 1 });
+    await FlightHistory.collection.createIndex({ geofsUserId: 1 });
+    await FlightHistory.collection.createIndex({ sessionId: 1 }, { unique: true, sparse: true });
     await User.collection.createIndex({ discordId: 1 }, { unique: true });
     await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
     console.log('✅ MongoDB indexes created');
     await maintainFlightSessions();
+    await backfillFlightHistoryFromSessions();
   })
   .catch(err => console.error('MongoDB connection error:', err));
 
@@ -340,6 +370,79 @@ function buildSessionTrackSnapshot(track) {
 function getFlightSessionExpiryDate(baseTime) {
   const baseMs = Number.isFinite(baseTime) ? baseTime : Date.now();
   return new Date(baseMs + FLIGHT_SESSION_RETENTION_MS);
+}
+
+function buildFlightHistoryDocument(session, user = null) {
+  const sessionId = session._id || session.sessionId || null;
+  const history = {
+    aircraftId:  session.aircraftId || '',
+    discordId:   session.discordId || user?.discordId || null,
+    geofsUserId: session.geofsUserId || user?.geofsUserId || null,
+    username:    user?.username || session.username || '',
+    displayName: user?.displayName || session.displayName || '',
+    callsign:    session.callsign || 'UNK',
+    flightNo:    session.flightNo || '',
+    type:        session.type || '',
+    departure:   session.departure || '',
+    arrival:     session.arrival || '',
+    startTime:   session.startTime || null,
+    endTime:     session.endTime || null,
+    takeoffTime: session.startTime || null,
+    landingTime: session.endTime || null,
+    duration:    session.duration || 0,
+    maxAlt:      session.maxAlt || 0,
+    maxSpeed:    session.maxSpeed || 0,
+    distanceNm:  session.distanceNm || 0,
+    status:      session.status || 'completed'
+  };
+  if (sessionId) history.sessionId = sessionId;
+  return history;
+}
+
+async function upsertFlightHistoryFromSession(session, user = null) {
+  const history = buildFlightHistoryDocument(session, user);
+  if (!history.sessionId) {
+    return FlightHistory.create(history);
+  }
+
+  await FlightHistory.updateOne(
+    { sessionId: history.sessionId },
+    { $set: history },
+    { upsert: true }
+  );
+  return FlightHistory.findOne({ sessionId: history.sessionId }).lean();
+}
+
+async function backfillFlightHistoryFromSessions() {
+  try {
+    let copied = 0;
+    while (true) {
+      const sessions = await FlightSession.find({
+        _id: { $nin: await FlightHistory.distinct('sessionId') }
+      })
+        .sort({ startTime: -1 })
+        .limit(200)
+        .lean();
+
+      if (!sessions.length) break;
+
+      for (const session of sessions) {
+        const user = session.discordId
+          ? await User.findOne({ discordId: session.discordId }).select('discordId geofsUserId username displayName').lean()
+          : session.geofsUserId
+            ? await User.findOne({ geofsUserId: session.geofsUserId }).select('discordId geofsUserId username displayName').lean()
+            : null;
+        await upsertFlightHistoryFromSession(session, user);
+        copied += 1;
+      }
+
+      if (sessions.length < 200) break;
+    }
+
+    if (copied) console.log(`[FlightHistory] Backfilled ${copied} sessions`);
+  } catch (err) {
+    console.error('FlightHistory backfill error', err);
+  }
 }
 
 async function maintainFlightSessions() {
@@ -591,6 +694,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     });
 
     console.log(`[FlightSession] ${status} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
+    await upsertFlightHistoryFromSession(session, user);
 
     // Discord 飛行完成通報（飛行時間 > 2 分鐘才通報）
     if (FLIGHT_WEBHOOK_URL && duration >= 120) {
@@ -1122,7 +1226,7 @@ app.get('/api/my-flights', authMiddleware, async (req, res) => {
     const user = await User.findOne({ discordId: req.jwtUser.discordId }).lean();
     if (!user) return res.status(404).json({ error: 'User not found' });
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
-    const flights = await FlightSession.find({ discordId: user.discordId })
+    const flights = await FlightHistory.find({ discordId: user.discordId })
       .sort({ startTime: -1 }).limit(limit).lean();
     res.json(flights);
   } catch { res.status(500).json({ error: 'server error' }); }
@@ -1152,8 +1256,8 @@ app.get('/api/flights/history', async (req, res) => {
     if (req.query.arrival)   filter.arrival   = req.query.arrival.toUpperCase();
 
     const [flights, total] = await Promise.all([
-      FlightSession.find(filter).sort({ startTime: -1 }).skip(page * limit).limit(limit).select('-trackSnapshot').lean(),
-      FlightSession.countDocuments(filter)
+      FlightHistory.find(filter).sort({ startTime: -1 }).skip(page * limit).limit(limit).lean(),
+      FlightHistory.countDocuments(filter)
     ]);
     res.json({ flights, total, page, limit, pages: Math.ceil(total / limit) });
   } catch { res.status(500).json({ error: 'server error' }); }
@@ -1163,8 +1267,8 @@ app.get('/api/flights/history', async (req, res) => {
 app.get('/api/flights/user/:discordId', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const flights = await FlightSession.find({ discordId: req.params.discordId })
-      .sort({ startTime: -1 }).limit(limit).select('-trackSnapshot').lean();
+    const flights = await FlightHistory.find({ discordId: req.params.discordId })
+      .sort({ startTime: -1 }).limit(limit).lean();
     res.json(flights);
   } catch { res.status(500).json({ error: 'server error' }); }
 });
@@ -1173,16 +1277,18 @@ app.get('/api/flights/user/:discordId', async (req, res) => {
 app.get('/api/flights/geofs/:geofsUserId', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const flights = await FlightSession.find({ geofsUserId: req.params.geofsUserId })
-      .sort({ startTime: -1 }).limit(limit).select('-trackSnapshot').lean();
+    const flights = await FlightHistory.find({ geofsUserId: req.params.geofsUserId })
+      .sort({ startTime: -1 }).limit(limit).lean();
     res.json(flights);
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
-// 單次飛行詳情（含完整軌跡）
+// 單次飛行詳情（長期資料只保存摘要；舊 session ID 仍可查短期詳細資料）
 app.get('/api/flights/:sessionId', async (req, res) => {
   try {
-    const flight = await FlightSession.findById(req.params.sessionId).lean();
+    const flight =
+      await FlightHistory.findById(req.params.sessionId).lean() ||
+      await FlightSession.findById(req.params.sessionId).lean();
     if (!flight) return res.status(404).json({ error: 'not found' });
     res.json(flight);
   } catch { res.status(500).json({ error: 'server error' }); }
@@ -1191,7 +1297,7 @@ app.get('/api/flights/:sessionId', async (req, res) => {
 // 飛行統計（by discordId）
 app.get('/api/flights/stats/:discordId', async (req, res) => {
   try {
-    const stats = await FlightSession.aggregate([
+    const stats = await FlightHistory.aggregate([
       { $match: { discordId: req.params.discordId } },
       { $group: {
         _id: '$discordId',
@@ -1253,13 +1359,19 @@ app.get('/admin/me', requireAdmin, async (req, res) => {
 
 app.delete('/admin/flights/:sessionId', requireAdmin, async (req, res) => {
   try {
-    const flight = await FlightSession.findByIdAndDelete(req.params.sessionId).lean();
-    if (flight) {
+    const history = await FlightHistory.findByIdAndDelete(req.params.sessionId).lean();
+    const flight = history?.sessionId
+      ? await FlightSession.findByIdAndDelete(history.sessionId).lean()
+      : await FlightSession.findByIdAndDelete(req.params.sessionId).lean();
+    if (!history && flight) {
+      await FlightHistory.deleteOne({ sessionId: flight._id });
+    }
+    if (history || flight) {
       await logAdminAction(req, {
         action: 'flight.delete',
         targetType: 'flight',
         targetId: req.params.sessionId,
-        before: flight
+        before: history || flight
       });
     }
     res.json({ ok: true });
