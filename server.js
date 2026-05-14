@@ -1623,7 +1623,11 @@ app.get('/api/photos', async (req, res) => {
 });
 app.get('/api/photos/user/:userId', async (req, res) => {
   try {
-    res.json(await Photo.find({ userId: req.params.userId, status: 'approved' }).sort({ createdAt: -1 }).limit(10));
+    const requestedLimit = Number.parseInt(req.query.limit, 10);
+    const limit = Number.isFinite(requestedLimit)
+      ? Math.min(Math.max(requestedLimit, 1), 100)
+      : 60;
+    res.json(await Photo.find({ userId: req.params.userId, status: 'approved' }).sort({ createdAt: -1 }).limit(limit));
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 

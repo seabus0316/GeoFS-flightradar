@@ -753,6 +753,12 @@ new MutationObserver(() => {
 (function() {
   // ── 更新清單（由新到舊）──────────────────────────────
   const WN_UPDATES = [
+ {
+  tag: 'new',
+  date: '2026-05-15',
+  title: 'Filter jet photos by aircraft family',
+  desc: 'Automatically parses tags and captions to filter and display photos matching the specific aircraft family.'
+},
         {
       tag: 'new',
       date: '2026-04-19',
@@ -1877,6 +1883,124 @@ function escapeHtml(s) {
   });
 }
 // 照片側邊欄切換
+const AIRCRAFT_FAMILY_PATTERNS = [
+  // ── Boeing 窄體 ──────────────────────────────────────────────
+  { family: '737', label: 'Boeing 737', patterns: [/\b(?:boeing\s*)?737(?:[-\s]?(?:\d{3}|max\s*\d+|ng|classic|bbj))?\b/i, /\bb73[1-9]\b/i, /\bb7m[0-9]\b/i] },
+  { family: '757', label: 'Boeing 757', patterns: [/\b(?:boeing\s*)?757(?:[-\s]?\d{3}(?:wl)?)?\b/i, /\bb75[1-9]\b/i] },
+  { family: '707', label: 'Boeing 707', patterns: [/\b(?:boeing\s*)?707(?:[-\s]?\d{3})?\b/i, /\bb703\b/i] },
+
+  // ── Boeing 廣體 ──────────────────────────────────────────────
+  { family: '747', label: 'Boeing 747', patterns: [/\b(?:boeing\s*)?747(?:[-\s]?(?:\d{3}|8[fi]?|sp|lcf|sca))?\b/i, /\bb74[1-9s]\b/i] },
+  { family: '767', label: 'Boeing 767', patterns: [/\b(?:boeing\s*)?767(?:[-\s]?\d{3})?\b/i, /\bb76[1-9]\b/i] },
+  { family: '777', label: 'Boeing 777', patterns: [/\b(?:boeing\s*)?777(?:[-\s]?(?:\d{3}|x|[89]|freighter))?\b/i, /\bb77[1-9wl]\b/i] },
+  { family: '787', label: 'Boeing 787', patterns: [/\b(?:boeing\s*)?787(?:[-\s]?(?:8|9|10))?\b/i, /\bb78[1-9]\b/i] },
+
+  // ── Boeing 軍用 / 特殊 ───────────────────────────────────────
+  { family: 'kc135', label: 'Boeing KC-135', patterns: [/\bkc[\s-]?135\b/i] },
+  { family: 'p8',    label: 'Boeing P-8 Poseidon', patterns: [/\bp[\s-]?8[ai]?\b/i, /\bposeidon\b/i] },
+
+  // ── Airbus 窄體 ──────────────────────────────────────────────
+  { family: 'a318', label: 'Airbus A318', patterns: [/\b(?:airbus\s*)?a[\s-]?318\b/i] },
+  { family: 'a319', label: 'Airbus A319', patterns: [/\b(?:airbus\s*)?a[\s-]?319(?:[-\s]?neo)?\b/i, /\ba19n\b/i] },
+  { family: 'a320', label: 'Airbus A320', patterns: [/\b(?:airbus\s*)?a[\s-]?320(?:[-\s]?(?:neo|ceo|n|\d{3}))?\b/i, /\ba20n\b/i] },
+  { family: 'a321', label: 'Airbus A321', patterns: [/\b(?:airbus\s*)?a[\s-]?321(?:[-\s]?(?:neo|ceo|xlr|lr|n|\d{3}))?\b/i, /\ba21n\b/i] },
+  { family: 'a220', label: 'Airbus A220', patterns: [/\b(?:airbus\s*)?a[\s-]?220(?:[-\s]?\d{3})?\b/i, /\bcseries\b/i, /\bcs[13]00\b/i] },
+
+  // ── Airbus 廣體 ──────────────────────────────────────────────
+  { family: 'a300', label: 'Airbus A300', patterns: [/\b(?:airbus\s*)?a[\s-]?300(?:[-\s]?\d{3}[br]?)?\b/i] },
+  { family: 'a310', label: 'Airbus A310', patterns: [/\b(?:airbus\s*)?a[\s-]?310(?:[-\s]?\d{3})?\b/i] },
+  { family: 'a330', label: 'Airbus A330', patterns: [/\b(?:airbus\s*)?a[\s-]?330(?:[-\s]?(?:\d{3}|neo|[89]))?\b/i, /\ba33[0-9]\b/i, /\ba338\b/i, /\ba339\b/i] },
+  { family: 'a340', label: 'Airbus A340', patterns: [/\b(?:airbus\s*)?a[\s-]?340(?:[-\s]?\d{3})?\b/i, /\ba34[0-9]\b/i] },
+  { family: 'a350', label: 'Airbus A350', patterns: [/\b(?:airbus\s*)?a[\s-]?350(?:[-\s]?\d{3,4}(?:\s*xwb)?)?\b/i, /\ba35\d?\b/i] },
+  { family: 'a380', label: 'Airbus A380', patterns: [/\b(?:airbus\s*)?a[\s-]?380(?:[-\s]?\d{3})?\b/i, /\ba38\d?\b/i] },
+
+  // ── Airbus 軍用 ──────────────────────────────────────────────
+  { family: 'a400m', label: 'Airbus A400M', patterns: [/\ba[\s-]?400m?\b/i, /\batlas\s*(?:transport)?\b/i] },
+
+  // ── Embraer ──────────────────────────────────────────────────
+  { family: 'ejet',  label: 'Embraer E-Jet', patterns: [/\b(?:embraer\s*)?e(?:-|\s)?(?:170|175|190|195)(?:[-\s]?(?:e2|lr|ar))?\b/i, /\be(?:70|75|90|95)\b/i] },
+  { family: 'erj145', label: 'Embraer ERJ-145', patterns: [/\berj[\s-]?1[34][0-9]\b/i, /\be(?:35|40|45)\b/i] },
+  { family: 'emb120', label: 'Embraer EMB-120', patterns: [/\bemb[\s-]?120\b/i, /\bbrasil[il]a\b/i] },
+  { family: 'phenom', label: 'Embraer Phenom', patterns: [/\bphenom\s*(?:100|300)?\b/i, /\bemb[\s-]?50[07]\b/i] },
+
+  // ── Bombardier ───────────────────────────────────────────────
+  { family: 'crj',    label: 'Bombardier CRJ', patterns: [/\b(?:bombardier\s*)?crj(?:[-\s]?(?:100|200|550|700|900|1000))?\b/i] },
+  { family: 'dash8',  label: 'Bombardier Dash 8 / Q400', patterns: [/\bdash[\s-]?8\b/i, /\bq[\s-]?(?:200|300|400)\b/i, /\bdhc[\s-]?8\b/i, /\bd[h8]8[abtd]?\b/i] },
+  { family: 'challenger', label: 'Bombardier Challenger', patterns: [/\bchallenger\s*(?:3[05]0|6[05]0|8[56]0)?\b/i, /\bc(?:l|rj)[\s-]?6[05]0\b/i] },
+  { family: 'learjet', label: 'Bombardier Learjet', patterns: [/\blearjet\s*(?:\d+(?:\s*xr)?)?\b/i, /\blea?\b/i] },
+
+  // ── ATR ──────────────────────────────────────────────────────
+  { family: 'atr72', label: 'ATR 72', patterns: [/\batr[\s-]?72(?:[-\s]?\d{3})?\b/i, /\bat7[256]\b/i] },
+  { family: 'atr42', label: 'ATR 42', patterns: [/\batr[\s-]?42(?:[-\s]?\d{3})?\b/i, /\bat4[235]\b/i] },
+
+  // ── McDonnell Douglas ────────────────────────────────────────
+  { family: 'md11', label: 'McDonnell Douglas MD-11', patterns: [/\bmd[\s-]?11\b/i] },
+  { family: 'dc10', label: 'McDonnell Douglas DC-10', patterns: [/\bdc[\s-]?10\b/i] },
+  { family: 'md80', label: 'McDonnell Douglas MD-80', patterns: [/\bmd[\s-]?8[0-9]\b/i] },
+  { family: 'dc3',  label: 'Douglas DC-3',  patterns: [/\bdc[\s-]?3\b/i] },
+
+  // ── 俄 / 烏克蘭 ──────────────────────────────────────────────
+  { family: 'tu204', label: 'Tupolev Tu-204', patterns: [/\btu[\s-]?(?:204|214)\b/i] },
+  { family: 'il76',  label: 'Ilyushin Il-76', patterns: [/\bil[\s-]?76\b/i] },
+  { family: 'an225', label: 'Antonov An-225', patterns: [/\ban[\s-]?225\b/i, /\bmriya\b/i] },
+
+  // ── 其他民航 / 通用航空 ──────────────────────────────────────
+  { family: 'concorde', label: 'Concorde', patterns: [/\bconcorde\b/i] },
+  { family: 'l1011',    label: 'Lockheed L-1011', patterns: [/\bl[\s-]?1011\b/i, /\btristar\b/i] },
+  { family: 'bae146',   label: 'BAe 146 / Avro RJ', patterns: [/\bbae[\s-]?146\b/i, /\bavro[\s-]?rj\d*\b/i, /\brj\d{2,3}\b/i] },
+  { family: 'saab340',  label: 'SAAB 340', patterns: [/\bsaab[\s-]?340\b/i, /\bsf3\b/i] },
+  { family: 'dornier228', label: 'Dornier 228', patterns: [/\bdornier[\s-]?228\b/i, /\bdo[\s-]?228\b/i, /\bd228\b/i] },
+  { family: 'c919',     label: 'Comac C919', patterns: [/\bc[\s-]?919\b/i] },
+  { family: 'cessna172', label: 'Cessna 172', patterns: [/\bc(?:essna)?[\s-]?172\b/i, /\bskyhawk\b/i] },
+  { family: 'cessna152', label: 'Cessna 152', patterns: [/\bc(?:essna)?[\s-]?152\b/i] },
+  { family: 'phenom',   label: 'Embraer Phenom', patterns: [/\bphenom\s*(?:100|300)?\b/i] },
+  { family: 'dhc6',     label: 'de Havilland DHC-6 Twin Otter', patterns: [/\bdhc[\s-]?6\b/i, /\btwin[\s-]otter\b/i, /\bdht\b/i] },
+  { family: 'dhc2',     label: 'de Havilland DHC-2 Beaver', patterns: [/\bdhc[\s-]?2\b/i, /\bbeaver\b/i] },
+
+  // ── 軍用噴射機 ───────────────────────────────────────────────
+  { family: 'f16',  label: 'F-16 Fighting Falcon', patterns: [/\bf[\s-]?16\b/i, /\bfighting[\s-]falcon\b/i] },
+  { family: 'f18',  label: 'F/A-18 Hornet', patterns: [/\bf[\s/]?a[\s-]?18[ef]?\b/i, /\bhornet\b/i, /\bsuper[\s-]hornet\b/i] },
+  { family: 'f14',  label: 'F-14 Tomcat', patterns: [/\bf[\s-]?14[abd]?\b/i, /\btomcat\b/i] },
+  { family: 'f15',  label: 'F-15 Eagle', patterns: [/\bf[\s-]?15[cdej]?\b/i, /\beagle\b/i, /\bstrike[\s-]eagle\b/i] },
+  { family: 'f22',  label: 'F-22 Raptor', patterns: [/\bf[\s-]?22\b/i, /\braptor\b/i] },
+  { family: 'f35',  label: 'F-35 Lightning II', patterns: [/\bf[\s-]?35[abc]?\b/i, /\blightning[\s-]ii\b/i] },
+  { family: 'a10',  label: 'A-10 Warthog', patterns: [/\ba[\s-]?10[abc]?\b/i, /\bwarthog\b/i, /\bthunderbolt[\s-]ii\b/i] },
+  { family: 'rafale', label: 'Dassault Rafale', patterns: [/\brafale\b/i] },
+  { family: 'mirage2000', label: 'Dassault Mirage 2000', patterns: [/\bmirage[\s-]?2000\b/i, /\bm2k\b/i] },
+  { family: 'su35', label: 'Sukhoi Su-35', patterns: [/\bsu[\s-]?35\b/i] },
+  { family: 'sr71', label: 'Lockheed SR-71 Blackbird', patterns: [/\bsr[\s-]?71\b/i, /\bblackbird\b/i] },
+  { family: 'b2',   label: 'Northrop B-2 Spirit', patterns: [/\bb[\s-]?2\s*spirit\b/i, /\bnorthrop[\s-]b[\s-]?2\b/i] },
+
+  // ── 直升機 ───────────────────────────────────────────────────
+  { family: 'ec135', label: 'Eurocopter EC135', patterns: [/\bec[\s-]?135\b/i] },
+];
+
+function getAircraftFamilyFromText(text) {
+  const value = String(text || '').trim();
+  if (!value) return null;
+  for (const item of AIRCRAFT_FAMILY_PATTERNS) {
+    if (item.patterns.some(pattern => pattern.test(value))) {
+      return { family: item.family, label: item.label };
+    }
+  }
+  return null;
+}
+
+function getAircraftFamilyFromPhoto(photo) {
+  const tags = Array.isArray(photo?.tags) ? photo.tags.join(' ') : '';
+  return getAircraftFamilyFromText(`${tags} ${photo?.caption || ''}`);
+}
+
+function filterPhotosByAircraftFamily(photos, aircraftType) {
+  const target = getAircraftFamilyFromText(aircraftType);
+  if (!target) return { target: null, photos: [] };
+  const matched = (photos || []).filter(photo => {
+    const photoFamily = getAircraftFamilyFromPhoto(photo);
+    return photoFamily?.family === target.family;
+  });
+  return { target, photos: matched };
+}
+
 function togglePhotoSidebar() {
   const sidebar = document.getElementById('photoSidebar');
   sidebar.classList.toggle('open');
@@ -3399,7 +3523,7 @@ async function showAircraftPanel(data, id) {
   if (data.userId) {
     try {
       console.log('📸 Fetching photos for userId:', data.userId);
-      const response = await fetch(`/api/photos/user/${data.userId}`);
+      const response = await fetch(`/api/photos/user/${data.userId}?limit=80`);
       userPhotos = await response.json();
       console.log('📸 Found photos:', userPhotos.length);
     } catch (err) {
@@ -3476,13 +3600,18 @@ async function showAircraftPanel(data, id) {
   const isEmergency = data.squawk === '7700';
 
 // 照片輪播 HTML
+  const aircraftPhotoMatch = filterPhotosByAircraftFamily(userPhotos, data.type);
+  const panelPhotos = aircraftPhotoMatch.photos;
+  const aircraftPhotoLabel = aircraftPhotoMatch.target?.label || (data.type || 'aircraft');
+  userPhotos = panelPhotos;
+
   let photosHtml = '';
-  if (userPhotos.length > 0) {
+  if (panelPhotos.length > 0) {
     photosHtml = `
       <div id="photoContainer" class="panel-photo-hero" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;overflow:hidden;">
-        <img id="panelPhoto" src="${userPhotos[0].thumb}" style="width:100%;height:100%;object-fit:cover;">
+        <img id="panelPhoto" src="${panelPhotos[0].thumb}" style="width:100%;height:100%;object-fit:cover;">
         
-        ${userPhotos.length > 1 ? `
+        ${panelPhotos.length > 1 ? `
           <!-- 左箭頭 -->
           <button id="photoPrev" style="position:absolute;left:10px;top:50%;transform:translateY(-50%);
                   background:rgba(0,0,0,0.6);color:#fff;border:none;width:40px;height:40px;
@@ -3502,12 +3631,13 @@ async function showAircraftPanel(data, id) {
         
         <div style="position:absolute;bottom:8px;left:8px;background:rgba(0,0,0,0.7);color:#fff;
                     padding:4px 8px;border-radius:4px;font-size:11px;z-index:5;">
-          © <span id="photoCredit">${escapeHtml(userPhotos[0].photographer || 'Anonymous')}</span>
+          <span style="font-weight:700;">${escapeHtml(aircraftPhotoLabel)}</span>
+          <span style="opacity:0.75;"> by </span><span id="photoCredit">${escapeHtml(userPhotos[0].photographer || 'Anonymous')}</span>
         </div>
         
-        ${userPhotos.length > 1 ? `
+        ${panelPhotos.length > 1 ? `
           <div style="position:absolute;bottom:8px;left:50%;transform:translateX(-50%);display:flex;gap:6px;z-index:5;">
-            ${userPhotos.map((_, i) => `
+            ${panelPhotos.map((_, i) => `
               <button class="photo-dot" data-index="${i}" style="width:8px;height:8px;border-radius:50%;border:none;
                       background:${i === 0 ? '#ffd500' : 'rgba(255,255,255,0.5)'};cursor:pointer;padding:0;"></button>
             `).join('')}
