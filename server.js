@@ -306,7 +306,7 @@ const PendingNotification = mongoose.model('PendingNotification', new mongoose.S
   arrival:             String,
   penultimateWaypoint: String,
   sent:                { type: Boolean, default: false, index: true },
-  createdAt:           { type: Date, default: Date.now },
+  createdAt:           { type: Date, default: Date.now, expires: '7d' },
 }, { versionKey: false }));
 
 const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schema({
@@ -317,7 +317,7 @@ const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schem
   thumbUrl:     String,
   rejectReason: String,
   sent:         { type: Boolean, default: false, index: true },
-  createdAt:    { type: Date, default: Date.now },
+  createdAt:    { type: Date, default: Date.now, expires: '7d' },
 }, { versionKey: false }));
 // ============ MongoDB 連線 ============
 mongoose.connect(MONGODB_URI)
