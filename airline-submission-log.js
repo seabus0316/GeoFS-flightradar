@@ -120,7 +120,7 @@ function skipLatestAirlineSubmission(key, reason = '') {
 
   return null;
 }
-
+// Expose functions for external use
 module.exports = {
   LOG_PATH,
   appendAirlineSubmission,
