@@ -1,0 +1,19 @@
+name: Deploy GeoFS Flight Radar
+
+on:
+  push:
+    branches: [ "main" ] # 當推送到 main 分支時觸發
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: SSH into server and run update script
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.HOST }}
+          username: ${{ secrets.USERNAME }}
+          key: ${{ secrets.SSH_KEY }}
+          port: ${{ secrets.PORT }}
+          script: |
+            /usr/local/bin/update-geofs-radar.sh
