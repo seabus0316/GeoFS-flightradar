@@ -1822,5 +1822,123 @@
     "iata": "EMB",
     "country": "Brazil",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdrdARJJVPA4KfQUq2xpMcemd3dHUBZkBnKg&s"
+  },
+    "WOW": {
+    "name": "Wow Air",
+    "icao": "WOW",
+    "iata": "WW",
+    "country": "Iceland",
+    "logo": "https://images.kiwi.com/airlines/64/WW.png"
+  },
+    "SBGR": {
+    "name": "GOL",
+    "icao": "SBGR",
+    "iata": "MIA",
+    "country": "BRAZIL"
+  },
+  "THT": {
+    "name": "Air Tahiti Nui",
+    "icao": "THT",
+    "iata": "TN",
+    "country": "Tahiti",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfkpgWwkcWfPJ9VRoCxVUFL_Qq3tOfIkc1uQ&s"
+  },
+  "FPY": {
+    "name": "Play Airlines",
+    "icao": "FPY",
+    "iata": "OG",
+    "country": "Iceland",
+    "logo": "https://images.kiwi.com/airlines/64/OG.png"
+  },
+  "CYH": {
+    "name": "China Yunnan Airlines",
+    "icao": "CYH",
+    "iata": "3Q",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/3Q.png"
+  },
+  "N/A": {
+    "name": "Air Timor",
+    "icao": "N/A",
+    "iata": "6C",
+    "country": "Timor-Leste",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/2/2e/Air_Timor_logo.png"
+  },
+  "8G": {
+    "name": "Aero Dili",
+    "icao": "8G",
+    "iata": "DTL",
+    "country": "Timor-Leste",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/b/bd/AD_tagline_23_final.png"
+  },
+  "DTL": {
+    "name": "Aero Dili",
+    "icao": "DTL",
+    "iata": "8G",
+    "country": "Timor-Leste",
+    "logo": "https://upload.wikimedia.org/wikipedia/commons/b/bd/AD_tagline_23_final.png"
+  },
+  "BIX": {
+    "name": "Braathens International Airways",
+    "icao": "BIX",
+    "iata": "TT",
+    "country": "Sweden",
+    "logo": "https://images.kiwi.com/airlines/64/TT.png"
+  },
+  "WIF": {
+    "name": "WiderÃ¸e",
+    "icao": "WIF",
+    "iata": "WF",
+    "country": "Norway",
+    "logo": "https://images.kiwi.com/airlines/64/WF.png"
+  },
+  "MGL": {
+    "name": "MIAT Mongolian Airlines",
+    "icao": "MGL",
+    "iata": "OM",
+    "country": "Mongolia",
+    "logo": "https://images.kiwi.com/airlines/64/OM.png"
+  },
+  "MGN": {
+    "name": "Aero Mongolia",
+    "icao": "MGN",
+    "iata": "M0",
+    "country": "Mongolia",
+    "logo": "https://images.kiwi.com/airlines/64/M0.png"
+  },
+  "EZA": {
+    "name": "Eznis Airways",
+    "icao": "EZA",
+    "iata": "MG",
+    "country": "Mongolia",
+    "logo": "https://upload.wikimedia.org/wikipedia/en/thumb/9/9e/Eznis_Airways_logo.svg/1280px-Eznis_Airways_logo.svg.png"
+  },
+  "MML": {
+    "name": "Hunnu Air",
+    "icao": "MML",
+    "iata": "MR",
+    "country": "Mongolia",
+    "logo": "https://images.kiwi.com/airlines/64/MR.png"
+  },
+  "VTI": {
+    "name": "Vistara",
+    "icao": "VTI",
+    "iata": "UK",
+    "country": "India",
+    "logo": "https://images.kiwi.com/airlines/64/UK.png"
+  },
+  "CLB": {
+    "name": "CrossLavras Airlines Brazil",
+    "icao": "CLB",
+    "iata": "CL",
+    "country": "Brazil",
+    "logo": "https://ibb.co/TqLwjtsV"
+  },
+  "DXH": {
+    "name": "East Star Airlines",
+    "icao": "DXH",
+    "iata": "8C",
+    "country": "China",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSghoEGZwAV0_XM5U_XTo-89Cc3syy9fM7cg3ntAcSapg&s"
   }
 }
