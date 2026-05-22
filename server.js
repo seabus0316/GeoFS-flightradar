@@ -230,6 +230,12 @@ const flightHistorySchema = new mongoose.Schema({
 flightHistorySchema.index({ sessionId: 1 }, { unique: true, sparse: true });
 const FlightHistory = mongoose.model('FlightHistory', flightHistorySchema, 'flightHistory');
 
+const DISCONNECT_FINALIZE_GRACE_MS = 90 * 1000;
+const COMPLETION_GROUND_ALT_FT = 150;
+const COMPLETION_GROUND_SPEED_KTS = 40;
+const COMPLETION_STABLE_POINTS = 3;
+const pendingFlightFinalizations = new Map();
+
 // ✅ 新增：Discord 用戶帳號
 const userSchema = new mongoose.Schema({
   discordId:        { type: String, unique: true, index: true },
@@ -370,6 +376,55 @@ function buildSessionTrackSnapshot(track) {
 function getFlightSessionExpiryDate(baseTime) {
   const baseMs = Number.isFinite(baseTime) ? baseTime : Date.now();
   return new Date(baseMs + FLIGHT_SESSION_RETENTION_MS);
+}
+
+function clearPendingFlightFinalization(aircraftId) {
+  const pending = pendingFlightFinalizations.get(aircraftId);
+  if (!pending) return false;
+  clearTimeout(pending.timer);
+  pendingFlightFinalizations.delete(aircraftId);
+  return true;
+}
+
+function inferFlightCompletionStatus(docs, requestedStatus = 'completed') {
+  if (requestedStatus !== 'completed') return requestedStatus;
+  if (!Array.isArray(docs) || docs.length < COMPLETION_STABLE_POINTS) return 'aborted';
+
+  const tail = docs.slice(-COMPLETION_STABLE_POINTS);
+  const grounded = tail.every(point =>
+    Number(point.alt || 0) <= COMPLETION_GROUND_ALT_FT &&
+    Number(point.speed || 0) <= COMPLETION_GROUND_SPEED_KTS
+  );
+
+  return grounded ? 'completed' : 'aborted';
+}
+
+function scheduleFlightFinalization(aircraftId, requestedStatus = 'completed', delayMs = DISCONNECT_FINALIZE_GRACE_MS) {
+  if (!aircraftId) return;
+
+  const existing = pendingFlightFinalizations.get(aircraftId);
+  if (existing && existing.requestedStatus === 'aborted') {
+    requestedStatus = 'aborted';
+  }
+  clearPendingFlightFinalization(aircraftId);
+
+  const timer = setTimeout(async () => {
+    pendingFlightFinalizations.delete(aircraftId);
+    try {
+      const finalized = await finalizeFlightSession(aircraftId, requestedStatus);
+      if (finalized) {
+        broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId } });
+      }
+    } catch (err) {
+      console.error('scheduled finalize error', err);
+    }
+  }, Math.max(0, delayMs));
+
+  pendingFlightFinalizations.set(aircraftId, {
+    requestedStatus,
+    timer,
+    scheduledAt: Date.now()
+  });
 }
 
 function buildFlightHistoryDocument(session, user = null) {
@@ -654,8 +709,10 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     const docs = await FlightPoint.find({ aircraftId }).sort({ ts: 1 }).lean();
     if (docs.length < 5) return; // 太少點，略過
 
+    clearPendingFlightFinalization(aircraftId);
     const aircraft = aircrafts.get(aircraftId);
     const payload  = aircraft?.payload || {};
+    const finalStatus = inferFlightCompletionStatus(docs, status);
 
     // 找對應的 Discord 用戶
     const user = payload.userId
@@ -690,11 +747,15 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
       expiresAt:   getFlightSessionExpiryDate(endTime),
       startTime, endTime, duration,
       maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
-      trackSnapshot, status
+      trackSnapshot, status: finalStatus
     });
 
-    console.log(`[FlightSession] ${status} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
+    console.log(`[FlightSession] ${finalStatus} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
     await upsertFlightHistoryFromSession(session, user);
+    await FlightPoint.deleteMany({ aircraftId });
+    aircrafts.delete(aircraftId);
+    alertedSquawks.delete(aircraftId);
+    waypointState.delete(aircraftId);
 
     // Discord 飛行完成通報（飛行時間 > 2 分鐘才通報）
     if (FLIGHT_WEBHOOK_URL && duration >= 120) {
@@ -710,8 +771,8 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
           username: 'Flight Logger',
           avatar_url: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp',
           embeds: [{
-            title: `${status === 'completed' ? '🛬' : '⚠️'} Flight ${status === 'completed' ? 'Completed' : 'Aborted'} — ${session.callsign}`,
-            color: status === 'completed' ? 0x00b4d8 : 0x888888,
+            title: `${finalStatus === 'completed' ? '🛬' : '⚠️'} Flight ${finalStatus === 'completed' ? 'Completed' : 'Aborted'} — ${session.callsign}`,
+            color: finalStatus === 'completed' ? 0x00b4d8 : 0x888888,
             fields: [
               { name: '✈ Aircraft',   value: session.type     || 'Unknown', inline: true },
               { name: '📡 Callsign',  value: session.callsign || 'N/A',     inline: true },
@@ -880,6 +941,7 @@ io.on('connection', async (socket) => {
   socket.on('position_update', async (p) => {
     const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
     if (!id) return;
+    clearPendingFlightFinalization(id);
     if (socket.role === 'player') socket.aircraftId = id;
 
     const payload = {
@@ -930,10 +992,7 @@ io.on('connection', async (socket) => {
     ioAtcClients.delete(socket);
     ioPlayerClients.delete(socket);
     if (socket.role === 'player' && socket.aircraftId) {
-      await finalizeFlightSession(socket.aircraftId, 'completed');
-      alertedSquawks.delete(socket.aircraftId);
-      waypointState.delete(socket.aircraftId);
-      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: socket.aircraftId } });
+      scheduleFlightFinalization(socket.aircraftId, 'completed');
     }
     console.log('Socket.IO client disconnected:', socket.id);
   });
@@ -993,6 +1052,7 @@ wss.on('connection', (ws) => {
         const p = msg.payload;
         const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
         if (!id) return;
+        clearPendingFlightFinalization(id);
         if (ws.role === 'player') ws.aircraftId = id;
 
         const payload = {
@@ -1049,10 +1109,7 @@ wss.on('connection', (ws) => {
       }
 
       if (msg.type === 'disconnect' && msg.aircraftId) {
-        await finalizeFlightSession(msg.aircraftId, 'completed');
-        waypointState.delete(msg.aircraftId);
-        alertedSquawks.delete(msg.aircraftId);
-        broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
+        scheduleFlightFinalization(msg.aircraftId, 'completed');
         return;
       }
 
@@ -1067,12 +1124,10 @@ wss.on('connection', (ws) => {
     playerClients.delete(ws);
     if (ws.role === 'player' && ws.aircraftId) {
       try {
-        await finalizeFlightSession(ws.aircraftId, 'completed');
-        alertedSquawks.delete(ws.aircraftId);
+        scheduleFlightFinalization(ws.aircraftId, 'completed');
       } catch (err) {
         console.error('Error finalizing on close', err);
       }
-      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: ws.aircraftId } });
     }
     console.log('WebSocket closed. total clients:', clients.size);
   });
@@ -1759,11 +1814,10 @@ setInterval(async () => {
   const removed = [];
   for (const [id, v] of aircrafts.entries()) {
     if (now - v.lastSeen > 30_000) {
-      aircrafts.delete(id);
+      if (pendingFlightFinalizations.has(id)) continue;
       removed.push(id);
       try {
-        await finalizeFlightSession(id, 'aborted');
-        alertedSquawks.delete(id);
+        scheduleFlightFinalization(id, 'aborted', 0);
       } catch (err) {
         console.error('cleanup error', err);
       }
