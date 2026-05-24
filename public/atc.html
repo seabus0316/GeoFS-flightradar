@@ -5289,37 +5289,39 @@
       }
     };
 
-    function updateGlobeAircraft(id, data) {
+    async function updateGlobeAircraft(id, data) {
       if (!cesiumViewer || !globeMode) return;
 
       const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
       const heading = Cesium.Math.toRadians((data.heading || 0) - 90);
+      const isFocused = id === focusedAircraftId;
+      const iconColor = isFocused ? '#ff5a36' : '#ffd500';
 
       if (cesiumEntities.has(id)) {
         const entity = cesiumEntities.get(id);
         entity.position = position;
         entity.billboard.rotation = -heading;
+        entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
         // Check if tracked and update camera
         if (getFollowAircraftEnabled() && id === focusedAircraftId) {
           cesiumViewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 0.0, 10000.0));
         }
       } else {
-        const iconUrl = getIconUrl(data.type);
-        const color = Cesium.Color.fromCssColorString(getAltitudeColor(data.alt));
+        const iconUrl = await getColoredIconDataUrl(data.type, iconColor);
 
         const entity = cesiumViewer.entities.add({
           id: id,
           position: position,
           billboard: {
             image: iconUrl,
-            width: 32,
-            height: 32,
-            color: color,
+            width: 44,
+            height: 44,
             rotation: -heading,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
           },
           label: document.getElementById('labelsToggle')?.checked ? {
             text: data.callsign || 'UNK',
