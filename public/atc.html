@@ -5130,9 +5130,9 @@
     const getCesiumImageryProvider = (leafletLayer) => {
       let url = '';
       let subdomains = ['a', 'b', 'c'];
-      if (leafletLayer === googleSat) url = 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
+      if (leafletLayer === googleSat) url = 'https://mt0.google.com/vt/lyrs=s&x={x}&y={y}&z={z}';
       else if (leafletLayer === googleHybrid) url = 'https://mt0.google.com/vt/lyrs=s,h&x={x}&y={y}&z={z}';
-      else if (leafletLayer === googleStreet) url = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+      else if (leafletLayer === googleStreet) url = 'https://mt0.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
       else if (leafletLayer === googleTer) url = 'http://mt0.google.com/vt/lyrs=p&hl=en&x={x}&y={y}&z={z}';
       else if (leafletLayer === osmLayer) url = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
       else if (leafletLayer === amapStreets) { url = 'https://webrd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&scale=1&style=7&x={x}&y={y}&z={z}'; subdomains = ['1', '2', '3', '4']; }
@@ -5211,6 +5211,7 @@
 
             cesiumViewer = new Cesium.Viewer('globe', {
               animation: false,
+              baseLayer: false,
               baseLayerPicker: false,
               fullscreenButton: false,
               geocoder: false,
@@ -5218,6 +5219,7 @@
               infoBox: false,
               sceneModePicker: false,
               selectionIndicator: true,
+              terrainProvider: new Cesium.EllipsoidTerrainProvider(),
               timeline: false,
               navigationHelpButton: false,
               navigationInstructionsInitiallyVisible: false,
@@ -5225,7 +5227,9 @@
               scene3DOnly: true
             });
 
-            const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' });
+            const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.UrlTemplateImageryProvider({
+              url: 'https://mt0.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
+            });
             cesiumViewer.imageryLayers.removeAll();
             cesiumViewer.imageryLayers.add(Cesium.ImageryLayer.fromProviderAsync(imageryProvider));
 
