@@ -99,19 +99,33 @@ async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
   const cacheKey = `${iconUrl}|${colorHex}`;
   if (_iconDataUrlCache.has(cacheKey)) return _iconDataUrlCache.get(cacheKey);
 
-  let svgText = _iconSvgTextCache.get(iconUrl);
-  if (!svgText) {
-    const response = await fetch(iconUrl);
-    svgText = await response.text();
-    _iconSvgTextCache.set(iconUrl, svgText);
-  }
+  try {
+    let svgText = _iconSvgTextCache.get(iconUrl);
+    if (!svgText) {
+      const response = await fetch(iconUrl);
+      if (!response.ok) throw new Error(`Failed to load icon: ${iconUrl}`);
+      svgText = await response.text();
+      _iconSvgTextCache.set(iconUrl, svgText);
+    }
 
-  const coloredSvg = svgText
-    .replace(/fill="(?!none)[^"]*"/gi, `fill="${colorHex}"`)
-    .replace(/fill:\s*(?!none)[^;"]+/gi, `fill:${colorHex}`);
-  const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(coloredSvg)}`;
-  _iconDataUrlCache.set(cacheKey, dataUrl);
-  return dataUrl;
+    let coloredSvg = svgText
+      .replace(/fill="(?!none)[^"]*"/gi, `fill="${colorHex}"`)
+      .replace(/fill:\s*(?!none)[^;"]+/gi, `fill:${colorHex}`)
+      .replace(/#000000/gi, colorHex)
+      .replace(/#000\b/gi, colorHex)
+      .replace(/\bblack\b/gi, colorHex);
+
+    if (!/fill="/i.test(coloredSvg) && !/fill:/i.test(coloredSvg)) {
+      coloredSvg = coloredSvg.replace(/<svg\b([^>]*)>/i, `<svg$1 fill="${colorHex}">`);
+    }
+
+    const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(coloredSvg)}`;
+    _iconDataUrlCache.set(cacheKey, dataUrl);
+    return dataUrl;
+  } catch (error) {
+    console.warn('[AircraftIcons] Failed to colorize icon, falling back to base icon', iconUrl, error);
+    return getIconUrl(''); 
+  }
 }
 
 
