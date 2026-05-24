@@ -5282,13 +5282,19 @@
             const credit = cesiumViewer.bottomContainer;
             if (credit) credit.style.display = 'none';
 
-            // Update aircraft heading when camera rotates
+            // Update aircraft heading when camera rotates.
+            // Use per-aircraft getScreenNorthAngle() instead of the global camera.heading
+            // so that aircraft anywhere on the globe (not just screen centre) are correct.
             cesiumViewer.camera.changed.addEventListener(() => {
               cesiumEntities.forEach((entity) => {
                 if (entity.billboard) {
                   const originalHeading = entity._originalHeading;
                   if (originalHeading !== undefined) {
-                    entity.billboard.rotation = originalHeading - (cesiumViewer.camera.heading || 0);
+                    const worldPos = entity.position?.getValue(Cesium.JulianDate.now());
+                    const northAngle = worldPos
+                      ? getScreenNorthAngle(worldPos)
+                      : (cesiumViewer.camera.heading || 0);
+                    entity.billboard.rotation = originalHeading - northAngle;
                   }
                 }
               });
@@ -5348,14 +5354,38 @@
       return entity._smoothHeading + delta;
     }
 
+    // Compute the screen-space angle from screen-up to the local north direction
+    // at a given world position. This corrects for spherical distortion — aircraft
+    // far from the screen centre have a different local north than camera.heading.
+    function getScreenNorthAngle(worldPos) {
+      if (!cesiumViewer || !worldPos) return cesiumViewer?.camera?.heading || 0;
+      const scene = cesiumViewer.scene;
+      const carto = Cesium.Cartographic.fromCartesian(worldPos);
+      if (!carto) return cesiumViewer.camera.heading;
+      const northLat = Math.min(
+        carto.latitude + Cesium.Math.toRadians(0.5),
+        Cesium.Math.PI_OVER_TWO - 0.0001
+      );
+      const northPos = Cesium.Cartesian3.fromRadians(carto.longitude, northLat, carto.height);
+      const sp = scene.cartesianToCanvasCoordinates(worldPos);
+      const np = scene.cartesianToCanvasCoordinates(northPos);
+      if (!sp || !np) return cesiumViewer.camera.heading;
+      const dx = np.x - sp.x;
+      const dy = np.y - sp.y;
+      // Screen Y increases downward, so "up" on screen is -dy.
+      // atan2(dx, -dy) gives clockwise angle from screen-up → same convention as camera.heading
+      return Math.atan2(dx, -dy);
+    }
+
     async function updateGlobeAircraft(id, data) {
       if (!cesiumViewer || !globeMode) return;
 
       const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
       // Use the same north-up icon baseline as Leaflet.
       const heading = Cesium.Math.toRadians(data.heading || 0);
-      // Compensate for camera heading so aircraft direction stays consistent when rotating globe
-      const cameraHeading = cesiumViewer.camera.heading || 0;
+      // Compensate for local screen-space north at this aircraft's position.
+      // Using per-aircraft getScreenNorthAngle() instead of the global camera.heading
+      // fixes heading errors for aircraft far from the screen centre (spherical distortion).
       const isFocused = id === focusedAircraftId;
       const iconColor = isFocused ? '#ff5a36' : '#ffd500';
 
@@ -5365,7 +5395,8 @@
         entity._smoothHeading = smoothedHeading;
         entity.position = position;
         entity._originalHeading = smoothedHeading;  // Store original heading for camera sync
-        entity.billboard.rotation = smoothedHeading - cameraHeading;
+        const northAngle = getScreenNorthAngle(position);
+        entity.billboard.rotation = smoothedHeading - northAngle;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
         // Throttled track refresh for focused aircraft (max once per 5 s)
@@ -5406,7 +5437,7 @@
         }
       } else {
         const iconUrl = await getColoredIconDataUrl(data.type, iconColor);
-
+        const northAngle = getScreenNorthAngle(position);
         const entity = cesiumViewer.entities.add({
           id: id,
           position: position,
@@ -5416,7 +5447,7 @@
             image: iconUrl,
             width: 32,
             height: 32,
-            rotation: heading - (cesiumViewer.camera.heading || 0),
+            rotation: heading - northAngle,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
