@@ -648,6 +648,7 @@
     const finish = () => {
       if (p) p.remove();
       clearAllAircraftTracks();
+      if (typeof clearGlobeRouteEntities === 'function') clearGlobeRouteEntities();
       if (focusedAircraftId && aircrafts.has(focusedAircraftId)) {
         const o = aircrafts.get(focusedAircraftId);
         if (o && o.marker) o.marker.setIcon(makeDivIcon(o.data, false));
@@ -1429,7 +1430,14 @@
         const obj = aircrafts.get(id);
         if (obj && obj.marker) {
           obj.marker.fire("click");
-          map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
+          if (typeof globeMode !== 'undefined' && globeMode) {
+            // In 3D mode: fly Cesium camera and draw route on globe
+            if (typeof showGlobeTrackAndRoute === 'function') {
+              showGlobeTrackAndRoute(id, obj.data);
+            }
+          } else {
+            map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
+          }
         }
       }
     }
@@ -5250,6 +5258,7 @@
                 flSelectFlight(pickedObject.id.id);
               } else {
                 closeAircraftPanel();
+                clearGlobeRouteEntities();
               }
             }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -5303,8 +5312,13 @@
         entity.billboard.rotation = -heading;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
+        // Refresh globe track for focused aircraft on each data update
+        if (isFocused && typeof showGlobeTrackAndRoute === 'function') {
+          showGlobeTrackAndRoute(id, data);
+        }
+
         // Check if tracked and update camera
-        if (getFollowAircraftEnabled() && id === focusedAircraftId) {
+        if (getFollowAircraftEnabled() && isFocused) {
           cesiumViewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 0.0, 10000.0));
         }
       } else {
@@ -5315,22 +5329,24 @@
           position: position,
           billboard: {
             image: iconUrl,
-            width: 32,
-            height: 32,
+            width: 64,
+            height: 64,
             rotation: -heading,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
           },
           label: document.getElementById('labelsToggle')?.checked ? {
             text: data.callsign || 'UNK',
-            font: '12pt Inter',
+            font: 'bold 13pt Inter, sans-serif',
             fillColor: Cesium.Color.WHITE,
             outlineColor: Cesium.Color.BLACK,
             outlineWidth: 2,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
-            pixelOffset: new Cesium.Cartesian2(0, 24),
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            pixelOffset: new Cesium.Cartesian2(0, 36),
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY
           } : undefined
         });
         cesiumEntities.set(id, entity);
@@ -5352,6 +5368,204 @@
         updateGlobeAircraft(id, obj.data);
       });
     }
+
+    // ─── Globe: Route, flight plan, and track overlay ───────────────────────
+    let _globeRouteEntities = [];
+
+    function clearGlobeRouteEntities() {
+      if (!cesiumViewer) return;
+      _globeRouteEntities.forEach(e => { try { cesiumViewer.entities.remove(e); } catch { } });
+      _globeRouteEntities = [];
+    }
+
+    /**
+     * Draw on the 3D globe:
+     *  1. Aircraft track trail (altitude-coloured polyline)
+     *  2. Flight-plan waypoint route (dashed purple polyline)
+     *  3. DEP→ARR great-circle arc (dashed yellow)
+     *  4. Fly camera to the aircraft
+     */
+    function showGlobeTrackAndRoute(id, data) {
+      if (!cesiumViewer || !globeMode) return;
+      clearGlobeRouteEntities();
+
+      // 1. Track trail
+      const obj = aircrafts.get(id);
+      if (obj && obj.rawTrack && obj.rawTrack.length > 1) {
+        const positions = obj.rawTrack.map(p =>
+          Cesium.Cartesian3.fromDegrees(p.lon, p.lat, (p.alt || 0) * 0.3048 + 50)
+        );
+        const trackEnt = cesiumViewer.entities.add({
+          polyline: {
+            positions,
+            width: 2.5,
+            material: new Cesium.PolylineGlowMaterialProperty({
+              glowPower: 0.15,
+              color: Cesium.Color.fromCssColorString('#00cfff').withAlpha(0.85)
+            }),
+            clampToGround: false,
+            arcType: Cesium.ArcType.GEODESIC
+          }
+        });
+        _globeRouteEntities.push(trackEnt);
+      }
+
+      // 2. Flight-plan waypoint route (dashed purple)
+      let plan = data.flightPlan;
+      if (typeof plan === 'string') { try { plan = JSON.parse(plan); } catch { plan = null; } }
+      if (typeof getShowFlightPlanEnabled === 'function' && getShowFlightPlanEnabled()
+          && plan && Array.isArray(plan) && plan.length > 1) {
+        const wpPositions = plan
+          .filter(wp => !isNaN(Number(wp.lat)) && !isNaN(Number(wp.lon)))
+          .map(wp => Cesium.Cartesian3.fromDegrees(Number(wp.lon), Number(wp.lat), 3000));
+        if (wpPositions.length > 1) {
+          const fpEnt = cesiumViewer.entities.add({
+            polyline: {
+              positions: wpPositions,
+              width: 3,
+              material: new Cesium.PolylineDashMaterialProperty({
+                color: Cesium.Color.fromCssColorString('#CEA5D5'),
+                dashLength: 18
+              }),
+              clampToGround: false,
+              arcType: Cesium.ArcType.GEODESIC
+            }
+          });
+          _globeRouteEntities.push(fpEnt);
+
+          // Waypoint markers (small spheres on the globe)
+          plan.filter(wp => !isNaN(Number(wp.lat)) && !isNaN(Number(wp.lon))).forEach((wp, i) => {
+            const label = wp.ident || wp.name || ('WP' + (i + 1));
+            const isNext = data.nextWaypoint && (wp.ident === data.nextWaypoint || wp.name === data.nextWaypoint);
+            const wpEnt = cesiumViewer.entities.add({
+              position: Cesium.Cartesian3.fromDegrees(Number(wp.lon), Number(wp.lat), 3200),
+              point: {
+                pixelSize: isNext ? 12 : 6,
+                color: isNext ? Cesium.Color.fromCssColorString('#ffd500') : Cesium.Color.fromCssColorString('#CEA5D5'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 1,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              },
+              label: {
+                text: isNext ? '🎯 ' + label : label,
+                font: isNext ? 'bold 11pt monospace' : '10pt monospace',
+                fillColor: Cesium.Color.WHITE,
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cesium.Cartesian2(0, -16),
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY,
+                show: true
+              }
+            });
+            _globeRouteEntities.push(wpEnt);
+          });
+        }
+      }
+
+      // 3. DEP→ARR great-circle arc (dashed yellow)
+      if (data.departure && data.arrival && typeof airportsData !== 'undefined') {
+        const depApt = airportsData.find(a =>
+          a.ident === data.departure ||
+          (data.departure.length === 4 && a.ident.endsWith(data.departure))
+        );
+        const arrApt = airportsData.find(a =>
+          a.ident === data.arrival ||
+          (data.arrival.length === 4 && a.ident.endsWith(data.arrival))
+        );
+        if (depApt && arrApt) {
+          try {
+            const geodesic = new Cesium.EllipsoidGeodesic(
+              Cesium.Cartographic.fromDegrees(depApt.longitude_deg, depApt.latitude_deg),
+              Cesium.Cartographic.fromDegrees(arrApt.longitude_deg, arrApt.latitude_deg)
+            );
+            const numPts = 120;
+            const arcPositions = [];
+            for (let i = 0; i <= numPts; i++) {
+              const pt = geodesic.interpolateUsingFraction(i / numPts);
+              arcPositions.push(Cesium.Cartesian3.fromRadians(pt.longitude, pt.latitude, 1500));
+            }
+            const arcEnt = cesiumViewer.entities.add({
+              polyline: {
+                positions: arcPositions,
+                width: 2,
+                material: new Cesium.PolylineDashMaterialProperty({
+                  color: Cesium.Color.fromCssColorString('#ffd500').withAlpha(0.55),
+                  dashLength: 14
+                }),
+                clampToGround: false
+              }
+            });
+            _globeRouteEntities.push(arcEnt);
+
+            // DEP marker
+            const depEnt = cesiumViewer.entities.add({
+              position: Cesium.Cartesian3.fromDegrees(depApt.longitude_deg, depApt.latitude_deg, 2000),
+              label: {
+                text: (data.departure || '').substring(0, 4),
+                font: 'bold 14pt monospace',
+                fillColor: Cesium.Color.fromCssColorString('#ffd500'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cesium.Cartesian2(0, -18),
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              },
+              point: {
+                pixelSize: 8,
+                color: Cesium.Color.fromCssColorString('#ffd500'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 1,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              }
+            });
+            _globeRouteEntities.push(depEnt);
+
+            // ARR marker
+            const arrEnt = cesiumViewer.entities.add({
+              position: Cesium.Cartesian3.fromDegrees(arrApt.longitude_deg, arrApt.latitude_deg, 2000),
+              label: {
+                text: (data.arrival || '').substring(0, 4),
+                font: 'bold 14pt monospace',
+                fillColor: Cesium.Color.fromCssColorString('#ff7043'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 2,
+                style: Cesium.LabelStyle.FILL_AND_OUTLINE,
+                pixelOffset: new Cesium.Cartesian2(0, -18),
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              },
+              point: {
+                pixelSize: 8,
+                color: Cesium.Color.fromCssColorString('#ff7043'),
+                outlineColor: Cesium.Color.BLACK,
+                outlineWidth: 1,
+                disableDepthTestDistance: Number.POSITIVE_INFINITY
+              }
+            });
+            _globeRouteEntities.push(arrEnt);
+          } catch (e) {
+            console.warn('[Globe] Route arc error:', e);
+          }
+        }
+      }
+
+      // 4. Fly camera to aircraft entity
+      const targetEntity = cesiumEntities.get(id);
+      if (targetEntity) {
+        cesiumViewer.flyTo(targetEntity, {
+          duration: 1.8,
+          offset: new Cesium.HeadingPitchRange(
+            0,
+            Cesium.Math.toRadians(-40),
+            4500000
+          )
+        }).catch(() => { }); // silence if interrupted
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
 
   </script>
 </body>

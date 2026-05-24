@@ -124,13 +124,55 @@ async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
       '<svg$1 shape-rendering="geometricPrecision" text-rendering="geometricPrecision">'
     );
 
-    const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(coloredSvg)}`;
+    // Rasterise at 4× resolution so Cesium billboards are sharp on HiDPI screens
+    const RASTER_SIZE = 128; // billboard displayed at 64px, 2× device pixel ratio
+    const dataUrl = await _svgToHighResPng(coloredSvg, RASTER_SIZE);
     _iconDataUrlCache.set(cacheKey, dataUrl);
     return dataUrl;
   } catch (error) {
     console.warn('[AircraftIcons] Failed to colorize icon, falling back to base icon', iconUrl, error);
-    return getIconUrl(''); 
+    return getIconUrl('');
   }
+}
+
+/**
+ * Render an SVG string into a square PNG data URL at `size`×`size` px.
+ * This avoids the blurriness that occurs when Cesium rasterises the SVG
+ * at the billboard's display size rather than at device resolution.
+ */
+function _svgToHighResPng(svgText, size) {
+  return new Promise((resolve, reject) => {
+    // Ensure the root <svg> has explicit width/height so the browser
+    // doesn't fall back to a tiny intrinsic size when drawing to canvas.
+    const sized = svgText.replace(
+      /<svg\b([^>]*)>/i,
+      (m, attrs) => {
+        // Strip any existing width/height attrs, inject new ones
+        const cleaned = attrs.replace(/\s*(width|height)\s*=\s*["'][^"']*["']/gi, '');
+        return `<svg${cleaned} width="${size}" height="${size}">`;
+      }
+    );
+
+    const blob = new Blob([sized], { type: 'image/svg+xml;charset=utf-8' });
+    const url  = URL.createObjectURL(blob);
+    const img  = new Image();
+    img.onload = () => {
+      const canvas = document.createElement('canvas');
+      canvas.width  = size;
+      canvas.height = size;
+      const ctx = canvas.getContext('2d');
+      ctx.clearRect(0, 0, size, size);
+      ctx.drawImage(img, 0, 0, size, size);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL('image/png'));
+    };
+    img.onerror = (e) => {
+      URL.revokeObjectURL(url);
+      // Graceful degradation: return the SVG data URL if PNG conversion fails
+      resolve(`data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svgText)}`);
+    };
+    img.src = url;
+  });
 }
 
 
