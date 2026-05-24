@@ -5227,8 +5227,7 @@
 
             const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' });
             cesiumViewer.imageryLayers.removeAll();
-            Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(imageryProvider))
-              .then((lyr) => cesiumViewer && cesiumViewer.imageryLayers.add(lyr));
+            cesiumViewer.imageryLayers.add(Cesium.ImageryLayer.fromProviderAsync(imageryProvider));
 
             cesiumViewer.scene.globe.show = true;
             cesiumViewer.scene.globe.enableLighting = true;
@@ -5283,8 +5282,7 @@
         const imageryProvider = getCesiumImageryProvider(layer);
         if (imageryProvider) {
           cesiumViewer.imageryLayers.removeAll();
-          Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(imageryProvider))
-            .then((lyr) => cesiumViewer.imageryLayers.add(lyr));
+          cesiumViewer.imageryLayers.add(Cesium.ImageryLayer.fromProviderAsync(imageryProvider));
         }
       }
     };
