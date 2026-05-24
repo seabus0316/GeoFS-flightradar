@@ -5288,7 +5288,7 @@
                 if (entity.billboard) {
                   const originalHeading = entity._originalHeading;
                   if (originalHeading !== undefined) {
-                    entity.billboard.rotation = originalHeading + (cesiumViewer.camera.heading || 0);
+                    entity.billboard.rotation = originalHeading - (cesiumViewer.camera.heading || 0);
                   }
                 }
               });
@@ -5346,10 +5346,11 @@
       if (!cesiumViewer || !globeMode) return;
 
       const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
-      const heading = Cesium.Math.toRadians((data.heading || 0) - 90);
+      // Use the same north-up icon baseline as Leaflet.
+      const heading = Cesium.Math.toRadians(data.heading || 0);
       // Compensate for camera heading so aircraft direction stays consistent when rotating globe
       const cameraHeading = cesiumViewer.camera.heading || 0;
-      const adjustedHeading = heading + cameraHeading;
+      const adjustedHeading = heading - cameraHeading;
       const isFocused = id === focusedAircraftId;
       const iconColor = isFocused ? '#ff5a36' : '#ffd500';
 
@@ -5407,7 +5408,7 @@
             image: iconUrl,
             width: 32,
             height: 32,
-            rotation: heading + (cesiumViewer.camera.heading || 0),
+            rotation: heading - (cesiumViewer.camera.heading || 0),
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
