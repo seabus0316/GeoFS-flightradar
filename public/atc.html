@@ -5149,22 +5149,45 @@
       if (globeScriptLoaded) return;
       document.getElementById('globeLoading').style.display = 'block';
 
-      // Load CSS
-      const css = document.createElement('link');
-      css.rel = 'stylesheet';
-      css.href = 'https://unpkg.com/cesium@1.119.0/Build/Cesium/Widgets/widgets.css';
-      document.head.appendChild(css);
+      const loadStylesheet = (href) => new Promise((resolve, reject) => {
+        const existing = document.querySelector(`link[href="${href}"]`);
+        if (existing) {
+          resolve();
+          return;
+        }
+        const css = document.createElement('link');
+        css.rel = 'stylesheet';
+        css.href = href;
+        css.onload = () => resolve();
+        css.onerror = reject;
+        document.head.appendChild(css);
+      });
 
-      // Load JS
-      await new Promise((resolve) => {
+      const loadScriptSrc = (src) => new Promise((resolve, reject) => {
+        const existing = document.querySelector(`script[src="${src}"]`);
+        if (existing) {
+          if (window.Cesium) resolve();
+          else existing.addEventListener('load', () => resolve(), { once: true });
+          return;
+        }
         const script = document.createElement('script');
-        script.src = 'https://unpkg.com/cesium@1.119.0/Build/Cesium/Cesium.js';
-        script.onload = resolve;
+        script.src = src;
+        script.onload = () => resolve();
+        script.onerror = reject;
         document.head.appendChild(script);
       });
 
-      globeScriptLoaded = true;
-      document.getElementById('globeLoading').style.display = 'none';
+      try {
+        await loadStylesheet('https://unpkg.com/cesium@1.119.0/Build/Cesium/Widgets/widgets.css')
+          .catch(() => loadStylesheet('https://cdn.jsdelivr.net/npm/cesium@1.119.0/Build/Cesium/Widgets/widgets.css'));
+
+        await loadScriptSrc('https://unpkg.com/cesium@1.119.0/Build/Cesium/Cesium.js')
+          .catch(() => loadScriptSrc('https://cdn.jsdelivr.net/npm/cesium@1.119.0/Build/Cesium/Cesium.js'));
+
+        globeScriptLoaded = true;
+      } finally {
+        document.getElementById('globeLoading').style.display = 'none';
+      }
     }
 
     async function toggleGlobeMode() {
@@ -5175,51 +5198,73 @@
 
       if (globeMode) {
         globeBtn.classList.add('active');
-        globeBtn.style.color = '#00cfff';
+        globeBtn.style.color = '#ffd500';
         mapDiv.style.opacity = '0';
         setTimeout(() => { if (globeMode) mapDiv.style.display = 'none'; }, 300);
         globeDiv.style.display = 'block';
 
-        if (!cesiumViewer) {
-          await loadCesiumJS();
-          Cesium.Ion.defaultAccessToken = ''; // Token-free
+        try {
+          if (!cesiumViewer) {
+            await loadCesiumJS();
+            await new Promise((resolve) => requestAnimationFrame(resolve));
+            Cesium.Ion.defaultAccessToken = '';
 
-          const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' });
+            cesiumViewer = new Cesium.Viewer('globe', {
+              animation: false,
+              baseLayerPicker: false,
+              fullscreenButton: false,
+              geocoder: false,
+              homeButton: false,
+              infoBox: false,
+              sceneModePicker: false,
+              selectionIndicator: true,
+              timeline: false,
+              navigationHelpButton: false,
+              navigationInstructionsInitiallyVisible: false,
+              skyAtmosphere: new Cesium.SkyAtmosphere(),
+              scene3DOnly: true
+            });
 
-          cesiumViewer = new Cesium.Viewer('globe', {
-            animation: false,
-            baseLayerPicker: false,
-            fullscreenButton: false,
-            geocoder: false,
-            homeButton: false,
-            infoBox: false,
-            sceneModePicker: false,
-            selectionIndicator: true,
-            timeline: false,
-            navigationHelpButton: false,
-            navigationInstructionsInitiallyVisible: false,
-            baseLayer: Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(imageryProvider)),
-            skyAtmosphere: new Cesium.SkyAtmosphere(),
-            scene3DOnly: true
-          });
-          cesiumViewer.scene.globe.enableLighting = true;
+            const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.OpenStreetMapImageryProvider({ url: 'https://a.tile.openstreetmap.org/' });
+            cesiumViewer.imageryLayers.removeAll();
+            Cesium.ImageryLayer.fromProviderAsync(Promise.resolve(imageryProvider))
+              .then((lyr) => cesiumViewer && cesiumViewer.imageryLayers.add(lyr));
 
-          // Hide Cesium credit
-          const credit = cesiumViewer.bottomContainer;
-          if (credit) credit.style.display = 'none';
+            cesiumViewer.scene.globe.show = true;
+            cesiumViewer.scene.globe.enableLighting = true;
+            cesiumViewer.scene.requestRenderMode = false;
+            cesiumViewer.camera.setView({
+              destination: Cesium.Cartesian3.fromDegrees(0, 20, 22000000)
+            });
 
-          // Click selection handler
-          const handler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
-          handler.setInputAction((click) => {
-            const pickedObject = cesiumViewer.scene.pick(click.position);
-            if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.id) {
-              flSelectFlight(pickedObject.id.id);
-            } else {
-              closeAircraftPanel();
-            }
-          }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+            // Hide Cesium credit
+            const credit = cesiumViewer.bottomContainer;
+            if (credit) credit.style.display = 'none';
 
-          syncAllToGlobe();
+            // Click selection handler
+            const handler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
+            handler.setInputAction((click) => {
+              const pickedObject = cesiumViewer.scene.pick(click.position);
+              if (Cesium.defined(pickedObject) && pickedObject.id && pickedObject.id.id) {
+                flSelectFlight(pickedObject.id.id);
+              } else {
+                closeAircraftPanel();
+              }
+            }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+
+            syncAllToGlobe();
+          }
+
+          cesiumViewer.resize();
+          cesiumViewer.scene.requestRender();
+        } catch (err) {
+          console.error('Failed to initialize 3D globe mode:', err);
+          globeMode = false;
+          globeBtn.classList.remove('active');
+          globeBtn.style.color = '';
+          globeDiv.style.display = 'none';
+          mapDiv.style.display = 'block';
+          mapDiv.style.opacity = '1';
         }
       } else {
         globeBtn.classList.remove('active');
