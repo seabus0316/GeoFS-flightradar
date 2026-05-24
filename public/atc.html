@@ -655,9 +655,6 @@
       }
       focusedAircraftId = null;
       clearFlightPlanMarkers();
-      if (globeMode && cesiumViewer) {
-        resetGlobeCameraHome();
-      }
       if (window.innerWidth >= 640) {
         const bar = document.getElementById('customMapBar');
         const utc = document.getElementById('utcTime');
