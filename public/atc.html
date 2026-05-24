@@ -5312,14 +5312,36 @@
         entity.billboard.rotation = -heading;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
-        // Refresh globe track for focused aircraft on each data update
+        // Throttled track refresh for focused aircraft (max once per 5 s)
         if (isFocused && typeof showGlobeTrackAndRoute === 'function') {
-          showGlobeTrackAndRoute(id, data);
+          const now = Date.now();
+          if (!updateGlobeAircraft._lastTrackRefresh) updateGlobeAircraft._lastTrackRefresh = {};
+          if (!updateGlobeAircraft._lastTrackRefresh[id] ||
+              now - updateGlobeAircraft._lastTrackRefresh[id] > 5000) {
+            updateGlobeAircraft._lastTrackRefresh[id] = now;
+            showGlobeTrackAndRoute(id, data);
+          }
         }
 
-        // Check if tracked and update camera
+        // Follow mode: smoothly move camera WITHOUT locking it
+        // (camera.lookAt would lock all user input — avoid it)
         if (getFollowAircraftEnabled() && isFocused) {
-          cesiumViewer.camera.lookAt(position, new Cesium.Cartesian3(0.0, 0.0, 10000.0));
+          const cam = cesiumViewer.camera;
+          // Only nudge if the aircraft moves significantly (>500 m from screen centre)
+          const screenPos = cesiumViewer.scene.cartesianToCanvasCoordinates(position);
+          if (screenPos) {
+            const canvas = cesiumViewer.scene.canvas;
+            const cx = canvas.clientWidth / 2, cy = canvas.clientHeight / 2;
+            const dx = screenPos.x - cx, dy = screenPos.y - cy;
+            const offPx = Math.hypot(dx, dy);
+            if (offPx > canvas.clientWidth * 0.25) {
+              // Aircraft drifted more than 25% of viewport — re-centre gently
+              cam.flyTo({
+                destination: Cesium.Cartesian3.fromDegrees(data.lon, data.lat, Math.max((data.alt || 0) * 0.3048 + 150000, 300000)),
+                duration: 1.5
+              });
+            }
+          }
         }
       } else {
         const iconUrl = await getColoredIconDataUrl(data.type, iconColor);
@@ -5334,8 +5356,8 @@
             rotation: -heading,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            // ✅ No disableDepthTestDistance — aircraft behind the globe are hidden
           },
           label: document.getElementById('labelsToggle')?.checked ? {
             text: data.callsign || 'UNK',
@@ -5345,8 +5367,8 @@
             outlineWidth: 2,
             style: Cesium.LabelStyle.FILL_AND_OUTLINE,
             pixelOffset: new Cesium.Cartesian2(0, 36),
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-            disableDepthTestDistance: Number.POSITIVE_INFINITY
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            // ✅ No disableDepthTestDistance
           } : undefined
         });
         cesiumEntities.set(id, entity);
@@ -5376,6 +5398,10 @@
       if (!cesiumViewer) return;
       _globeRouteEntities.forEach(e => { try { cesiumViewer.entities.remove(e); } catch { } });
       _globeRouteEntities = [];
+      // Release any camera lock that may have been set (lookAt locks all user input)
+      try { cesiumViewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); } catch { }
+      // Clear follow throttle cache
+      if (updateGlobeAircraft._lastTrackRefresh) updateGlobeAircraft._lastTrackRefresh = {};
     }
 
     /**
@@ -5443,8 +5469,7 @@
                 pixelSize: isNext ? 12 : 6,
                 color: isNext ? Cesium.Color.fromCssColorString('#ffd500') : Cesium.Color.fromCssColorString('#CEA5D5'),
                 outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 1,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
+                outlineWidth: 1
               },
               label: {
                 text: isNext ? '🎯 ' + label : label,
@@ -5455,7 +5480,6 @@
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                 pixelOffset: new Cesium.Cartesian2(0, -16),
                 horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY,
                 show: true
               }
             });
@@ -5510,15 +5534,13 @@
                 outlineWidth: 2,
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                 pixelOffset: new Cesium.Cartesian2(0, -18),
-                horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER
               },
               point: {
                 pixelSize: 8,
                 color: Cesium.Color.fromCssColorString('#ffd500'),
                 outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 1,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
+                outlineWidth: 1
               }
             });
             _globeRouteEntities.push(depEnt);
@@ -5534,15 +5556,13 @@
                 outlineWidth: 2,
                 style: Cesium.LabelStyle.FILL_AND_OUTLINE,
                 pixelOffset: new Cesium.Cartesian2(0, -18),
-                horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
+                horizontalOrigin: Cesium.HorizontalOrigin.CENTER
               },
               point: {
                 pixelSize: 8,
                 color: Cesium.Color.fromCssColorString('#ff7043'),
                 outlineColor: Cesium.Color.BLACK,
-                outlineWidth: 1,
-                disableDepthTestDistance: Number.POSITIVE_INFINITY
+                outlineWidth: 1
               }
             });
             _globeRouteEntities.push(arrEnt);
