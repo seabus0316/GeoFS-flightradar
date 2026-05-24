@@ -4,6 +4,8 @@
   "description": "GeoFS ATC Flight Radar with JetPhotos",
   "main": "server.js",
   "scripts": {
+    "postinstall": "npm run sync:cesium",
+    "sync:cesium": "node scripts/sync-cesium-assets.js",
     "start": "node server.js",
     "dev": "nodemon server.js",
     "bot": "node bot.js",
@@ -18,20 +20,21 @@
   "author": "",
   "license": "MIT",
   "dependencies": {
+    "cesium": "^1.141.0",
+    "compression": "^1.7.4",
+    "cookie-parser": "^1.4.6",
+    "discord.js": "^14.0.0",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
-    "ws": "^8.14.2",
+    "form-data": "^4.0.0",
+    "jsonwebtoken": "^9.0.2",
+    "mime-types": "^2.1.35",
     "mongoose": "^8.0.3",
     "multer": "^1.4.5-lts.1",
-    "mime-types": "^2.1.35",
-    "sharp": "^0.33.1",
-    "form-data": "^4.0.0",
     "node-fetch": "^2.7.0",
-    "compression": "^1.7.4",
+    "sharp": "^0.33.1",
     "socket.io": "^4.7.5",
-    "cookie-parser": "^1.4.6",
-    "jsonwebtoken": "^9.0.2",
-    "discord.js": "^14.0.0"
+    "ws": "^8.14.2"
   },
   "devDependencies": {
     "nodemon": "^3.0.2"

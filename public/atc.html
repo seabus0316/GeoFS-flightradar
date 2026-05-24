@@ -5178,11 +5178,9 @@
       });
 
       try {
-        await loadStylesheet('https://unpkg.com/cesium@1.119.0/Build/Cesium/Widgets/widgets.css')
-          .catch(() => loadStylesheet('https://cdn.jsdelivr.net/npm/cesium@1.119.0/Build/Cesium/Widgets/widgets.css'));
-
-        await loadScriptSrc('https://unpkg.com/cesium@1.119.0/Build/Cesium/Cesium.js')
-          .catch(() => loadScriptSrc('https://cdn.jsdelivr.net/npm/cesium@1.119.0/Build/Cesium/Cesium.js'));
+        window.CESIUM_BASE_URL = '/cesium/';
+        await loadStylesheet('/cesium/Widgets/widgets.css');
+        await loadScriptSrc('/cesium/Cesium.js');
 
         globeScriptLoaded = true;
       } finally {
