@@ -119,6 +119,11 @@ async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
       coloredSvg = coloredSvg.replace(/<svg\b([^>]*)>/i, `<svg$1 fill="${colorHex}">`);
     }
 
+    coloredSvg = coloredSvg.replace(
+      /<svg\b([^>]*)>/i,
+      '<svg$1 shape-rendering="geometricPrecision" text-rendering="geometricPrecision">'
+    );
+
     const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(coloredSvg)}`;
     _iconDataUrlCache.set(cacheKey, dataUrl);
     return dataUrl;
