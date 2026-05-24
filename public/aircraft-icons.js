@@ -125,7 +125,7 @@ async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
     );
 
     // Rasterise at 4× resolution so Cesium billboards are sharp on HiDPI screens
-    const RASTER_SIZE = 128; // billboard displayed at 64px, 2× device pixel ratio
+    const RASTER_SIZE = 192; // extra raster headroom keeps 3D billboards sharp
     const dataUrl = await _svgToHighResPng(coloredSvg, RASTER_SIZE);
     _iconDataUrlCache.set(cacheKey, dataUrl);
     return dataUrl;
@@ -161,6 +161,10 @@ function _svgToHighResPng(svgText, size) {
       canvas.width  = size;
       canvas.height = size;
       const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+      }
       ctx.clearRect(0, 0, size, size);
       ctx.drawImage(img, 0, 0, size, size);
       URL.revokeObjectURL(url);

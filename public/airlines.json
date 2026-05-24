@@ -1940,5 +1940,61 @@
     "iata": "8C",
     "country": "China",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSghoEGZwAV0_XM5U_XTo-89Cc3syy9fM7cg3ntAcSapg&s"
+  },
+    "VJT": {
+    "name": "Vistajet",
+    "icao": "VJT",
+    "iata": "H5",
+    "country": "Malta",
+    "logo": "https://cdn.prod.website-files.com/5e7f102f43a59dc6b01110b5/5e862b2cfff0429eadc879be_zcvyaavdb1xzkopaby0p.png"
+  },
+  "IYE": {
+    "name": "Yemenia Airways",
+    "icao": "IYE",
+    "iata": "IY",
+    "country": "Yemen",
+    "logo": "https://www.airline-empires.com/uploads/gallery/album_2352/gallery_101953_2352_28573.jpg"
+  },
+  "IRM": {
+    "name": "Mahan Air",
+    "icao": "IRM",
+    "iata": "W5",
+    "country": "Iran",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQgv6nnjyNLg73FzVIXSZd0r4Mud1F-I4VM4A&s"
+  },
+  "LHX": {
+    "name": "Lufthansa City",
+    "icao": "LHX",
+    "iata": "VL",
+    "country": "Germany",
+    "logo": "https://images.seeklogo.com/logo-png/52/1/lufthansa-city-airlines-logo-png_seeklogo-524545.png"
+  },
+  "EVE": {
+    "name": "Iberojet",
+    "icao": "EVE",
+    "iata": "E9",
+    "country": "Spain",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRVuBGsMuDADCJQA6f7UoJdg64Bmo4yQfxN3g&s"
+  },
+  "JZA": {
+    "name": "Jazz Aviation",
+    "icao": "JZA",
+    "iata": "QK",
+    "country": "Canada",
+    "logo": "https://d1yjjnpx0p53s8.cloudfront.net/styles/logo-thumbnail/s3/0011/6994/brand.gif?itok=n7T0XtrC"
+  },
+  "LXJ": {
+    "name": "Flexjet",
+    "icao": "LXJ",
+    "iata": "LXJ",
+    "country": "United States",
+    "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQzbzTb3fxdwG0o5Txd80DEP-EGWsJcqyREyQ&s"
+  },
+  "GER": {
+    "name": "German Airways",
+    "icao": "GER",
+    "iata": "ZQ",
+    "country": "Germany",
+    "logo": "https://images.kiwi.com/airlines/64/ZQ.png"
   }
 }

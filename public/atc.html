@@ -655,6 +655,9 @@
       }
       focusedAircraftId = null;
       clearFlightPlanMarkers();
+      if (globeMode && cesiumViewer) {
+        resetGlobeCameraHome();
+      }
       if (window.innerWidth >= 640) {
         const bar = document.getElementById('customMapBar');
         const utc = document.getElementById('utcTime');
@@ -667,6 +670,28 @@
       setTimeout(finish, 320);
     } else {
       finish();
+    }
+  }
+
+  const GLOBE_HOME_VIEW = {
+    destination: { lon: 0, lat: 20, height: 22000000 },
+    orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 }
+  };
+
+  function resetGlobeCameraHome(duration = 1.1) {
+    if (!cesiumViewer) return;
+    const options = {
+      destination: Cesium.Cartesian3.fromDegrees(
+        GLOBE_HOME_VIEW.destination.lon,
+        GLOBE_HOME_VIEW.destination.lat,
+        GLOBE_HOME_VIEW.destination.height
+      ),
+      orientation: GLOBE_HOME_VIEW.orientation
+    };
+    if (duration > 0) {
+      cesiumViewer.camera.flyTo({ ...options, duration });
+    } else {
+      cesiumViewer.camera.setView(options);
     }
   }
 
@@ -1433,7 +1458,7 @@
           if (typeof globeMode !== 'undefined' && globeMode) {
             // In 3D mode: fly Cesium camera and draw route on globe
             if (typeof showGlobeTrackAndRoute === 'function') {
-              showGlobeTrackAndRoute(id, obj.data);
+              showGlobeTrackAndRoute(id, obj.data, { flyCamera: true });
             }
           } else {
             map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
@@ -3201,6 +3226,9 @@
           map.flyTo([data.lat, data.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
           showAircraftTrack(id);
           showAircraftPanel(data, id);
+          if (globeMode && typeof showGlobeTrackAndRoute === 'function') {
+            showGlobeTrackAndRoute(id, data, { flyCamera: true });
+          }
 
           const history = await loadHistoryFromBackend(id);
           if (history && history.tracks) {
@@ -4928,6 +4956,9 @@
       _armOutsidePanelCloseGuard();
       showAircraftTrack(aircraftId);
       showAircraftPanel(data, aircraftId);
+      if (globeMode && typeof showGlobeTrackAndRoute === 'function') {
+        showGlobeTrackAndRoute(aircraftId, data, { flyCamera: true });
+      }
 
       // 平滑移動地圖
       map.flyTo([data.lat, data.lon], 10, {
@@ -5230,7 +5261,9 @@
               navigationHelpButton: false,
               navigationInstructionsInitiallyVisible: false,
               skyAtmosphere: new Cesium.SkyAtmosphere(),
-              scene3DOnly: true
+              scene3DOnly: true,
+              msaaSamples: 4,
+              useBrowserRecommendedResolution: false
             });
 
             const imageryProvider = getCesiumImageryProvider(currentBase) || new Cesium.UrlTemplateImageryProvider({
@@ -5242,9 +5275,11 @@
             cesiumViewer.scene.globe.show = true;
             cesiumViewer.scene.globe.enableLighting = true;
             cesiumViewer.scene.requestRenderMode = false;
-            cesiumViewer.camera.setView({
-              destination: Cesium.Cartesian3.fromDegrees(0, 20, 22000000)
-            });
+            cesiumViewer.resolutionScale = Math.min(window.devicePixelRatio || 1, 2);
+            if (cesiumViewer.scene.postProcessStages?.fxaa) {
+              cesiumViewer.scene.postProcessStages.fxaa.enabled = true;
+            }
+            resetGlobeCameraHome(0);
 
             // Hide Cesium credit
             const credit = cesiumViewer.bottomContainer;
@@ -5319,7 +5354,7 @@
           if (!updateGlobeAircraft._lastTrackRefresh[id] ||
               now - updateGlobeAircraft._lastTrackRefresh[id] > 5000) {
             updateGlobeAircraft._lastTrackRefresh[id] = now;
-            showGlobeTrackAndRoute(id, data);
+            showGlobeTrackAndRoute(id, data, { flyCamera: false });
           }
         }
 
@@ -5338,6 +5373,11 @@
               // Aircraft drifted more than 25% of viewport — re-centre gently
               cam.flyTo({
                 destination: Cesium.Cartesian3.fromDegrees(data.lon, data.lat, Math.max((data.alt || 0) * 0.3048 + 150000, 300000)),
+                orientation: {
+                  heading: cam.heading,
+                  pitch: cam.pitch,
+                  roll: cam.roll
+                },
                 duration: 1.5
               });
             }
@@ -5351,12 +5391,14 @@
           position: position,
           billboard: {
             image: iconUrl,
-            width: 64,
-            height: 64,
+            width: 32,
+            height: 32,
             rotation: -heading,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
-            horizontalOrigin: Cesium.HorizontalOrigin.CENTER
+            horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
+            scale: 1,
+            alignedAxis: Cesium.Cartesian3.ZERO
             // ✅ No disableDepthTestDistance — aircraft behind the globe are hidden
           },
           label: document.getElementById('labelsToggle')?.checked ? {
@@ -5411,8 +5453,9 @@
      *  3. DEP→ARR great-circle arc (dashed yellow)
      *  4. Fly camera to the aircraft
      */
-    function showGlobeTrackAndRoute(id, data) {
+    function showGlobeTrackAndRoute(id, data, options = {}) {
       if (!cesiumViewer || !globeMode) return;
+      const shouldFlyCamera = options.flyCamera !== false;
       clearGlobeRouteEntities();
 
       // 1. Track trail
@@ -5424,10 +5467,11 @@
         const trackEnt = cesiumViewer.entities.add({
           polyline: {
             positions,
-            width: 2.5,
-            material: new Cesium.PolylineGlowMaterialProperty({
-              glowPower: 0.15,
-              color: Cesium.Color.fromCssColorString('#00cfff').withAlpha(0.85)
+            width: 3,
+            material: new Cesium.PolylineOutlineMaterialProperty({
+              color: Cesium.Color.fromCssColorString('#00cfff').withAlpha(0.95),
+              outlineColor: Cesium.Color.fromCssColorString('#002b36').withAlpha(0.75),
+              outlineWidth: 1
             }),
             clampToGround: false,
             arcType: Cesium.ArcType.GEODESIC
@@ -5448,10 +5492,11 @@
           const fpEnt = cesiumViewer.entities.add({
             polyline: {
               positions: wpPositions,
-              width: 3,
+              width: 3.5,
               material: new Cesium.PolylineDashMaterialProperty({
-                color: Cesium.Color.fromCssColorString('#CEA5D5'),
-                dashLength: 18
+                color: Cesium.Color.fromCssColorString('#e4c2eb').withAlpha(0.98),
+                gapColor: Cesium.Color.fromCssColorString('#4b3a52').withAlpha(0.25),
+                dashLength: 20
               }),
               clampToGround: false,
               arcType: Cesium.ArcType.GEODESIC
@@ -5513,9 +5558,10 @@
             const arcEnt = cesiumViewer.entities.add({
               polyline: {
                 positions: arcPositions,
-                width: 2,
+                width: 2.5,
                 material: new Cesium.PolylineDashMaterialProperty({
-                  color: Cesium.Color.fromCssColorString('#ffd500').withAlpha(0.55),
+                  color: Cesium.Color.fromCssColorString('#ffd500').withAlpha(0.9),
+                  gapColor: Cesium.Color.fromCssColorString('#5c4b00').withAlpha(0.18),
                   dashLength: 14
                 }),
                 clampToGround: false
@@ -5574,7 +5620,7 @@
 
       // 4. Fly camera to aircraft entity
       const targetEntity = cesiumEntities.get(id);
-      if (targetEntity) {
+      if (targetEntity && shouldFlyCamera) {
         cesiumViewer.flyTo(targetEntity, {
           duration: 1.8,
           offset: new Cesium.HeadingPitchRange(
