@@ -5282,6 +5282,18 @@
             const credit = cesiumViewer.bottomContainer;
             if (credit) credit.style.display = 'none';
 
+            // Update aircraft heading when camera rotates
+            cesiumViewer.camera.changed.addEventListener(() => {
+              cesiumEntities.forEach((entity) => {
+                if (entity.billboard) {
+                  const originalHeading = entity._originalHeading;
+                  if (originalHeading !== undefined) {
+                    entity.billboard.rotation = originalHeading + (cesiumViewer.camera.heading || 0);
+                  }
+                }
+              });
+            });
+
             // Click selection handler
             const handler = new Cesium.ScreenSpaceEventHandler(cesiumViewer.scene.canvas);
             handler.setInputAction((click) => {
@@ -5335,13 +5347,17 @@
 
       const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
       const heading = Cesium.Math.toRadians((data.heading || 0) - 90);
+      // Compensate for camera heading so aircraft direction stays consistent when rotating globe
+      const cameraHeading = cesiumViewer.camera.heading || 0;
+      const adjustedHeading = heading + cameraHeading;
       const isFocused = id === focusedAircraftId;
       const iconColor = isFocused ? '#ff5a36' : '#ffd500';
 
       if (cesiumEntities.has(id)) {
         const entity = cesiumEntities.get(id);
         entity.position = position;
-        entity.billboard.rotation = -heading;
+        entity._originalHeading = heading;  // Store original heading for camera sync
+        entity.billboard.rotation = adjustedHeading;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
         // Throttled track refresh for focused aircraft (max once per 5 s)
@@ -5386,11 +5402,12 @@
         const entity = cesiumViewer.entities.add({
           id: id,
           position: position,
+          _originalHeading: heading,  // Store original heading for camera sync
           billboard: {
             image: iconUrl,
             width: 32,
             height: 32,
-            rotation: -heading,
+            rotation: heading + (cesiumViewer.camera.heading || 0),
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
