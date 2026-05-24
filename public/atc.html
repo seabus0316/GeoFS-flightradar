@@ -5342,6 +5342,12 @@
       }
     };
 
+    function getSmoothedGlobeHeading(entity, targetHeading) {
+      if (!entity || typeof entity._smoothHeading !== 'number') return targetHeading;
+      const delta = Cesium.Math.negativePiToPi(targetHeading - entity._smoothHeading);
+      return entity._smoothHeading + delta;
+    }
+
     async function updateGlobeAircraft(id, data) {
       if (!cesiumViewer || !globeMode) return;
 
@@ -5350,15 +5356,16 @@
       const heading = Cesium.Math.toRadians(data.heading || 0);
       // Compensate for camera heading so aircraft direction stays consistent when rotating globe
       const cameraHeading = cesiumViewer.camera.heading || 0;
-      const adjustedHeading = heading - cameraHeading;
       const isFocused = id === focusedAircraftId;
       const iconColor = isFocused ? '#ff5a36' : '#ffd500';
 
       if (cesiumEntities.has(id)) {
         const entity = cesiumEntities.get(id);
+        const smoothedHeading = getSmoothedGlobeHeading(entity, heading);
+        entity._smoothHeading = smoothedHeading;
         entity.position = position;
-        entity._originalHeading = heading;  // Store original heading for camera sync
-        entity.billboard.rotation = adjustedHeading;
+        entity._originalHeading = smoothedHeading;  // Store original heading for camera sync
+        entity.billboard.rotation = smoothedHeading - cameraHeading;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
         // Throttled track refresh for focused aircraft (max once per 5 s)
@@ -5403,6 +5410,7 @@
         const entity = cesiumViewer.entities.add({
           id: id,
           position: position,
+          _smoothHeading: heading,
           _originalHeading: heading,  // Store original heading for camera sync
           billboard: {
             image: iconUrl,
@@ -5451,13 +5459,26 @@
     // ─── Globe: Route, flight plan, and track overlay ───────────────────────
     let _globeRouteEntities = [];
 
+    function resetGlobeCameraReference() {
+      if (!cesiumViewer) return;
+      try {
+        const cam = cesiumViewer.camera;
+        const position = Cesium.Cartesian3.clone(cam.positionWC);
+        const direction = Cesium.Cartesian3.clone(cam.directionWC);
+        const up = Cesium.Cartesian3.clone(cam.upWC);
+        cesiumViewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY);
+        cesiumViewer.camera.setView({
+          destination: position,
+          orientation: { direction, up }
+        });
+      } catch { }
+    }
+
     function clearGlobeRouteEntities() {
       if (!cesiumViewer) return;
       _globeRouteEntities.forEach(e => { try { cesiumViewer.entities.remove(e); } catch { } });
       _globeRouteEntities = [];
-      // Release any camera lock that may have been set (lookAt locks all user input)
-      try { cesiumViewer.camera.lookAtTransform(Cesium.Matrix4.IDENTITY); } catch { }
-      // Clear follow throttle cache
+      resetGlobeCameraReference();
       if (updateGlobeAircraft._lastTrackRefresh) updateGlobeAircraft._lastTrackRefresh = {};
     }
 
