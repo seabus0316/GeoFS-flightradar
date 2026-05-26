@@ -216,7 +216,8 @@ const flightSessionSchema = new mongoose.Schema({
   distanceNm:    Number,    // 海里
   expiresAt:     { type: Date, index: true },
   trackSnapshot: [{ lat: Number, lon: Number, alt: Number, ts: Number }],
-  status:        { type: String, default: 'completed' } // 'completed' | 'aborted'
+  status:        { type: String, default: 'completed' }, // 'completed' | 'aborted'
+  landingQuality: { type: String, default: null }  // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
 }, { versionKey: false, timestamps: true });
 flightSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
@@ -241,7 +242,8 @@ const flightHistorySchema = new mongoose.Schema({
   maxAlt:        Number,
   maxSpeed:      Number,
   distanceNm:    Number,
-  status:        { type: String, default: 'completed', index: true }
+  status:        { type: String, default: 'completed', index: true },
+  landingQuality: { type: String, default: null }  // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
 }, { versionKey: false, timestamps: true });
 flightHistorySchema.index({ sessionId: 1 }, { unique: true, sparse: true });
 const FlightHistory = mongoose.model('FlightHistory', flightHistorySchema, 'flightHistory');
@@ -464,7 +466,8 @@ function buildFlightHistoryDocument(session, user = null) {
     maxAlt:      session.maxAlt || 0,
     maxSpeed:    session.maxSpeed || 0,
     distanceNm:  session.distanceNm || 0,
-    status:      session.status || 'completed'
+    status:      session.status || 'completed',
+    landingQuality: session.landingQuality || null
   };
   if (sessionId) history.sessionId = sessionId;
   return history;
@@ -728,6 +731,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     clearPendingFlightFinalization(aircraftId);
     const aircraft = aircrafts.get(aircraftId);
     const payload  = aircraft?.payload || {};
+    const landingQuality = aircraft?.landingQuality || null;
     const finalStatus = inferFlightCompletionStatus(docs, status);
 
     // 找對應的 Discord 用戶
@@ -763,7 +767,8 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
       expiresAt:   getFlightSessionExpiryDate(endTime),
       startTime, endTime, duration,
       maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
-      trackSnapshot, status: finalStatus
+      trackSnapshot, status: finalStatus,
+      landingQuality  // ← 附帶著陸品質（若有）
     });
 
     console.log(`[FlightSession] ${finalStatus} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
@@ -1115,6 +1120,45 @@ wss.on('connection', (ws) => {
         broadcastToATC({ type: 'aircraft_update', payload,
           trackPoint: { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } });
         await sendSquawkAlert(payload);
+        return;
+      }
+
+      if (msg.type === 'landing_report' && msg.payload) {
+        const p = msg.payload;
+        const VALID_QUALITIES = ['BUTTER', 'GREAT', 'ACCEPTABLE', 'HARD LANDING', 'CRASH'];
+        const quality = VALID_QUALITIES.includes(p.landingQuality) ? p.landingQuality : null;
+        if (!quality) return;
+
+        const aircraftId = ws.aircraftId || null;
+        console.log(`[Landing] ${p.callsign || 'UNK'} — ${quality} | VS: ${p.verticalSpeed} fpm | GS: ${p.groundSpeed} kts | G: ${p.gForce}g | Roll: ${p.rollAngle}°`);
+
+        // 暫存著陸品質到 aircrafts map，finalizeFlightSession 時會帶入
+        if (aircraftId && aircrafts.has(aircraftId)) {
+          const entry = aircrafts.get(aircraftId);
+          entry.landingQuality = quality;
+          aircrafts.set(aircraftId, entry);
+        }
+
+        // 若 FlightHistory 已存在（session 已 finalize），直接更新
+        try {
+          const filter = aircraftId
+            ? { aircraftId }
+            : p.userId
+              ? { geofsUserId: String(p.userId) }
+              : p.callsign
+                ? { callsign: p.callsign }
+                : null;
+
+          if (filter) {
+            await FlightHistory.findOneAndUpdate(
+              { ...filter, landingQuality: null },
+              { $set: { landingQuality: quality } },
+              { sort: { startTime: -1 } }
+            );
+          }
+        } catch (err) {
+          console.error('[Landing] FlightHistory update error', err);
+        }
         return;
       }
 

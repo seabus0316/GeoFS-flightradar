@@ -183,6 +183,13 @@ let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
+
+  // --- 著陸偵測變數 ---
+  let landingDetected = false;        // 防止同一次落地重複觸發
+  let preLandingVertSpeed = 0;        // 觸地前最後一個 VS 取樣（fpm）
+  let preLandingGroundSpeed = 0;      // 觸地前地速（kts）
+  let preLandingGForce = 1.0;         // 觸地前 G 力
+  let preLandingRoll = 0;             // 觸地前坡度
   // --- WebSocket 管理 ---
   let ws;
   function connect() {
@@ -368,13 +375,74 @@ let flightInfo = window.geofsFlightInfo;
     return null;
   }
 
-  // --- 起飛偵測 ---
+  // --- 著陸品質分類 ---
+  // Butter: VS > -30 fpm（比 landing_stats 更嚴格，原為 -50）
+  // Great:  -30 ~ -200 fpm
+  // Acceptable: -200 ~ -500 fpm
+  // Hard:   -500 ~ -1000 fpm
+  // Crash:  < -1000 fpm 或 VS > +200 fpm
+  function classifyLanding(vertSpeedFpm) {
+    if (vertSpeedFpm > 200 || vertSpeedFpm < -1000) return 'CRASH';
+    if (vertSpeedFpm >= -30)  return 'BUTTER';
+    if (vertSpeedFpm >= -200) return 'GREAT';
+    if (vertSpeedFpm >= -500) return 'ACCEPTABLE';
+    return 'HARD LANDING';
+  }
+
+  // --- 著陸回報 ---
+  function reportLanding(vertSpeedFpm, groundSpeedKts, gForce, rollDeg) {
+    const quality = classifyLanding(vertSpeedFpm);
+    const landingTime = new Date().toISOString();
+    log('Landing detected:', quality, { vertSpeedFpm, groundSpeedKts, gForce, rollDeg });
+
+    safeSend({
+      type: 'landing_report',
+      payload: {
+        callsign:      getPlayerCallsign(),
+        flightNo:      flightInfo.flightNo,
+        departure:     flightInfo.departure,
+        arrival:       flightInfo.arrival,
+        userId:        geofs?.userRecord?.id || null,
+        landingTime,
+        verticalSpeed: Math.round(vertSpeedFpm),
+        groundSpeed:   Math.round(groundSpeedKts),
+        gForce:        Math.round(gForce * 100) / 100,
+        rollAngle:     Math.round(rollDeg * 10) / 10,
+        landingQuality: quality
+      }
+    });
+  }
+
+  // --- 起飛 & 著陸偵測 ---
   function checkTakeoff() {
-    const onGround = geofs?.aircraft?.instance?.groundContact ?? true;
+    const inst = geofs?.aircraft?.instance;
+    const onGround = inst?.groundContact ?? geofs?.animation?.values?.groundContact ?? true;
+
+    // 空中時持續更新著陸前快照（每次 position tick 都取）
+    if (!onGround) {
+      const vs = geofs?.animation?.values?.verticalSpeed ?? 0;     // fpm
+      const gs = geofs?.animation?.values?.groundSpeedKnt ?? 0;   // kts
+      const gz = geofs?.animation?.values?.accZ ?? 9.80665;
+      const roll = Math.abs(geofs?.animation?.values?.aroll ?? 0);
+      preLandingVertSpeed   = vs;
+      preLandingGroundSpeed = gs;
+      preLandingGForce      = gz / 9.80665;
+      preLandingRoll        = roll;
+      landingDetected = false;  // 離地後重置，允許下次落地觸發
+    }
+
+    // 起飛偵測
     if (wasOnGround && !onGround) {
       takeoffTimeUTC = new Date().toISOString();
       console.log('[ATC-Reporter] Takeoff at', takeoffTimeUTC);
     }
+
+    // 著陸偵測（地面接觸瞬間，且尚未回報過）
+    if (!wasOnGround && onGround && !landingDetected) {
+      landingDetected = true;
+      reportLanding(preLandingVertSpeed, preLandingGroundSpeed, preLandingGForce, preLandingRoll);
+    }
+
     wasOnGround = onGround;
   }
 
