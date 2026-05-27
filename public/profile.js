@@ -45,10 +45,20 @@ const ProfileApp = (() => {
   const PROFILE_THEME_KEY = 'cfg_profile_theme';
   const PROFILE_BANNER_IMAGE_KEY = 'cfg_banner_image';
   const AIRPORTS_DB_URL = 'https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json';
+  const LEAFLET_ASSET_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images';
   const STATUS_ONLINE_THRESHOLD_MS = 20 * 60 * 1000;
 
   function getQueryParam(name) {
     return new URLSearchParams(window.location.search).get(name);
+  }
+
+  function configureLeafletIcons() {
+    if (typeof L === 'undefined' || !L.Icon || !L.Icon.Default) return;
+    L.Icon.Default.mergeOptions({
+      iconUrl: `${LEAFLET_ASSET_BASE}/marker-icon.png`,
+      iconRetinaUrl: `${LEAFLET_ASSET_BASE}/marker-icon-2x.png`,
+      shadowUrl: `${LEAFLET_ASSET_BASE}/marker-shadow.png`
+    });
   }
 
   function formatDate(value) {
@@ -931,6 +941,7 @@ function applyCustomProfileSettings() {
       applyProfileCustomizations(Boolean(currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId));
 
       showContent();
+      configureLeafletIcons();
       const airportDb = await loadAirportsDatabase();
       updateMap(state.flights, airportDb);
       // Leaflet needs the container to be visible before it can measure dimensions
