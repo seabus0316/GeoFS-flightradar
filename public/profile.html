@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Player Profile — GeoFS FlightRadar</title>
+  <meta name="description" content="View pilot profile, flight statistics, heatmap and visited airports on GeoFS FlightRadar.">
+
+  <!-- Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+
+  <!-- Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+  <!-- Leaflet (for World Map) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
+  <!-- Profile Styles -->
+  <link rel="stylesheet" href="/profile.css">
+
+  <link rel="icon" href="/favicon.ico">
+</head>
+<body class="profile-page">
+
+  <!-- ═══ Navigation ═══ -->
+  <nav class="profile-nav" id="profileNav">
+    <a href="/" class="profile-nav-back">
+      <i class="fa-solid fa-chevron-left"></i> Radar
+    </a>
+    <div class="profile-nav-title">PILOT <span>PROFILE</span></div>
+    <div class="profile-nav-sep"></div>
+    <!-- 動態：若是自己的 profile 顯示 Edit，否則空 -->
+    <div id="profileNavActions"></div>
+  </nav>
+
+  <!-- ═══ Loading State ═══ -->
+  <div class="profile-loading" id="profileLoading">
+    <div class="profile-loading-spinner"></div>
+    <div class="profile-loading-text">Loading profile...</div>
+  </div>
+
+  <!-- ═══ Error State ═══ -->
+  <div class="profile-error" id="profileError" style="display:none;">
+    <div class="profile-error-icon">✈</div>
+    <div class="profile-error-text" id="profileErrorText">Pilot not found</div>
+    <div class="profile-error-sub">This profile may not exist or has been removed.</div>
+    <a href="/" class="profile-nav-action" style="margin-top:16px;">← Back to Radar</a>
+  </div>
+
+  <!-- ═══ Main Content (hidden until loaded) ═══ -->
+  <div class="profile-container" id="profileContent" style="display:none;">
+
+    <!-- 1. Banner -->
+    <div class="profile-banner" id="profileBanner">
+      <div class="profile-banner-bg"></div>
+      <div class="profile-banner-gradient"></div>
+    </div>
+
+    <!-- 2. Header: Avatar + Name + Status -->
+    <div class="profile-header" id="profileHeader">
+      <div class="profile-avatar-wrapper">
+        <img class="profile-avatar" id="profileAvatar" src="" alt="Avatar">
+        <div class="profile-status" id="profileStatus">
+          <div class="profile-status-tooltip" id="profileStatusTooltip"></div>
+        </div>
+      </div>
+      <div class="profile-identity">
+        <div class="profile-display-name" id="profileDisplayName">—</div>
+        <div class="profile-username" id="profileUsername"></div>
+        <div class="profile-joined" id="profileJoined"></div>
+      </div>
+    </div>
+
+    <!-- 3. Achievements (Preview — 預留) -->
+    <div class="profile-section" id="profileAchievementsSection">
+      <div class="profile-section-header">
+        <div class="profile-section-title">
+          <span class="icon">🏆</span> Achievements
+        </div>
+        <!-- <a href="#" class="profile-section-more">View All →</a> -->
+      </div>
+      <div class="profile-achievements" id="profileAchievements">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- 4. Stats Grid -->
+    <div class="profile-section">
+      <div class="profile-section-header">
+        <div class="profile-section-title">
+          <span class="icon">📊</span> Flight Statistics
+        </div>
+      </div>
+      <div class="profile-stats-grid" id="profileStatsGrid">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+    <!-- 5. Monthly Flight Heatmap -->
+    <div class="profile-section">
+      <div class="profile-section-header">
+        <div class="profile-section-title">
+          <span class="icon">📅</span> Flight Activity
+        </div>
+      </div>
+      <div class="profile-heatmap-wrap" id="profileHeatmapWrap">
+        <div class="profile-heatmap-controls">
+          <div class="profile-heatmap-year-nav">
+            <button class="profile-heatmap-year-btn" id="heatmapPrevYear" title="Previous Year">‹</button>
+            <span class="profile-heatmap-year" id="heatmapYear">2026</span>
+            <button class="profile-heatmap-year-btn" id="heatmapNextYear" title="Next Year">›</button>
+          </div>
+          <div class="profile-heatmap-total" id="heatmapTotal"></div>
+        </div>
+        <div class="profile-heatmap-canvas-wrap">
+          <canvas id="profileHeatmapCanvas"></canvas>
+        </div>
+        <div class="profile-heatmap-legend">
+          <span>Less</span>
+          <div class="profile-heatmap-legend-block" style="background: #161b22;"></div>
+          <div class="profile-heatmap-legend-block" style="background: #0e4429;"></div>
+          <div class="profile-heatmap-legend-block" style="background: #006d32;"></div>
+          <div class="profile-heatmap-legend-block" style="background: #26a641;"></div>
+          <div class="profile-heatmap-legend-block" style="background: #39d353;"></div>
+          <span>More</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- 6. World Map (Visited Airports) -->
+    <div class="profile-section">
+      <div class="profile-section-header">
+        <div class="profile-section-title">
+          <span class="icon">🌍</span> Visited Airports
+        </div>
+      </div>
+      <div class="profile-map-wrap">
+        <div id="profileWorldMap"></div>
+        <div class="profile-map-stats" id="profileMapStats">
+          <!-- Rendered by JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- 7. Recent Flights -->
+    <div class="profile-section">
+      <div class="profile-section-header">
+        <div class="profile-section-title">
+          <span class="icon">🛫</span> Recent Flights
+        </div>
+        <a href="/history.html" class="profile-section-more">View All →</a>
+      </div>
+      <div class="profile-flights-list" id="profileFlightsList">
+        <!-- Rendered by JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ═══ Heatmap Tooltip (global) ═══ -->
+  <div class="profile-heatmap-tooltip" id="heatmapTooltip"></div>
+
+  <!-- ═══ Scripts ═══ -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="/profile.js"></script>
+
+</body>
+</html>
