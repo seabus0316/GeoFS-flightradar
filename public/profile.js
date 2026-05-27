@@ -257,12 +257,20 @@ const ProfileApp = (() => {
         </div>
 
         <div class="profile-settings-group">
-          <label>Custom avatar URL</label>
-          <input type="text" id="set-avatar" value="${localStorage.getItem('cfg_avatar') || ''}" placeholder="https://..." class="profile-settings-input" />
+          <label>Upload avatar image</label>
+          <input type="file" id="set-avatar-upload" accept="image/*" class="profile-settings-input" />
+          <div class="profile-settings-note">Max 1MB. Saved locally as your profile avatar.</div>
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Avatar image URL <small style="opacity:.5">(or paste a URL)</small></label>
+          <input type="text" id="set-avatar" value="" placeholder="https://..." class="profile-settings-input" />
+          <div id="set-avatar-status" class="profile-settings-note" style="color:#39d353;display:none;">✓ Custom uploaded avatar is active</div>
         </div>
 
         <div class="profile-settings-actions">
           <button type="button" id="clear-banner" class="profile-settings-button profile-settings-button-muted">Clear custom banner</button>
+          <button type="button" id="clear-avatar" class="profile-settings-button profile-settings-button-muted">Clear avatar</button>
           <button type="button" id="save-profile-settings" class="profile-settings-button profile-settings-button-primary">Save changes</button>
         </div>
       </div>
@@ -270,7 +278,18 @@ const ProfileApp = (() => {
 
     document.body.appendChild(modal);
 
+    // ── Pre-fill avatar field / show status ──────────────────────────────
+    const savedAvatarVal = localStorage.getItem('cfg_avatar') || '';
+    const avatarUrlInput = modal.querySelector('#set-avatar');
+    const avatarStatus = modal.querySelector('#set-avatar-status');
+    if (savedAvatarVal.startsWith('data:')) {
+      avatarStatus.style.display = '';          // show "uploaded avatar active" note
+    } else {
+      avatarUrlInput.value = savedAvatarVal;    // pre-fill URL
+    }
+
     modal.querySelector('.profile-settings-close').addEventListener('click', () => modal.remove());
+
     modal.querySelector('#clear-banner').addEventListener('click', () => {
       const bannerImageInput = modal.querySelector('#set-banner-image');
       bannerImageInput.value = '';
@@ -278,6 +297,15 @@ const ProfileApp = (() => {
       modal.querySelector('#set-banner-upload').value = '';
     });
 
+    modal.querySelector('#clear-avatar').addEventListener('click', () => {
+      avatarUrlInput.value = '';
+      avatarStatus.style.display = 'none';
+      modal.querySelector('#set-avatar-upload').value = '';
+      localStorage.removeItem('cfg_avatar');
+      DOM.avatar.src = resolveAvatar(state.user);
+    });
+
+    // Banner file upload
     const uploadInput = modal.querySelector('#set-banner-upload');
     const bannerImageInput = modal.querySelector('#set-banner-image');
     uploadInput.addEventListener('change', async (event) => {
@@ -289,19 +317,55 @@ const ProfileApp = (() => {
         return;
       }
       const reader = new FileReader();
+      reader.onload = () => { bannerImageInput.value = reader.result; };
+      reader.readAsDataURL(file);
+    });
+
+    // Avatar file upload
+    const avatarUploadInput = modal.querySelector('#set-avatar-upload');
+    avatarUploadInput.addEventListener('change', (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 1024 * 1024) {
+        alert('Please upload an image smaller than 1MB.');
+        avatarUploadInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
       reader.onload = () => {
-        bannerImageInput.value = reader.result;
+        // Store base64 in a temp var; clear URL field to avoid confusion
+        avatarUploadInput._base64 = reader.result;
+        avatarUrlInput.value = '';
+        avatarStatus.style.display = '';
+        avatarStatus.textContent = `✓ "${file.name}" ready to save`;
       };
       reader.readAsDataURL(file);
     });
 
+    // Clear pending upload base64 when user types a URL manually
+    avatarUrlInput.addEventListener('input', () => {
+      if (avatarUrlInput.value.trim()) {
+        avatarUploadInput._base64 = null;
+        avatarUploadInput.value = '';
+        avatarStatus.style.display = 'none';
+      }
+    });
+
     modal.querySelector('#save-profile-settings').addEventListener('click', () => {
-      const avatarValue = modal.querySelector('#set-avatar').value.trim();
+      // Avatar: prefer uploaded file, fall back to URL field
+      const avatarBase64 = avatarUploadInput._base64 || null;
+      const avatarUrlValue = avatarUrlInput.value.trim();
+      const finalAvatar = avatarBase64 || avatarUrlValue;
+
       const bannerValue = modal.querySelector('#set-banner-css').value;
       const bannerImageValue = modal.querySelector('#set-banner-image').value.trim();
       const themeValue = modal.querySelector('#set-theme').value;
 
-      localStorage.setItem('cfg_avatar', avatarValue);
+      if (finalAvatar) {
+        localStorage.setItem('cfg_avatar', finalAvatar);
+      } else {
+        localStorage.removeItem('cfg_avatar');
+      }
       localStorage.setItem('cfg_banner', bannerValue);
       localStorage.setItem(PROFILE_THEME_KEY, themeValue);
       if (bannerImageValue) {
@@ -866,9 +930,11 @@ function applyCustomProfileSettings() {
       renderNavActions(currentViewer, state.discordId);
       applyProfileCustomizations(Boolean(currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId));
 
+      showContent();
       const airportDb = await loadAirportsDatabase();
       updateMap(state.flights, airportDb);
-      showContent();
+      // Leaflet needs the container to be visible before it can measure dimensions
+      if (state.map) state.map.invalidateSize();
 
       if (getQueryParam('edit') === 'true' && currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId) {
         openProfileSettingsModal();
