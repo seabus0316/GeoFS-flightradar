@@ -4,6 +4,8 @@ const ProfileApp = (() => {
     error: document.getElementById('profileError'),
     errorText: document.getElementById('profileErrorText'),
     content: document.getElementById('profileContent'),
+    banner: document.getElementById('profileBanner'),
+    bannerBg: document.querySelector('.profile-banner-bg'),
     avatar: document.getElementById('profileAvatar'),
     status: document.getElementById('profileStatus'),
     statusTooltip: document.getElementById('profileStatusTooltip'),
@@ -40,6 +42,8 @@ const ProfileApp = (() => {
   };
 
   const DEFAULT_AVATAR = 'https://i.ibb.co/Tg6mDts/default-avatar.png';
+  const PROFILE_THEME_KEY = 'cfg_profile_theme';
+  const PROFILE_BANNER_IMAGE_KEY = 'cfg_banner_image';
   const AIRPORTS_DB_URL = 'https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json';
   const STATUS_ONLINE_THRESHOLD_MS = 20 * 60 * 1000;
 
@@ -162,6 +166,171 @@ const ProfileApp = (() => {
     return DEFAULT_AVATAR;
   }
 
+  function getSavedProfileCustomizations() {
+    return {
+      avatarUrl: localStorage.getItem('cfg_avatar') || '',
+      bannerCss: localStorage.getItem('cfg_banner') || '',
+      bannerImage: localStorage.getItem(PROFILE_BANNER_IMAGE_KEY) || '',
+      theme: localStorage.getItem(PROFILE_THEME_KEY) || 'default'
+    };
+  }
+
+  function applyProfileTheme(theme) {
+    const themes = ['default', 'discord', 'cyber', 'emerald'];
+    themes.forEach(name => document.body.classList.remove(`theme-${name}`));
+    document.body.classList.add(`theme-${theme || 'default'}`);
+  }
+
+  function applyProfileCustomizations(isOwnProfile) {
+    const custom = getSavedProfileCustomizations();
+    if (!isOwnProfile) {
+      applyProfileTheme('default');
+      return;
+    }
+
+    if (custom.avatarUrl && custom.avatarUrl.trim()) {
+      DOM.avatar.src = custom.avatarUrl.trim();
+    }
+
+    if (DOM.bannerBg) {
+      if (custom.bannerImage) {
+        DOM.bannerBg.style.background = `url('${custom.bannerImage}') center / cover no-repeat`;
+      } else if (custom.bannerCss) {
+        DOM.bannerBg.style.background = custom.bannerCss;
+      } else {
+        DOM.bannerBg.style.background = '';
+      }
+    }
+
+    applyProfileTheme(custom.theme);
+  }
+
+  function openProfileSettingsModal() {
+    const custom = getSavedProfileCustomizations();
+    const modalId = 'profile-settings-modal';
+    const existing = document.getElementById(modalId);
+    if (existing) existing.remove();
+
+    const modal = document.createElement('div');
+    modal.id = modalId;
+    modal.className = 'profile-settings-modal';
+    modal.innerHTML = `
+      <div class="profile-settings-card">
+        <div class="profile-settings-header">
+          <div>
+            <div class="profile-settings-title">Profile Settings</div>
+            <div class="profile-settings-subtitle">Customize your banner, theme and avatar.</div>
+          </div>
+          <button type="button" class="profile-settings-close" aria-label="Close settings">✕</button>
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Upload banner image</label>
+          <input type="file" id="set-banner-upload" accept="image/*" class="profile-settings-input" />
+          <div class="profile-settings-note">Max 1MB. The uploaded image will be saved locally and shown as your profile banner.</div>
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Banner image / URL</label>
+          <input type="text" id="set-banner-image" value="${custom.bannerImage || ''}" placeholder="https://... or choose upload" class="profile-settings-input" />
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Profile banner accent</label>
+          <select id="set-banner-css" class="profile-settings-input">
+            <option value="linear-gradient(135deg, #0f2027, #203a43, #2c5364)" ${custom.bannerCss.includes('#0f2027') ? 'selected' : ''}>Deep Ocean</option>
+            <option value="linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" ${custom.bannerCss.includes('#833ab4') ? 'selected' : ''}>Sunset Glow</option>
+            <option value="linear-gradient(135deg, #00cfff, #005f73)" ${custom.bannerCss.includes('#00cfff') ? 'selected' : ''}>Cyber Neon</option>
+            <option value="linear-gradient(135deg, #11998e, #38ef7d)" ${custom.bannerCss.includes('#11998e') ? 'selected' : ''}>Emerald Flight</option>
+            <option value="#1a2634" ${custom.bannerCss === '#1a2634' ? 'selected' : ''}>Minimalist Dark</option>
+          </select>
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Profile theme style</label>
+          <select id="set-theme" class="profile-settings-input">
+            <option value="default" ${custom.theme === 'default' ? 'selected' : ''}>Default</option>
+            <option value="discord" ${custom.theme === 'discord' ? 'selected' : ''}>Discord Gloss</option>
+            <option value="cyber" ${custom.theme === 'cyber' ? 'selected' : ''}>Cyber Neon</option>
+            <option value="emerald" ${custom.theme === 'emerald' ? 'selected' : ''}>Emerald Pulse</option>
+          </select>
+        </div>
+
+        <div class="profile-settings-group">
+          <label>Custom avatar URL</label>
+          <input type="text" id="set-avatar" value="${localStorage.getItem('cfg_avatar') || ''}" placeholder="https://..." class="profile-settings-input" />
+        </div>
+
+        <div class="profile-settings-actions">
+          <button type="button" id="clear-banner" class="profile-settings-button profile-settings-button-muted">Clear custom banner</button>
+          <button type="button" id="save-profile-settings" class="profile-settings-button profile-settings-button-primary">Save changes</button>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    modal.querySelector('.profile-settings-close').addEventListener('click', () => modal.remove());
+    modal.querySelector('#clear-banner').addEventListener('click', () => {
+      const bannerImageInput = modal.querySelector('#set-banner-image');
+      bannerImageInput.value = '';
+      localStorage.removeItem(PROFILE_BANNER_IMAGE_KEY);
+      modal.querySelector('#set-banner-upload').value = '';
+    });
+
+    const uploadInput = modal.querySelector('#set-banner-upload');
+    const bannerImageInput = modal.querySelector('#set-banner-image');
+    uploadInput.addEventListener('change', async (event) => {
+      const file = event.target.files?.[0];
+      if (!file) return;
+      if (file.size > 1024 * 1024) {
+        alert('Please upload an image smaller than 1MB.');
+        uploadInput.value = '';
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        bannerImageInput.value = reader.result;
+      };
+      reader.readAsDataURL(file);
+    });
+
+    modal.querySelector('#save-profile-settings').addEventListener('click', () => {
+      const avatarValue = modal.querySelector('#set-avatar').value.trim();
+      const bannerValue = modal.querySelector('#set-banner-css').value;
+      const bannerImageValue = modal.querySelector('#set-banner-image').value.trim();
+      const themeValue = modal.querySelector('#set-theme').value;
+
+      localStorage.setItem('cfg_avatar', avatarValue);
+      localStorage.setItem('cfg_banner', bannerValue);
+      localStorage.setItem(PROFILE_THEME_KEY, themeValue);
+      if (bannerImageValue) {
+        localStorage.setItem(PROFILE_BANNER_IMAGE_KEY, bannerImageValue);
+      } else {
+        localStorage.removeItem(PROFILE_BANNER_IMAGE_KEY);
+      }
+
+      modal.remove();
+      applyProfileCustomizations(true);
+      alert('Profile settings updated successfully!');
+    });
+  }
+
+  function handleShareProfile() {
+    const shareUrl = window.location.href;
+    if (navigator.share) {
+      navigator.share({ title: 'Share profile', url: shareUrl }).catch(() => {
+        navigator.clipboard.writeText(shareUrl).then(() => alert('Profile link copied to clipboard!'));
+      });
+      return;
+    }
+    if (navigator.clipboard) {
+      navigator.clipboard.writeText(shareUrl).then(() => alert('Profile link copied to clipboard!'), () => prompt('Copy this profile URL:', shareUrl));
+    } else {
+      prompt('Copy this profile URL:', shareUrl);
+    }
+  }
+
   function buildAchievements(stats) {
     const earned = [];
     const totalFlights = stats.totalFlights || 0;
@@ -265,7 +434,8 @@ const ProfileApp = (() => {
     const cell = 12;
     const gap = 4;
     const margin = 8;
-    const width = cols * (cell + gap) + margin * 2;
+    const leftPaddingCols = 2; // shift the first data column to the right
+    const width = (cols + leftPaddingCols) * (cell + gap) + margin * 2;
     const height = 7 * (cell + gap) + margin * 2;
 
     canvas.width = width * window.devicePixelRatio;
@@ -286,7 +456,7 @@ const ProfileApp = (() => {
       const count = data[date.toISOString().slice(0, 10)] || 0;
       const intensity = count === 0 ? 0 : Math.min(palette.length - 1, Math.ceil((count / maxCount) * (palette.length - 1)));
       const color = palette[intensity];
-      const x = margin + col * (cell + gap);
+      const x = margin + leftPaddingCols * (cell + gap) + col * (cell + gap);
       const y = margin + row * (cell + gap);
 
       ctx.fillStyle = color;
@@ -294,6 +464,9 @@ const ProfileApp = (() => {
       ctx.strokeStyle = 'rgba(0, 207, 255, 0.08)';
       ctx.strokeRect(x, y, cell, cell);
     });
+
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(margin, margin, leftPaddingCols * (cell + gap), height - margin * 2);
 
     DOM.heatmapYear.textContent = String(year);
     const totalForYear = counts.reduce((sum, value) => sum + value, 0);
@@ -308,7 +481,8 @@ const ProfileApp = (() => {
     const cell = 12;
     const gap = 4;
     const margin = 8;
-    const col = Math.floor((x - margin) / (cell + gap));
+    const leftPaddingCols = 2;
+    const col = Math.floor((x - margin - leftPaddingCols * (cell + gap)) / (cell + gap));
     const row = Math.floor((y - margin) / (cell + gap));
 
     if (col < 0 || row < 0) {
@@ -623,12 +797,21 @@ function applyCustomProfileSettings() {
 
   function renderNavActions(viewer, targetDiscordId) {
     DOM.navActions.innerHTML = '';
+
+    const shareButton = document.createElement('button');
+    shareButton.type = 'button';
+    shareButton.className = 'profile-nav-action profile-nav-action-share';
+    shareButton.textContent = 'Share profile';
+    shareButton.addEventListener('click', handleShareProfile);
+    DOM.navActions.appendChild(shareButton);
+
     if (viewer?.authenticated && viewer.user?.discordId === targetDiscordId) {
-      const editLink = document.createElement('a');
-      editLink.href = '/profile.html?edit=true';
-      editLink.className = 'profile-nav-action';
-      editLink.textContent = 'Edit profile';
-      DOM.navActions.appendChild(editLink);
+      const editButton = document.createElement('button');
+      editButton.type = 'button';
+      editButton.className = 'profile-nav-action';
+      editButton.textContent = 'Edit profile';
+      editButton.addEventListener('click', openProfileSettingsModal);
+      DOM.navActions.appendChild(editButton);
     }
   }
 
@@ -681,10 +864,16 @@ function applyCustomProfileSettings() {
       renderHeatmap(state.heatmapYear);
       setupHeatmapListeners();
       renderNavActions(currentViewer, state.discordId);
+      applyProfileCustomizations(Boolean(currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId));
 
       const airportDb = await loadAirportsDatabase();
       updateMap(state.flights, airportDb);
       showContent();
+
+      if (getQueryParam('edit') === 'true' && currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId) {
+        openProfileSettingsModal();
+      }
+
     } catch (error) {
       console.error(error);
       showError('Failed to load profile data.');

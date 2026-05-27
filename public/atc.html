@@ -4152,6 +4152,11 @@
       const modal = document.getElementById('pilotProfileModal');
       if (!modal) return;
       modal.style.display = 'none';
+      window._profileModalOpen = false;
+      if (map && map.dragging) map.dragging.enable();
+      if (map && map.scrollWheelZoom) map.scrollWheelZoom.enable();
+      if (map && map.doubleClickZoom) map.doubleClickZoom.enable();
+      if (map && map.keyboard) map.keyboard.enable();
       // Destroy any profile map instance
       if (window._pilotProfileMap) {
         try { window._pilotProfileMap.remove(); } catch {}
@@ -4399,6 +4404,11 @@ function _saveProfileSettings(modalId) {
 
       // Show loading
       modal.style.display = 'flex';
+      window._profileModalOpen = true;
+      if (map && map.dragging) map.dragging.disable();
+      if (map && map.scrollWheelZoom) map.scrollWheelZoom.disable();
+      if (map && map.doubleClickZoom) map.doubleClickZoom.disable();
+      if (map && map.keyboard) map.keyboard.disable();
       content.innerHTML = `<div style="padding:60px 0;text-align:center;color:#4a6070;font-size:14px;">
         <div style="font-size:28px;margin-bottom:12px;">✈</div>Loading profile…</div>`;
 
@@ -4535,6 +4545,13 @@ function _saveProfileSettings(modalId) {
         closePilotProfile();
       }
     });
+
+    document.addEventListener('keydown', (e) => {
+      if (!window._profileModalOpen) return;
+      if (e.target.closest('input, textarea, select, button, a')) return;
+      e.preventDefault();
+      e.stopImmediatePropagation();
+    }, true);
 
     // Photo Map 功能
     let photoMapEnabled = false;
