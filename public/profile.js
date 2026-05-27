@@ -44,7 +44,8 @@ const ProfileApp = (() => {
   const DEFAULT_AVATAR = 'https://i.ibb.co/Tg6mDts/default-avatar.png';
   const PROFILE_THEME_KEY = 'cfg_profile_theme';
   const PROFILE_BANNER_IMAGE_KEY = 'cfg_banner_image';
-  const AIRPORTS_DB_URL = 'https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json';
+  const LOCAL_AIRPORTS_URL = '/airports.json';
+  const REMOTE_AIRPORTS_URL = 'https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json';
   const LEAFLET_ASSET_BASE = 'https://unpkg.com/leaflet@1.9.4/dist/images';
   const STATUS_ONLINE_THRESHOLD_MS = 20 * 60 * 1000;
 
@@ -786,38 +787,71 @@ function applyCustomProfileSettings() {
 // renderProfileHeatmap(flightsData);
   async function loadAirportsDatabase() {
     if (state.airports) return state.airports;
-    try {
-      const response = await fetch(AIRPORTS_DB_URL);
-      if (!response.ok) throw new Error('Failed to load airport database');
-      const raw = await response.json();
-      const icaoMap = new Map();
-      const iataMap = new Map();
-      Object.entries(raw).forEach(([icao, entry]) => {
-        const meta = {
-          icao: icao.toUpperCase(),
-          iata: String(entry.iata || '').toUpperCase() || null,
-          name: entry.name || '',
-          lat: Number(entry.lat || entry.latitude_deg || 0),
-          lon: Number(entry.lon || entry.longitude_deg || 0)
-        };
-        icaoMap.set(meta.icao, meta);
-        if (meta.iata) iataMap.set(meta.iata, meta);
-      });
-      state.airports = { icaoMap, iataMap };
-      return state.airports;
-    } catch (error) {
-      console.error('Unable to load airport database', error);
+    const sources = [LOCAL_AIRPORTS_URL, REMOTE_AIRPORTS_URL];
+    let raw = null;
+
+    for (const source of sources) {
+      try {
+        const response = await fetch(source);
+        if (!response.ok) throw new Error(`Failed to load airport database from ${source}`);
+        const payload = await response.json();
+        if (payload && typeof payload === 'object') {
+          raw = payload;
+          break;
+        }
+      } catch (err) {
+        console.warn('Airport database load failed:', err.message || err, 'source:', source);
+      }
+    }
+
+    if (!raw || typeof raw !== 'object') {
+      console.error('Unable to load airport database from any source');
       state.airports = { icaoMap: new Map(), iataMap: new Map() };
       return state.airports;
     }
+
+    const icaoMap = new Map();
+    const iataMap = new Map();
+    Object.entries(raw).forEach(([icao, entry]) => {
+      const meta = {
+        icao: icao.toUpperCase(),
+        iata: String(entry.iata || '').toUpperCase() || null,
+        name: entry.name || '',
+        lat: Number(entry.lat || entry.latitude_deg || 0),
+        lon: Number(entry.lon || entry.longitude_deg || 0)
+      };
+      icaoMap.set(meta.icao, meta);
+      if (meta.iata) iataMap.set(meta.iata, meta);
+    });
+    state.airports = { icaoMap, iataMap };
+    return state.airports;
+  }
+
+  function normalizeAirportLookupCode(code) {
+    if (!code) return null;
+    const normalized = String(code).trim().toUpperCase();
+    if (!normalized) return null;
+    const parts = normalized.split(/[\/\-]/).filter(Boolean);
+    return parts.length ? parts[parts.length - 1].slice(0, 4) : normalized.slice(0, 4);
   }
 
   function resolveAirport(code, airportDb) {
     if (!code) return null;
     const normalized = String(code).trim().toUpperCase();
     if (!normalized) return null;
+    const lookup = normalizeAirportLookupCode(normalized);
+    if (!lookup) return null;
+
     if (airportDb.icaoMap.has(normalized)) return airportDb.icaoMap.get(normalized);
     if (airportDb.iataMap.has(normalized)) return airportDb.iataMap.get(normalized);
+    if (airportDb.icaoMap.has(lookup)) return airportDb.icaoMap.get(lookup);
+    if (airportDb.iataMap.has(lookup)) return airportDb.iataMap.get(lookup);
+
+    for (const airport of airportDb.icaoMap.values()) {
+      if (airport.icao.endsWith('/' + lookup) || airport.icao.endsWith(lookup) || airport.iata === lookup) {
+        return airport;
+      }
+    }
     return null;
   }
 
@@ -837,8 +871,10 @@ function applyCustomProfileSettings() {
 
     const visited = new Map();
     flights.forEach(flight => {
-      if (flight.departure) visited.set(flight.departure.toUpperCase(), flight.departure.toUpperCase());
-      if (flight.arrival) visited.set(flight.arrival.toUpperCase(), flight.arrival.toUpperCase());
+      const dep = normalizeAirportLookupCode(flight.departure);
+      const arr = normalizeAirportLookupCode(flight.arrival);
+      if (dep) visited.set(dep, dep);
+      if (arr) visited.set(arr, arr);
     });
 
     const airportMeta = [];
