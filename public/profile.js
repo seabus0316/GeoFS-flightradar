@@ -408,7 +408,134 @@ const ProfileApp = (() => {
       <div class="profile-status-tooltip-row"><span class="label">Activity</span><span class="value">${lastSeenLabel}</span></div>
     `;
   }
+function renderProfileHeatmap(flights) {
+  // 尋找你的 Heatmap 包裹容器（請確認你 HTML 中放網格的 div 的 id 或 class 叫什麼，這裡假設是 #profileHeatmapGrid）
+  const container = document.getElementById('profileHeatmapGrid') || document.querySelector('.profile-heatmap-wrap');
+  if (!container) return;
 
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  // 計算起點：51週整 + 本週已過天數 = 總顯示天數，並對齊到最左側星期日
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const totalDays = 51 * 7 + (today.getDay() + 1);
+  const startDate = new Date(today.getTime() - (totalDays - 1) * msPerDay);
+
+  // 統計每日飛行次數 key: "YYYY-MM-DD"
+  const dayCounts = {};
+  flights.forEach(f => {
+    if (!f.startTime) return;
+    const d = new Date(f.startTime);
+    const key = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    dayCounts[key] = (dayCounts[key] || 0) + 1;
+  });
+
+  const cellSize = 11;
+  const cellGap = 3;
+  const step = cellSize + cellGap;
+  const W = 52 * step + 35;
+  const H = 7 * step + 20;
+
+  let rectsHtml = '';
+  let monthLabels = [];
+  let lastMonth = -1;
+
+  // 星期標籤
+  const dayLabels = `
+    <text x="0" y="${20 + step * 1.75}" fill="#8b949e" font-size="9" font-family="sans-serif">Mon</text>
+    <text x="0" y="${20 + step * 3.75}" fill="#8b949e" font-size="9" font-family="sans-serif">Wed</text>
+    <text x="0" y="${20 + step * 5.75}" fill="#8b949e" font-size="9" font-family="sans-serif">Fri</text>
+  `;
+
+  for (let col = 0; col < 52; col++) {
+    for (let row = 0; row < 7; row++) {
+      const dayOffset = (col * 7) + row;
+      if (dayOffset >= totalDays) continue;
+
+      const currentDate = new Date(startDate.getTime() + dayOffset * msPerDay);
+      
+      // 每月初繪製月份標籤
+      if (row === 0 && currentDate.getMonth() !== lastMonth && col < 50) {
+        monthLabels.push(`<text x="${30 + col * step}" y="10" fill="#8b949e" font-size="9" font-family="sans-serif">${currentDate.toLocaleString('en', { month: 'short' })}</text>`);
+        lastMonth = currentDate.getMonth();
+      }
+
+      const key = `${currentDate.getFullYear()}-${String(currentDate.getMonth()+1).padStart(2,'0')}-${String(currentDate.getDate()).padStart(2,'0')}`;
+      const count = dayCounts[key] || 0;
+
+      // 根據次數對齊你 HTML 內部的 GitHub 綠色色階
+      let fill = '#161b22'; // 0次 (GitHub 暗色空白格)
+      if (count === 1) fill = '#0e4429';       // 淺綠
+      else if (count === 2) fill = '#006d32';  // 中綠
+      else if (count === 3) fill = '#26a641';  // 亮綠
+      else if (count >= 4) fill = '#39d353';   // 最亮綠
+
+      const x = 30 + col * step;
+      const y = 15 + row * step;
+      const dateStr = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      rectsHtml += `
+        <rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${fill}" class="heatmap-cell">
+          <title>${count} flights on ${dateStr}</title>
+        </rect>`;
+    }
+  }
+
+  // 渲染進網格，加上橫向捲動防止手機破版
+  container.innerHTML = `
+    <div style="overflow-x:auto; padding-bottom:8px; scrollbar-width:thin;">
+      <svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" style="min-width:${W}px;" xmlns="http://www.w3.org/2000/svg">
+        ${dayLabels}
+        ${monthLabels.join('')}
+        ${rectsHtml}
+      </svg>
+    </div>
+  `;
+}
+// ── 套用自訂的 Profile 設定 ───────────────────────────────────────────
+function applyCustomProfileSettings() {
+  // 假設你的系統能判斷這是否是「玩家看自己」的頁面
+  const isMyOwnProfile = true; 
+
+  if (isMyOwnProfile) {
+    const savedAvatar = localStorage.getItem('cfg_avatar');
+    const savedBanner = localStorage.getItem('cfg_banner');
+    const savedAchievement = localStorage.getItem('cfg_featured_achievement');
+
+    // 1. 套用自訂頭像 (尋找你的大頭貼 img 標籤)
+    if (savedAvatar) {
+      const avatarImg = document.getElementById('profileAvatar') || document.querySelector('.profile-avatar') || document.getElementById('pilotAvatar');
+      if (avatarImg) avatarImg.src = savedAvatar;
+    }
+
+    // 2. 套用自訂 Banner 橫幅背景
+    if (savedBanner) {
+      const bannerDiv = document.getElementById('profileBanner') || document.querySelector('.profile-banner') || document.querySelector('.profile-header');
+      if (bannerDiv) bannerDiv.style.background = savedBanner;
+    }
+
+    // 3. 渲染精選成就 Badge (放至名字下方)
+    if (savedAchievement && savedAchievement !== 'none') {
+      const nameContainer = document.getElementById('profileName') || document.querySelector('.profile-name') || document.querySelector('.profile-pilot-name');
+      if (nameContainer && !document.getElementById('featured-badge')) {
+        const badge = document.createElement('div');
+        badge.id = 'featured-badge';
+        badge.style = `
+          display: inline-flex; align-items: center; 
+          background: rgba(0, 207, 255, 0.15); border: 1px solid rgba(0, 207, 255, 0.3); 
+          padding: 4px 8px; border-radius: 4px; font-size: 11px; color: #00cfff; 
+          margin-top: 6px; font-weight: 600; width: fit-content;
+        `;
+        badge.innerText = savedAchievement;
+        nameContainer.after(badge);
+      }
+    }
+  }
+}
+
+// 在你獲取到飛行數據並渲染畫面的主邏輯中呼叫它們：
+// applyCustomProfileSettings();
+// renderProfileHeatmap(flightsData);
   async function loadAirportsDatabase() {
     if (state.airports) return state.airports;
     try {
