@@ -434,7 +434,7 @@ const ProfileApp = (() => {
     const cell = 12;
     const gap = 4;
     const margin = 8;
-    const leftPaddingCols = 2; // shift the first data column to the right
+    const leftPaddingCols = 1; // shift the first data column slightly to the right
     const width = (cols + leftPaddingCols) * (cell + gap) + margin * 2;
     const height = 7 * (cell + gap) + margin * 2;
 
@@ -481,7 +481,7 @@ const ProfileApp = (() => {
     const cell = 12;
     const gap = 4;
     const margin = 8;
-    const leftPaddingCols = 2;
+    const leftPaddingCols = 1;
     const col = Math.floor((x - margin - leftPaddingCols * (cell + gap)) / (cell + gap));
     const row = Math.floor((y - margin) / (cell + gap));
 

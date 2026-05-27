@@ -259,6 +259,10 @@ const commands = [
     .addSubcommand(sub => sub
       .setName('status')
       .setDescription('View the reminder status(enables/disabled)')),
+  new SlashCommandBuilder()
+    .setName('shareprofile')
+    .setDescription('Share a user profile link on the radar')
+    .addUserOption(o => o.setName('user').setDescription('Discord user to share, defaults to you')),
 
 ].map(c => c.toJSON());
 
@@ -658,6 +662,50 @@ client.on('interactionCreate', async interaction => {
     }
   }
 
+
+  // ── /shareprofile ──────────────────────────────────────────
+  else if (commandName === 'shareprofile') {
+    await interaction.deferReply();
+    const targetUser = interaction.options.getUser('user') || interaction.user;
+
+    try {
+      if (!isMongoReady()) {
+        return interaction.editReply({ content: '❌ Database is temporarily unavailable. Please try again later.' });
+      }
+
+      const dbUser = await User.findOne({ discordId: targetUser.id }).lean();
+      if (!dbUser || !dbUser.geofsUserId) {
+        return interaction.editReply({ content: targetUser.id === interaction.user.id
+          ? '❌ You need to link your GeoFS ID first with `/link` before sharing your profile.'
+          : `❌ ${targetUser.username} has not linked a GeoFS ID yet, so their profile cannot be shared.`
+        });
+      }
+
+      const profileUrl = `${RADAR_URL}/profile.html?discordId=${encodeURIComponent(targetUser.id)}`;
+      const embed = new EmbedBuilder()
+        .setColor(0x00ff85)
+        .setTitle(`${targetUser.username}’s GeoFS Profile`)
+        .setURL(profileUrl)
+        .setDescription(`View the profile for <@${targetUser.id}> on GeoFS FlightRadar.`)
+        .setThumbnail(targetUser.displayAvatarURL())
+        .addFields(
+          { name: 'GeoFS ID', value: dbUser.geofsUserId || 'N/A', inline: true },
+          { name: 'Profile URL', value: `[Open profile](${profileUrl})`, inline: true }
+        );
+
+      const row = new ActionRowBuilder().addComponents(
+        new ButtonBuilder()
+          .setLabel('Open Profile')
+          .setStyle(ButtonStyle.Link)
+          .setURL(profileUrl)
+      );
+
+      return interaction.editReply({ embeds: [embed], components: [row] });
+    } catch (err) {
+      console.error('/shareprofile error', err);
+      return interaction.editReply({ content: '❌ Server error. Please try again later.' });
+    }
+  }
 
   // ── /reminder ──────────────────────────────────────────────
   else if (commandName === 'reminder') {
