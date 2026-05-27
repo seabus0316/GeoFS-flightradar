@@ -1033,6 +1033,10 @@
                          padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">Link</button>
           </div>
         </div>
+        <div class="menu-item" onclick="openProfileSettings()" style="display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; color:#e0e6ed; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+  <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
+  <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
+</div>
         <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
                 text-decoration: none; padding: 7px; border-radius: 6px;
                 border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;">
@@ -4161,34 +4165,92 @@
     }
 
     // ── Profile: build 12-month rolling bar chart (SVG) ─────────────────────
-    function _profileMonthlyChart(flights) {
-      const now = new Date();
-      const months = [];
-      for (let i = 11; i >= 0; i--) {
-        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-        months.push({ label: d.toLocaleString('en', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), count: 0 });
-      }
-      flights.forEach(f => {
-        if (!f.startTime) return;
-        const d = new Date(f.startTime);
-        const m = months.find(x => x.year === d.getFullYear() && x.month === d.getMonth());
-        if (m) m.count++;
-      });
-      const maxCount = Math.max(1, ...months.map(m => m.count));
-      const W = 520, H = 80, barW = Math.floor(W / 12) - 4, barMaxH = 52;
-      const bars = months.map((m, i) => {
-        const bh = Math.max(3, Math.round((m.count / maxCount) * barMaxH));
-        const x = i * (W / 12) + 2;
-        const y = barMaxH - bh + 4;
-        const isLatest = i === 11;
-        return `
-          <rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="3"
-            fill="${isLatest ? '#00cfff' : 'rgba(0,207,255,0.32)'}"/>
-          ${m.count > 0 ? `<text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" fill="#7ec8e3" font-size="9" font-family="monospace">${m.count}</text>` : ''}
-          <text x="${x + barW / 2}" y="${H - 2}" text-anchor="middle" fill="#4a6070" font-size="9" font-family="monospace">${m.label}</text>`;
-      }).join('');
-      return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+// ── Profile: build 365-day contribution heatmap (SVG) ───────────────────
+function _profileHeatmapChart(flights) {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0); // 對齊到今日凌晨 00:00
+  
+  // 計算起點：確保最後一格是今天，並且最左側對齊星期日
+  const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+  const msPerDay = 24 * 60 * 60 * 1000;
+  // 51週整 + 本週已過天數 = 總顯示天數
+  const totalDays = 51 * 7 + (dayOfWeek + 1);
+  const startDate = new Date(today.getTime() - (totalDays - 1) * msPerDay);
+
+  // 統計每日飛行次數
+  const dayCounts = new Map();
+  flights.forEach(f => {
+    if (!f.startTime) return;
+    const d = new Date(f.startTime);
+    // 落在近一年內的紀錄
+    if (d >= startDate && d <= new Date(today.getTime() + msPerDay)) {
+      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+      dayCounts.set(dateKey, (dayCounts.get(dateKey) || 0) + 1);
     }
+  });
+
+  const cellSize = 10;
+  const cellGap = 3;
+  const step = cellSize + cellGap;
+  const numCols = 52;
+  const W = numCols * step + 30; // 寬度包含左側文字空間
+  const H = 7 * step + 20;       // 高度包含上方月份文字
+
+  let rectsHtml = '';
+  let monthLabels = [];
+  let lastMonth = -1;
+
+  // 星期標籤 (只顯示一、三、五)
+  const dayLabels = `
+    <text x="0" y="${20 + step * 1.75}" fill="#4a6070" font-size="9" font-family="monospace">Mon</text>
+    <text x="0" y="${20 + step * 3.75}" fill="#4a6070" font-size="9" font-family="monospace">Wed</text>
+    <text x="0" y="${20 + step * 5.75}" fill="#4a6070" font-size="9" font-family="monospace">Fri</text>
+  `;
+
+  // 產生每一天的方塊
+  for (let col = 0; col < numCols; col++) {
+    for (let row = 0; row < 7; row++) {
+      const dayOffset = (col * 7) + row;
+      if (dayOffset >= totalDays) continue; // 排除未來的日子
+
+      const currentDate = new Date(startDate.getTime() + dayOffset * msPerDay);
+      
+      // 繪製月份標籤 (每月初顯示)
+      if (row === 0 && currentDate.getMonth() !== lastMonth && col < 50) {
+        monthLabels.push(`<text x="${28 + col * step}" y="10" fill="#4a6070" font-size="9" font-family="monospace">${currentDate.toLocaleString('en', { month: 'short' })}</text>`);
+        lastMonth = currentDate.getMonth();
+      }
+
+      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
+      const count = dayCounts.get(dateKey) || 0;
+
+      // 根據次數決定顏色階級 (GitHub 風格)
+      let fill = 'rgba(255,255,255,0.06)';
+      if (count === 1) fill = 'rgba(0, 207, 255, 0.25)';
+      else if (count === 2) fill = 'rgba(0, 207, 255, 0.5)';
+      else if (count === 3) fill = 'rgba(0, 207, 255, 0.75)';
+      else if (count >= 4) fill = '#00cfff';
+
+      const x = 28 + col * step;
+      const y = 15 + row * step;
+      const formattedDate = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+      rectsHtml += `
+        <rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${fill}">
+          <title>${count} flights on ${formattedDate}</title>
+        </rect>`;
+    }
+  }
+
+  // 包裝在支援橫向滾動的 div 中，避免破壞手機版面
+  return `<div style="overflow-x:auto; overflow-y:hidden; padding-bottom:8px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;">
+            <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="min-width:${W}px;">
+              ${dayLabels}
+              ${monthLabels.join('')}
+              ${rectsHtml}
+            </svg>
+          </div>`;
+}
 
     // ── Profile: extract unique visited airports from flights ────────────────
     function _profileVisitedAirports(flights) {
@@ -4294,7 +4356,7 @@
       // Banner + visited airports
       const visitedAirports = _profileVisitedAirports(flights);
       const banner = _profileBannerGradient(userId + displayName);
-      const chart = _profileMonthlyChart(flights);
+      const chart = _profileHeatmapChart(flights); // 改用新的 heatmap
 
       // Joined date
       const joinedStr = user?.createdAt
@@ -4353,11 +4415,10 @@
             : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No achievements yet</div>`}
         </div>
 
-        <!-- ⑤ Monthly Timeline -->
         <div style="margin:20px 20px 0;">
-          <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;">Monthly Activity</div>
-          ${flights.length > 0 ? chart : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No flight history</div>`}
-        </div>
+                  <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;">Activity Heatmap</div>
+                  ${flights.length > 0 ? chart : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No flight history</div>`}
+                </div>
 
         <!-- ⑥ World Map -->
         <div style="margin:20px 20px 24px;">
