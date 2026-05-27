@@ -850,8 +850,17 @@ function applyCustomProfileSettings() {
     });
 
     if (airportMeta.length) {
+      const airportDotIcon = L.divIcon({
+        html: '<div style="width:10px;height:10px;background:#00cfff;border:2px solid rgba(255,255,255,0.9);border-radius:50%;box-shadow:0 0 10px rgba(0, 207, 255, 0.35);"></div>',
+        className: '',
+        iconSize: [14, 14],
+        iconAnchor: [7, 7],
+        popupAnchor: [0, -8]
+      });
+
       airportMeta.forEach(apt => {
         const marker = L.marker([apt.lat, apt.lon], {
+          icon: airportDotIcon,
           title: apt.icao || apt.iata || 'Airport'
         }).addTo(state.map);
         marker.bindPopup(`<div class="airport-visited-popup"><div class="code">${apt.iata || apt.icao}</div><div class="name">${apt.name}</div></div>`);
