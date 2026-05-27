@@ -1015,34 +1015,38 @@
         </a>
       </div>
       <!-- 已登入狀態（JS 填入） -->
-      <div id="discordProfileView" style="display: none;">
-        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px;">
-          <img id="discordAvatar" src="" alt="avatar"
-            style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2;">
-          <div>
-            <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
-            <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
-          </div>
+    <div id="discordProfileView" style="display: none;">
+      <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 0 4px;">
+        <img id="discordAvatar" src="" alt="avatar"
+          style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2; object-fit: cover;">
+        <div>
+          <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
+          <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
         </div>
-        <div id="discordLinkRow" style="margin-bottom: 10px;">
-          <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;"></div>
-          <div id="discordLinkForm" style="display:flex; gap:6px;">
-            <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID" style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
-                        border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; outline: none;" />
-            <button onclick="linkGeofsId()" style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
-                         padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">Link</button>
-          </div>
-        </div>
-        <div class="menu-item" onclick="openProfileSettings()" style="display:flex; align-items:center; gap:10px; padding:12px 16px; cursor:pointer; color:#e0e6ed; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-  <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
-  <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
-</div>
-        <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
-                text-decoration: none; padding: 7px; border-radius: 6px;
-                border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;">
-          Logout
-        </a>
       </div>
+
+      <div class="menu-item" onclick="openProfileSettings()" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom: 14px; cursor:pointer; color:#e0e6ed; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+        <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
+        <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
+      </div>
+
+      <div id="discordLinkRow" style="margin-bottom: 14px;">
+        <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;"></div>
+        <div id="discordLinkForm" style="display:flex; gap:6px;">
+          <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID" style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+                      border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; outline: none;" />
+          <button onclick="linkGeofsId()" style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
+                      padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">Link</button>
+        </div>
+      </div>
+
+      <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
+              text-decoration: none; padding: 7px; border-radius: 6px;
+              border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;"
+              onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">
+        Logout
+      </a>
+    </div>
     </div>
 
     <!-- Photo Map 開關 -->
@@ -4251,7 +4255,88 @@ function _profileHeatmapChart(flights) {
             </svg>
           </div>`;
 }
+// ── Profile Settings Modal ──────────────────────────────────────────────
+function openProfileSettings() {
+  // 1. 從 localStorage 讀取現有設定（若無則給予預設值）
+  const currentAvatar = localStorage.getItem('cfg_avatar') || 'https://www.gravatar.com/avatar/00000000000000000000000000000000?d=mp&f=y';
+  const currentBanner = localStorage.getItem('cfg_banner') || 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)';
+  const currentAchievement = localStorage.getItem('cfg_featured_achievement') || 'none';
 
+  // 2. 建立 Modal 容器
+  const modalId = 'modal-profile-settings';
+  let existing = document.getElementById(modalId);
+  if (existing) existing.remove();
+
+  const modal = document.createElement('div');
+  modal.id = modalId;
+  modal.style = `
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(5, 10, 20, 0.75); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; z-index: 10000;
+    font-family: 'Plus Jakarta Sans', sans-serif; color: #e0e6ed;
+  `;
+
+  // 3. 設計設定面板表單
+  modal.innerHTML = `
+    <div style="background: #0d1622; border: 1px solid rgba(0, 207, 255, 0.2); width: 90%; max-width: 420px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
+      <div style="display:flex; justify-content:between; align-items:center; margin-bottom:20px;">
+        <h3 style="margin:0; font-size:18px; color:#00cfff; letter-spacing:0.05em;">PROFILE SETTINGS</h3>
+        <span onclick="document.getElementById('${modalId}').remove()" style="cursor:pointer; color:#4a6070;" onmouseover="this.style.color='#ff7043'" onmouseout="this.style.color='#4a6070'">✕</span>
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; font-size:11px; color:#4a6070; text-transform:uppercase; margin-bottom:6px; font-weight:700;">Avatar URL</label>
+        <input type="text" id="set-avatar" value="${currentAvatar}" style="width:100%; background:#142132; border:1px solid #23374d; border-radius:6px; padding:8px 12px; color:#fff; font-size:13px; box-sizing:border-box;">
+      </div>
+
+      <div style="margin-bottom: 16px;">
+        <label style="display:block; font-size:11px; color:#4a6070; text-transform:uppercase; margin-bottom:6px; font-weight:700;">Profile Banner (CSS Gradient / Color)</label>
+        <select id="set-banner" style="width:100%; background:#142132; border:1px solid #23374d; border-radius:6px; padding:8px 12px; color:#fff; font-size:13px; box-sizing:border-box;">
+          <option value="linear-gradient(135deg, #0f2027, #203a43, #2c5364)" ${currentBanner.includes('#0f2027') ? 'selected' : ''}>Deep Ocean (預設)</option>
+          <option value="linear-gradient(135deg, #833ab4, #fd1d1d, #fcb045)" ${currentBanner.includes('#833ab4') ? 'selected' : ''}>Sunset Glow</option>
+          <option value="linear-gradient(135deg, #00cfff, #005f73)" ${currentBanner.includes('#00cfff') ? 'selected' : ''}>Cyber Neon</option>
+          <option value="linear-gradient(135deg, #11998e, #38ef7d)" ${currentBanner.includes('#11998e') ? 'selected' : ''}>Emerald Flight</option>
+          <option value="#1a2634" ${currentBanner === '#1a2634' ? 'selected' : ''}>Minimalist Dark</option>
+        </select>
+      </div>
+
+      <div style="margin-bottom: 24px;">
+        <label style="display:block; font-size:11px; color:#4a6070; text-transform:uppercase; margin-bottom:6px; font-weight:700;">Featured Achievement</label>
+        <select id="set-achievement" style="width:100%; background:#142132; border:1px solid #23374d; border-radius:6px; padding:8px 12px; color:#fff; font-size:13px; box-sizing:border-box;">
+          <option value="none" ${currentAchievement === 'none' ? 'selected' : ''}>None (不展示)</option>
+          <option value="🏆 First Solo" ${currentAchievement === '🏆 First Solo' ? 'selected' : ''}>🏆 First Solo (首次單飛)</option>
+          <option value="✈️ 100 Hours Club" ${currentAchievement === '✈️ 100 Hours Club' ? 'selected' : ''}>✈️ 100 Hours Club (百小時老手)</option>
+          <option value="🌍 Globe Trotter" ${currentAchievement === '🌍 Globe Trotter' ? 'selected' : ''}>🌍 Globe Trotter (跨洲航線大師)</option>
+          <option value="⚓ Carrier Landing Master" ${currentAchievement === '⚓ Carrier Landing Master' ? 'selected' : ''}>⚓ Carrier Landing Master (航母降落專家)</option>
+        </select>
+      </div>
+
+      <button onclick="_saveProfileSettings('${modalId}')" style="width:100%; background:#00cfff; border:none; border-radius:6px; padding:10px; color:#050a14; font-weight:700; font-size:14px; cursor:pointer; transition:opacity 0.2s;" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">
+        SAVE CHANGES
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+}
+
+// ── 內部儲存邏輯 ────────────────────────────────────────────────────────
+function _saveProfileSettings(modalId) {
+  const avatarVal = document.getElementById('set-avatar').value;
+  const bannerVal = document.getElementById('set-banner').value;
+  const achievementVal = document.getElementById('set-achievement').value;
+
+  // 寫入 localStorage 儲存
+  localStorage.setItem('cfg_avatar', avatarVal);
+  localStorage.setItem('cfg_banner', bannerVal);
+  localStorage.setItem('cfg_featured_achievement', achievementVal);
+
+  // 關閉視窗
+  document.getElementById(modalId).remove();
+
+  // 可選：可以加一個客製化的 Toast 提示儲存成功
+  alert('Profile settings updated successfully!');
+}
     // ── Profile: extract unique visited airports from flights ────────────────
     function _profileVisitedAirports(flights) {
       const seen = new Set();
@@ -4355,7 +4440,11 @@ function _profileHeatmapChart(flights) {
 
       // Banner + visited airports
       const visitedAirports = _profileVisitedAirports(flights);
-      const banner = _profileBannerGradient(userId + displayName);
+      // 判斷是否為玩家自己 (假設你有一個變數代表目前登入者，例如 currentUserId 或藉由比對名字)
+      // 這裡示範如果 displayName 符合，或是你可以直接讓「自己看自己」時套用
+      const isMe = true; // 註：如果之後有區分他人，這裡可以改成 userId === myCurrentId 
+      const savedBanner = localStorage.getItem('cfg_banner');
+      const banner = (isMe && savedBanner) ? savedBanner : _profileBannerGradient(userId + displayName);
       const chart = _profileHeatmapChart(flights); // 改用新的 heatmap
 
       // Joined date
