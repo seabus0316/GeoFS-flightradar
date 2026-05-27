@@ -115,8 +115,36 @@ const ProfileApp = (() => {
     return apiGet(`/api/users/${encodeURIComponent(discordId)}`);
   }
 
+  async function loadPublicUserByGeofsId(geofsUserId) {
+    if (!geofsUserId) return null;
+    return apiGet(`/api/users/geofs/${encodeURIComponent(geofsUserId)}`);
+  }
+
   async function loadStats(discordId) {
     return apiGet(`/api/flights/stats/${encodeURIComponent(discordId)}`);
+  }
+
+  async function loadFlightsByGeofsId(geofsUserId, limit = 12) {
+    if (!geofsUserId) return [];
+    return apiGet(`/api/flights/geofs/${encodeURIComponent(geofsUserId)}?limit=${limit}`);
+  }
+
+  function computeStatsFromFlights(flights) {
+    const stats = {
+      totalFlights: 0,
+      totalDistanceNm: 0,
+      totalDuration: 0,
+      maxAlt: 0,
+      maxSpeed: 0
+    };
+    flights.forEach(flight => {
+      stats.totalFlights += 1;
+      stats.totalDistanceNm += Number(flight.distanceNm || 0);
+      stats.totalDuration += Number(flight.duration || 0);
+      stats.maxAlt = Math.max(stats.maxAlt, Number(flight.maxAlt || 0));
+      stats.maxSpeed = Math.max(stats.maxSpeed, Number(flight.maxSpeed || 0));
+    });
+    return stats;
   }
 
   async function loadFlights(discordId, limit = 12) {
@@ -479,26 +507,38 @@ const ProfileApp = (() => {
 
   async function init() {
     state.discordId = getQueryParam('discordId');
+    const geofsUserId = getQueryParam('geofsUserId');
     if (!state.discordId) {
       state.discordId = null;
     }
-
-    const publicUser = state.discordId ? await loadPublicUser(state.discordId).catch(() => null) : null;
     const currentViewer = await loadCurrentUser();
-    const user = publicUser || currentViewer?.user || null;
-
-    if (!user) {
-      showError('No profile target available. Add ?discordId=<id> or sign in.');
-      return;
+    let targetUser = null;
+    if (state.discordId) {
+      targetUser = await loadPublicUser(state.discordId).catch(() => null);
+    } else if (geofsUserId) {
+      targetUser = await loadPublicUserByGeofsId(geofsUserId).catch(() => null);
+    } else {
+      targetUser = currentViewer?.user || null;
     }
 
-    state.discordId = user.discordId;
+    if (!targetUser) {
+      showError('No profile target available. Add ?discordId=<id>, ?geofsUserId=<id>, or sign in.');
+      return;
+    }
+    state.discordId = targetUser.discordId || null;
     try {
-      const [stats, flights] = await Promise.all([
-        loadStats(state.discordId),
-        loadFlights(state.discordId, 12)
-      ]);
-      state.user = user;
+      let stats = null;
+      let flights = [];
+      if (state.discordId) {
+        [stats, flights] = await Promise.all([
+          loadStats(state.discordId),
+          loadFlights(state.discordId, 12)
+        ]);
+      } else if (geofsUserId) {
+        flights = await loadFlightsByGeofsId(geofsUserId, 12);
+        stats = computeStatsFromFlights(flights);
+      }
+      state.user = targetUser;
       state.stats = stats;
       state.flights = Array.isArray(flights) ? flights : [];
       state.heatmapSeries = buildHeatmapSeries(state.flights);

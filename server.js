@@ -1357,6 +1357,15 @@ app.get('/api/users/:discordId', async (req, res) => {
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
+app.get('/api/users/geofs/:geofsUserId', async (req, res) => {
+  try {
+    const user = await User.findOne({ geofsUserId: req.params.geofsUserId })
+      .select('discordId username displayName photos geofsUserId createdAt').lean();
+    if (!user) return res.status(404).json({ error: 'not found' });
+    res.json(user);
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
 // ============ Flight History API Routes ============
 
 // 所有歷史飛行（含分頁 & 篩選）

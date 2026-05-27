@@ -1208,6 +1208,13 @@
     <div id="flpBody"></div>
   </div>
 
+  <div id="pilotProfileModal" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
+    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:#07101b;border:1px solid rgba(255,255,255,0.12);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,0.45);padding:22px;">
+      <button id="pilotProfileClose" type="button" style="all:unset;position:absolute;top:14px;right:14px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;">×</button>
+      <div id="pilotProfileContent" style="min-height:160px;color:#e2eef7;line-height:1.55;"></div>
+    </div>
+  </div>
+
   <script>
     // ── Flight List Panel ────────────────────────────────────────
     let flCurrentTab = "live";
@@ -3546,6 +3553,10 @@
       // 獲取航空公司資訊 - 🔥 移到這裡
       const airlineInfo = getAirlineInfo(data.callsign, data.flightNo);
       const airlineName = airlineInfo ? airlineInfo.name : 'Unknown Airline';
+      const profileUserId = data.userId || data.geofsUserId || null;
+      const pilotLabel = profileUserId
+        ? (data.displayName || data.username || `GeoFS #${profileUserId}`)
+        : 'Unknown pilot';
 
       // 處理 flight plan
       let plan = data.flightPlan;
@@ -3791,11 +3802,17 @@
           ${isEmergency ? `<span style="background:#d32f2f;color:#fff;
               font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;">⚠ 7700</span>` : ''}
         </div>
-        <div style="font-size:12px;color:#8a9db0;margin-top:3px;display:flex;align-items:center;gap:5px;">
+        <div style="font-size:12px;color:#8a9db0;margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
           ${airlineFlag ? `<span style="font-size:14px;">${airlineFlag}</span>` : ''}
           <span>${escapeHtml(airlineName)}</span>
           ${airlineCountry ? `<span style="color:#4e6070;">· ${escapeHtml(airlineCountry)}</span>` : ''}
         </div>
+        ${profileUserId ? `
+          <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+            <span style="font-size:11px;color:#8a9db0;text-transform:uppercase;letter-spacing:0.6px;">Pilot</span>
+            <button id="pilotProfileButton" type="button" style="all:unset;cursor:pointer;color:#7ec8e3;font-weight:700;line-height:1;">${escapeHtml(pilotLabel)}</button>
+          </div>
+        ` : ''}
       </div>
 
       <!-- Close -->
@@ -3972,6 +3989,14 @@
   </div>
   `;
 
+      const pilotProfileButton = p.querySelector('#pilotProfileButton');
+      if (pilotProfileButton && profileUserId) {
+        pilotProfileButton.addEventListener('click', (e) => {
+          e.stopPropagation();
+          openPilotProfile(profileUserId);
+        });
+      }
+
       // 照片輪播功能 - 完整版
       if (userPhotos.length > 1) {
         const container = p.querySelector('#photoContainer');
@@ -4096,6 +4121,62 @@
         }
       });
     }
+
+    // Pilot profile modal
+    const pilotProfileCache = new Map();
+
+    async function fetchUserByGeofsId(userId) {
+      if (!userId) return null;
+      if (pilotProfileCache.has(userId)) return pilotProfileCache.get(userId);
+      try {
+        const res = await fetch(`/api/users/geofs/${encodeURIComponent(userId)}`);
+        if (!res.ok) return null;
+        const user = await res.json();
+        pilotProfileCache.set(userId, user);
+        return user;
+      } catch (err) {
+        console.error('Failed to fetch pilot profile', err);
+        return null;
+      }
+    }
+
+    function closePilotProfile() {
+      const modal = document.getElementById('pilotProfileModal');
+      if (!modal) return;
+      modal.style.display = 'none';
+    }
+
+    async function openPilotProfile(userId) {
+      if (!userId) return;
+      let user = await fetchUserByGeofsId(userId);
+      const modal = document.getElementById('pilotProfileModal');
+      const content = document.getElementById('pilotProfileContent');
+      if (!modal || !content) return;
+
+      const title = user?.displayName || user?.username || `GeoFS #${userId}`;
+      const discordLine = user?.discordId
+        ? `<div style="margin-top:8px;font-size:13px;color:#c0d6f6;">Discord: <strong>${escapeHtml(user.displayName || user.username || user.discordId)}</strong> (@${escapeHtml(user.username || '')})</div>`
+        : '<div style="margin-top:8px;font-size:13px;color:#9ca3af;">Discord not linked</div>';
+
+      const fullProfileLink = user?.discordId
+        ? `<a href="/profile.html?discordId=${encodeURIComponent(user.discordId)}" style="display:inline-block;margin-top:14px;padding:10px 14px;border-radius:12px;background:#0f172a;color:#7ec8e3;text-decoration:none;font-weight:700;">Open full profile</a>`
+        : `<a href="/profile.html?geofsUserId=${encodeURIComponent(userId)}" style="display:inline-block;margin-top:14px;padding:10px 14px;border-radius:12px;background:#0f172a;color:#7ec8e3;text-decoration:none;font-weight:700;">Open full profile</a>`;
+
+      content.innerHTML = `
+        <div style="font-size:18px;font-weight:800;color:#fff;">${escapeHtml(title)}</div>
+        <div style="margin-top:8px;font-size:12px;color:#8b98b8;">GeoFS ID: <strong>${escapeHtml(userId)}</strong></div>
+        ${discordLine}
+        ${user?.createdAt ? `<div style="margin-top:8px;font-size:12px;color:#8b98b8;">Joined: ${new Date(user.createdAt).toLocaleDateString('en-US')}</div>` : ''}
+        ${fullProfileLink}
+      `;
+      modal.style.display = 'block';
+    }
+
+    document.addEventListener('click', (e) => {
+      if (e.target.id === 'pilotProfileModal' || e.target.id === 'pilotProfileClose') {
+        closePilotProfile();
+      }
+    });
 
     // Photo Map 功能
     let photoMapEnabled = false;
