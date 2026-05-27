@@ -1208,10 +1208,10 @@
     <div id="flpBody"></div>
   </div>
 
-  <div id="pilotProfileModal" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.62);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);">
-    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:min(420px,calc(100vw - 32px));max-height:80vh;overflow:auto;background:#07101b;border:1px solid rgba(255,255,255,0.12);border-radius:18px;box-shadow:0 24px 80px rgba(0,0,0,0.45);padding:22px;">
-      <button id="pilotProfileClose" type="button" style="all:unset;position:absolute;top:14px;right:14px;width:34px;height:34px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:22px;cursor:pointer;">×</button>
-      <div id="pilotProfileContent" style="min-height:160px;color:#e2eef7;line-height:1.55;"></div>
+  <div id="pilotProfileModal" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;">
+    <div style="position:relative;width:min(560px,calc(100vw - 20px));max-height:90vh;overflow-y:auto;overflow-x:hidden;background:#07101b;border:1px solid rgba(255,255,255,0.10);border-radius:20px;box-shadow:0 28px 90px rgba(0,0,0,0.6);">
+      <button id="pilotProfileClose" type="button" style="all:unset;position:sticky;float:right;top:10px;right:10px;z-index:10;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border-radius:50%;color:#fff;font-size:20px;cursor:pointer;margin:10px 10px 0 0;">×</button>
+      <div id="pilotProfileContent" style="min-height:200px;color:#e2eef7;line-height:1.55;clear:both;"></div>
     </div>
   </div>
 
@@ -4144,32 +4144,233 @@
       const modal = document.getElementById('pilotProfileModal');
       if (!modal) return;
       modal.style.display = 'none';
+      // Destroy any profile map instance
+      if (window._pilotProfileMap) {
+        try { window._pilotProfileMap.remove(); } catch {}
+        window._pilotProfileMap = null;
+      }
+    }
+
+    // ── Profile: generate banner gradient from string hash ──────────────────
+    function _profileBannerGradient(seed) {
+      let h = 0;
+      for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+      const hue = ((h >>> 0) % 360);
+      const hue2 = (hue + 40) % 360;
+      return `linear-gradient(135deg, hsl(${hue},60%,18%) 0%, hsl(${hue2},55%,28%) 100%)`;
+    }
+
+    // ── Profile: build 12-month rolling bar chart (SVG) ─────────────────────
+    function _profileMonthlyChart(flights) {
+      const now = new Date();
+      const months = [];
+      for (let i = 11; i >= 0; i--) {
+        const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+        months.push({ label: d.toLocaleString('en', { month: 'short' }), year: d.getFullYear(), month: d.getMonth(), count: 0 });
+      }
+      flights.forEach(f => {
+        if (!f.startTime) return;
+        const d = new Date(f.startTime);
+        const m = months.find(x => x.year === d.getFullYear() && x.month === d.getMonth());
+        if (m) m.count++;
+      });
+      const maxCount = Math.max(1, ...months.map(m => m.count));
+      const W = 520, H = 80, barW = Math.floor(W / 12) - 4, barMaxH = 52;
+      const bars = months.map((m, i) => {
+        const bh = Math.max(3, Math.round((m.count / maxCount) * barMaxH));
+        const x = i * (W / 12) + 2;
+        const y = barMaxH - bh + 4;
+        const isLatest = i === 11;
+        return `
+          <rect x="${x}" y="${y}" width="${barW}" height="${bh}" rx="3"
+            fill="${isLatest ? '#00cfff' : 'rgba(0,207,255,0.32)'}"/>
+          ${m.count > 0 ? `<text x="${x + barW / 2}" y="${y - 3}" text-anchor="middle" fill="#7ec8e3" font-size="9" font-family="monospace">${m.count}</text>` : ''}
+          <text x="${x + barW / 2}" y="${H - 2}" text-anchor="middle" fill="#4a6070" font-size="9" font-family="monospace">${m.label}</text>`;
+      }).join('');
+      return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" xmlns="http://www.w3.org/2000/svg">${bars}</svg>`;
+    }
+
+    // ── Profile: extract unique visited airports from flights ────────────────
+    function _profileVisitedAirports(flights) {
+      const seen = new Set();
+      flights.forEach(f => {
+        if (f.departure) seen.add(f.departure.toUpperCase().slice(0, 4));
+        if (f.arrival) seen.add(f.arrival.toUpperCase().slice(0, 4));
+      });
+      if (typeof airportsData === 'undefined') return [];
+      return [...seen].map(ident => {
+        return airportsData.find(a => a.ident === ident || a.ident?.endsWith('/' + ident) || a.ident?.endsWith(ident));
+      }).filter(Boolean);
+    }
+
+    // ── Profile: init mini Leaflet map after modal is visible ────────────────
+    function _initProfileMap(airports) {
+      const container = document.getElementById('pilotProfileMapDiv');
+      if (!container) return;
+      if (window._pilotProfileMap) {
+        try { window._pilotProfileMap.remove(); } catch {}
+        window._pilotProfileMap = null;
+      }
+      const pmap = L.map(container, {
+        zoomControl: false, attributionControl: false,
+        scrollWheelZoom: false, dragging: true, doubleClickZoom: false
+      });
+      window._pilotProfileMap = pmap;
+
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        maxZoom: 18
+      }).addTo(pmap);
+
+      if (airports.length > 0) {
+        const dotIcon = L.divIcon({
+          html: '<div style="width:8px;height:8px;background:#00cfff;border-radius:50%;border:1.5px solid #fff;box-shadow:0 0 5px #00cfff88;"></div>',
+          className: '', iconSize: [8, 8], iconAnchor: [4, 4]
+        });
+        const markers = airports.map(a => L.marker([a.latitude_deg, a.longitude_deg], { icon: dotIcon })
+          .bindTooltip(a.ident, { permanent: false, direction: 'top', className: 'waypoint-tooltip' }));
+        const group = L.featureGroup(markers).addTo(pmap);
+        try { pmap.fitBounds(group.getBounds().pad(0.3), { maxZoom: 5 }); }
+        catch { pmap.setView([20, 0], 2); }
+      } else {
+        pmap.setView([20, 0], 2);
+      }
+      setTimeout(() => pmap.invalidateSize(), 50);
     }
 
     async function openPilotProfile(userId) {
       if (!userId) return;
-      let user = await fetchUserByGeofsId(userId);
       const modal = document.getElementById('pilotProfileModal');
       const content = document.getElementById('pilotProfileContent');
       if (!modal || !content) return;
 
-      const title = user?.displayName || user?.username || `GeoFS #${userId}`;
-      const discordLine = user?.discordId
-        ? `<div style="margin-top:8px;font-size:13px;color:#c0d6f6;">Discord: <strong>${escapeHtml(user.displayName || user.username || user.discordId)}</strong> (@${escapeHtml(user.username || '')})</div>`
-        : '<div style="margin-top:8px;font-size:13px;color:#9ca3af;">Discord not linked</div>';
+      // Show loading
+      modal.style.display = 'flex';
+      content.innerHTML = `<div style="padding:60px 0;text-align:center;color:#4a6070;font-size:14px;">
+        <div style="font-size:28px;margin-bottom:12px;">✈</div>Loading profile…</div>`;
 
-      const fullProfileLink = user?.discordId
-        ? `<a href="/profile.html?discordId=${encodeURIComponent(user.discordId)}" style="display:inline-block;margin-top:14px;padding:10px 14px;border-radius:12px;background:#0f172a;color:#7ec8e3;text-decoration:none;font-weight:700;">Open full profile</a>`
-        : `<a href="/profile.html?geofsUserId=${encodeURIComponent(userId)}" style="display:inline-block;margin-top:14px;padding:10px 14px;border-radius:12px;background:#0f172a;color:#7ec8e3;text-decoration:none;font-weight:700;">Open full profile</a>`;
+      // Fetch user
+      const user = await fetchUserByGeofsId(userId);
+
+      // Fetch flight history
+      let flights = [];
+      try {
+        const params = new URLSearchParams({ limit: 200 });
+        if (user?.discordId) params.set('discordId', user.discordId);
+        else params.set('geofsUserId', userId);
+        const res = await fetch('/api/flights/history?' + params);
+        const data = await res.json();
+        flights = data.flights || [];
+      } catch {}
+
+      const displayName = user?.displayName || `GeoFS #${userId}`;
+      const username = user?.username || '';
+      const discordId = user?.discordId || '';
+
+      // Avatar URL
+      const avatarSrc = (discordId && user?.avatar)
+        ? `https://cdn.discordapp.com/avatars/${discordId}/${user.avatar}.png?size=128`
+        : `https://cdn.discordapp.com/embed/avatars/${(userId.charCodeAt?.(userId.length - 1) || 0) % 6}.png`;
+
+      // Is this user currently flying?
+      const isFlying = typeof aircrafts !== 'undefined' && [...aircrafts.values()]
+        .some(obj => String(obj.data?.userId) === String(userId) || String(obj.data?.geofsUserId) === String(userId));
+
+      // Is this the logged-in user?
+      const isOwnProfile = window._myGeofsUserId && String(window._myGeofsUserId) === String(userId);
+
+      // Stats
+      const totalFlights = flights.length;
+      const totalHours = flights.reduce((s, f) => s + (f.duration || 0), 0);
+      const hh = Math.floor(totalHours / 3600), mm = Math.floor((totalHours % 3600) / 60);
+      const hoursStr = hh > 0 ? `${hh}h ${mm}m` : `${mm}m`;
+      const totalNm = flights.reduce((s, f) => s + (f.distanceNm || 0), 0);
+
+      // Achievements — only "Logged First Flight" for now
+      const achievements = [];
+      if (flights.length > 0) {
+        achievements.push({ icon: '🛫', name: 'Logged First Flight', desc: 'Completed first tracked flight', earned: true });
+      }
+
+      // Banner + visited airports
+      const visitedAirports = _profileVisitedAirports(flights);
+      const banner = _profileBannerGradient(userId + displayName);
+      const chart = _profileMonthlyChart(flights);
+
+      // Joined date
+      const joinedStr = user?.createdAt
+        ? new Date(user.createdAt).toLocaleDateString('en-US', { year: 'numeric', month: 'long' })
+        : null;
+
+      // Special tags
+      const tags = user?.roles?.map(r => `<span style="background:rgba(0,207,255,0.12);color:#7ec8e3;border:1px solid rgba(0,207,255,0.25);font-size:10px;font-weight:700;padding:2px 8px;border-radius:20px;">${escapeHtml(r)}</span>`).join(' ') || '';
 
       content.innerHTML = `
-        <div style="font-size:18px;font-weight:800;color:#fff;">${escapeHtml(title)}</div>
-        <div style="margin-top:8px;font-size:12px;color:#8b98b8;">GeoFS ID: <strong>${escapeHtml(userId)}</strong></div>
-        ${discordLine}
-        ${user?.createdAt ? `<div style="margin-top:8px;font-size:12px;color:#8b98b8;">Joined: ${new Date(user.createdAt).toLocaleDateString('en-US')}</div>` : ''}
-        ${fullProfileLink}
+        <!-- ① Banner -->
+        <div style="height:110px;background:${banner};border-radius:20px 20px 0 0;position:relative;flex-shrink:0;">
+          ${isOwnProfile ? `<button title="Profile Settings" style="all:unset;position:absolute;bottom:10px;right:12px;cursor:pointer;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:14px;">⚙</button>` : ''}
+        </div>
+
+        <!-- ② Avatar + Identity -->
+        <div style="padding:0 20px 0;position:relative;margin-top:-36px;">
+          <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:12px;">
+            <div style="position:relative;flex-shrink:0;">
+              <img src="${escapeHtml(avatarSrc)}" alt="avatar"
+                style="width:72px;height:72px;border-radius:50%;border:3px solid #07101b;background:#1a2740;"
+                onerror="this.src='https://cdn.discordapp.com/embed/avatars/0.png'">
+              <span title="${isFlying ? 'Currently flying' : 'Not flying'}" style="position:absolute;bottom:3px;right:3px;width:14px;height:14px;border-radius:50%;border:2.5px solid #07101b;background:${isFlying ? '#00ff85' : '#555'};"></span>
+            </div>
+            <div style="flex:1;padding-bottom:6px;">
+              ${isFlying ? `<div style="font-size:10px;color:#00ff85;font-weight:700;letter-spacing:0.06em;text-transform:uppercase;margin-bottom:2px;">● In Flight</div>` : ''}
+              <div style="font-size:19px;font-weight:800;color:#fff;line-height:1.15;">${escapeHtml(displayName)}</div>
+              ${username ? `<div style="font-size:12px;color:#4a6a80;margin-top:1px;">@${escapeHtml(username)}</div>` : ''}
+              ${!discordId ? `<div style="font-size:11px;color:#4a6070;margin-top:2px;">GeoFS ID: ${escapeHtml(String(userId))}</div>` : ''}
+            </div>
+          </div>
+          ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;">${tags}</div>` : ''}
+          ${joinedStr ? `<div style="font-size:11px;color:#3a5060;margin-top:8px;">Joined ${joinedStr}</div>` : ''}
+        </div>
+
+        <!-- Stats bar -->
+        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1px;margin:16px 20px 0;background:rgba(255,255,255,0.06);border-radius:12px;overflow:hidden;">
+          ${[['Flights', totalFlights], ['Air Time', hoursStr], ['Distance', totalNm > 0 ? Math.round(totalNm).toLocaleString() + ' nm' : '—']].map(([label, val]) => `
+          <div style="background:#0a1524;padding:12px 8px;text-align:center;">
+            <div style="font-size:16px;font-weight:800;color:#fff;">${val}</div>
+            <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.06em;margin-top:2px;">${label}</div>
+          </div>`).join('')}
+        </div>
+
+        <!-- ④ Achievements -->
+        <div style="margin:20px 20px 0;">
+          <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:10px;">Achievements</div>
+          ${achievements.length > 0
+            ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">
+              ${achievements.map(a => `
+                <div title="${escapeHtml(a.desc)}" style="display:flex;align-items:center;gap:7px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);border-radius:10px;padding:7px 11px;cursor:default;">
+                  <span style="font-size:20px;">${a.icon}</span>
+                  <span style="font-size:12px;font-weight:700;color:#f5d77e;">${escapeHtml(a.name)}</span>
+                </div>`).join('')}
+              </div>`
+            : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No achievements yet</div>`}
+        </div>
+
+        <!-- ⑤ Monthly Timeline -->
+        <div style="margin:20px 20px 0;">
+          <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;">Monthly Activity</div>
+          ${flights.length > 0 ? chart : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No flight history</div>`}
+        </div>
+
+        <!-- ⑥ World Map -->
+        <div style="margin:20px 20px 24px;">
+          <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:8px;">
+            Airports Visited
+            ${visitedAirports.length > 0 ? `<span style="color:#00cfff;font-weight:800;margin-left:6px;">${visitedAirports.length}</span>` : ''}
+          </div>
+          <div id="pilotProfileMapDiv" style="height:180px;border-radius:12px;overflow:hidden;background:#0a1520;"></div>
+        </div>
       `;
-      modal.style.display = 'block';
+
+      // Init map after DOM is ready
+      setTimeout(() => _initProfileMap(visitedAirports), 80);
     }
 
     document.addEventListener('click', (e) => {
