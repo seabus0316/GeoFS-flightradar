@@ -827,31 +827,48 @@ function applyCustomProfileSettings() {
     return state.airports;
   }
 
-  function normalizeAirportLookupCode(code) {
-    if (!code) return null;
+  function normalizeAirportLookupCodes(code) {
+    if (!code) return [];
     const normalized = String(code).trim().toUpperCase();
-    if (!normalized) return null;
+    if (!normalized) return [];
+
+    const results = new Set();
+    results.add(normalized);
+    results.add(normalized.slice(0, 4));
+
     const parts = normalized.split(/[\/\-]/).filter(Boolean);
-    return parts.length ? parts[parts.length - 1].slice(0, 4) : normalized.slice(0, 4);
+    parts.forEach(part => {
+      if (part) {
+        results.add(part);
+        results.add(part.slice(0, 4));
+      }
+    });
+
+    if (normalized.length >= 4) {
+      results.add(normalized.slice(-4));
+    }
+
+    return [...results].filter(Boolean);
   }
 
   function resolveAirport(code, airportDb) {
     if (!code) return null;
-    const normalized = String(code).trim().toUpperCase();
-    if (!normalized) return null;
-    const lookup = normalizeAirportLookupCode(normalized);
-    if (!lookup) return null;
+    const candidates = normalizeAirportLookupCodes(code);
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      if (airportDb.icaoMap.has(candidate)) return airportDb.icaoMap.get(candidate);
+      if (airportDb.iataMap.has(candidate)) return airportDb.iataMap.get(candidate);
+    }
 
-    if (airportDb.icaoMap.has(normalized)) return airportDb.icaoMap.get(normalized);
-    if (airportDb.iataMap.has(normalized)) return airportDb.iataMap.get(normalized);
-    if (airportDb.icaoMap.has(lookup)) return airportDb.icaoMap.get(lookup);
-    if (airportDb.iataMap.has(lookup)) return airportDb.iataMap.get(lookup);
-
-    for (const airport of airportDb.icaoMap.values()) {
-      if (airport.icao.endsWith('/' + lookup) || airport.icao.endsWith(lookup) || airport.iata === lookup) {
-        return airport;
+    for (const candidate of candidates) {
+      if (!candidate) continue;
+      for (const airport of airportDb.icaoMap.values()) {
+        if (airport.icao === candidate || airport.icao.endsWith('/' + candidate) || airport.icao.endsWith(candidate) || airport.iata === candidate) {
+          return airport;
+        }
       }
     }
+
     return null;
   }
 
@@ -871,10 +888,12 @@ function applyCustomProfileSettings() {
 
     const visited = new Map();
     flights.forEach(flight => {
-      const dep = normalizeAirportLookupCode(flight.departure);
-      const arr = normalizeAirportLookupCode(flight.arrival);
-      if (dep) visited.set(dep, dep);
-      if (arr) visited.set(arr, arr);
+      normalizeAirportLookupCodes(flight.departure).forEach(code => {
+        if (code) visited.set(code, code);
+      });
+      normalizeAirportLookupCodes(flight.arrival).forEach(code => {
+        if (code) visited.set(code, code);
+      });
     });
 
     const airportMeta = [];
@@ -961,10 +980,10 @@ function applyCustomProfileSettings() {
       if (state.discordId) {
         [stats, flights] = await Promise.all([
           loadStats(state.discordId),
-          loadFlights(state.discordId, 12)
+          loadFlights(state.discordId, 200)
         ]);
       } else if (geofsUserId) {
-        flights = await loadFlightsByGeofsId(geofsUserId, 12);
+        flights = await loadFlightsByGeofsId(geofsUserId, 200);
         stats = computeStatsFromFlights(flights);
       }
       state.user = targetUser;
