@@ -1996,5 +1996,19 @@
     "iata": "ZQ",
     "country": "Germany",
     "logo": "https://images.kiwi.com/airlines/64/ZQ.png"
+  },
+    "AGL": {
+    "name": "Aeguk Air",
+    "icao": "AGL",
+    "iata": "AE",
+    "country": "South Korea",
+    "logo": "https://media.discordapp.net/attachments/1216174712548491295/1339826501167743056/latest.png?ex=6a19c8ea&is=6a18776a&hm=3c9257165b9d173bd99bdbb92e0df7f914515780dc539f2b86737b1579592f44&=&format=webp&quality=lossless&width=1000&height=1000"
+  },
+  "AUS": {
+    "name": "Austra",
+    "icao": "AUS",
+    "iata": "A7",
+    "country": "Australia",
+    "logo": "https://media.discordapp.net/attachments/1507493567776690296/1509396863231590552/Screenshot_2026-05-27_at_11.24.10_PM.png?ex=6a19af9f&is=6a185e1f&hm=49735a2e832d2db2b9ba6374a6e335a0d165b37b42e048a0950976eef3381eb8&=&format=webp&quality=lossless&width=1910&height=1648"
   }
 }
