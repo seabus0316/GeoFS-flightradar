@@ -282,34 +282,43 @@ const User = mongoose.model('User', userSchema);
 
 const TOTAL_FLIGHT_TIME_MEDALS = [
   {
-    medalId: 'time-bronze',
-    name: 'Bronze Time',
+    medalId: 'time-gray',
+    name: 'First Wing',
     description: 'Logged 1 hour of flight time',
     thresholdSeconds: 1 * 3600,
-    iconUrl: '/medals/time-brownse.png',
+    iconUrl: '/medals/time-gray.png',
+    tier: 'gray'
+  },
+  {
+    medalId: 'time-bronze',
+    name: 'Cloud Walker',
+    description: 'Logged 10 hours of flight time',
+    thresholdSeconds: 10 * 3600,
+    iconUrl: '/medals/time-bronze.png',
     tier: 'bronze'
   },
   {
     medalId: 'time-silver',
-    name: 'Silver Time',
-    description: 'Logged 10 hours of flight time',
-    thresholdSeconds: 10 * 3600,
+    name: 'Wind Breaker',
+    description: 'Logged 50 hours of flight time',
+    thresholdSeconds: 50 * 3600,
     iconUrl: '/medals/time-silver.png',
     tier: 'silver'
   },
   {
     medalId: 'time-gold',
-    name: 'Gold Time',
-    description: 'Logged 50 hours of flight time',
-    thresholdSeconds: 50 * 3600,
-    iconUrl: '/medals/time-gold.png',
-    tier: 'gold'
-  },
-  {
-    medalId: 'time-glow',
-    name: 'Aerial Veteran',
+    name: 'Apex Aviator',
     description: 'Logged 100 hours of flight time',
     thresholdSeconds: 100 * 3600,
+    iconUrl: '/medals/time-gold.png',
+    tier: 'gold'
+  }
+  ,
+  {
+    medalId: 'time-glow',
+    name: 'Eternal Astral',
+    description: 'Logged 300 hours of flight time',
+    thresholdSeconds: 300 * 3600,
     iconUrl: '/medals/time-glow.png',
     tier: 'glow'
   }

@@ -598,6 +598,8 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   width: 24px;
   height: 24px;
   object-fit: contain;
+  border-radius: 50%;
+  clip-path: circle(50%);
 }
 
 .profile-joined {
@@ -733,7 +735,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   width: 54px;
   height: 54px;
   flex: 0 0 54px;
-  object-fit: contain;
+  object-fit: cover;
+  border-radius: 50%;
+  clip-path: circle(50%);
 }
 
 .profile-medal-body {
