@@ -280,6 +280,60 @@ const userSchema = new mongoose.Schema({
 }, { versionKey: false });
 const User = mongoose.model('User', userSchema);
 
+const TOTAL_FLIGHT_TIME_MEDALS = [
+  {
+    medalId: 'time-bronze',
+    name: 'Bronze Time',
+    description: 'Logged 1 hour of flight time',
+    thresholdSeconds: 1 * 3600,
+    iconUrl: '/medals/time-brownse.png',
+    tier: 'bronze'
+  },
+  {
+    medalId: 'time-silver',
+    name: 'Silver Time',
+    description: 'Logged 10 hours of flight time',
+    thresholdSeconds: 10 * 3600,
+    iconUrl: '/medals/time-silver.png',
+    tier: 'silver'
+  },
+  {
+    medalId: 'time-gold',
+    name: 'Gold Time',
+    description: 'Logged 50 hours of flight time',
+    thresholdSeconds: 50 * 3600,
+    iconUrl: '/medals/time-gold.png',
+    tier: 'gold'
+  },
+  {
+    medalId: 'time-glow',
+    name: 'Aerial Veteran',
+    description: 'Logged 100 hours of flight time',
+    thresholdSeconds: 100 * 3600,
+    iconUrl: '/medals/time-glow.png',
+    tier: 'glow'
+  }
+];
+
+const medalSchema = new mongoose.Schema({
+  medalId:     { type: String, required: true },
+  name:        String,
+  description: String,
+  iconUrl:     String,
+  tier:        String,
+  metric:      Number,
+  unlockedAt:  { type: Date, default: Date.now },
+  featured:    { type: Boolean, default: false }
+}, { _id: false, versionKey: false });
+
+const medalInventorySchema = new mongoose.Schema({
+  discordId: { type: String, required: true, unique: true, index: true },
+  medals:    { type: [medalSchema], default: [] },
+  updatedAt: { type: Date, default: Date.now }
+}, { versionKey: false });
+
+const MedalInventory = mongoose.model('MedalInventory', medalInventorySchema);
+
 const adminAuditSchema = new mongoose.Schema({
   action:      { type: String, index: true },
   targetType:  { type: String, index: true },
@@ -486,6 +540,51 @@ async function upsertFlightHistoryFromSession(session, user = null) {
     { upsert: true }
   );
   return FlightHistory.findOne({ sessionId: history.sessionId }).lean();
+}
+
+async function recalculateTotalFlightTimeMedal(discordId) {
+  if (!discordId) return null;
+
+  const [stats] = await FlightHistory.aggregate([
+    { $match: { discordId } },
+    { $group: { _id: '$discordId', totalDuration: { $sum: '$duration' } } }
+  ]);
+  const totalDuration = Number(stats?.totalDuration || 0);
+
+  const existing = await MedalInventory.findOne({ discordId }).lean();
+  const previousById = new Map((existing?.medals || []).map(medal => [medal.medalId, medal]));
+  const previousFeaturedId = (existing?.medals || []).find(medal => medal.featured)?.medalId || null;
+
+  const medals = TOTAL_FLIGHT_TIME_MEDALS
+    .filter(definition => totalDuration >= definition.thresholdSeconds)
+    .map(definition => {
+      const previous = previousById.get(definition.medalId);
+      return {
+        medalId: definition.medalId,
+        name: definition.name,
+        description: definition.description,
+        iconUrl: definition.iconUrl,
+        tier: definition.tier,
+        metric: totalDuration,
+        unlockedAt: previous?.unlockedAt || new Date(),
+        featured: previousFeaturedId === definition.medalId
+      };
+    });
+
+  if (previousFeaturedId && !medals.some(medal => medal.featured)) {
+    medals.sort((a, b) => {
+      const aDef = TOTAL_FLIGHT_TIME_MEDALS.find(definition => definition.medalId === a.medalId);
+      const bDef = TOTAL_FLIGHT_TIME_MEDALS.find(definition => definition.medalId === b.medalId);
+      return (bDef?.thresholdSeconds || 0) - (aDef?.thresholdSeconds || 0);
+    });
+    if (medals[0]) medals[0].featured = true;
+  }
+
+  return MedalInventory.findOneAndUpdate(
+    { discordId },
+    { $set: { medals, updatedAt: new Date() } },
+    { new: true, upsert: true }
+  ).lean();
 }
 
 async function backfillFlightHistoryFromSessions() {
@@ -1375,9 +1474,12 @@ app.get('/api/users/geofs/:geofsUserId', async (req, res) => {
 
 app.get('/api/users/:discordId/medals', async (req, res) => {
   try {
-    const inventory = await MedalInventory.findOne({ discordId: req.params.discordId }).lean();
+    const inventory = await recalculateTotalFlightTimeMedal(req.params.discordId);
     res.json({ medals: inventory?.medals || [] });
-  } catch { res.status(500).json({ error: 'server error' }); }
+  } catch (err) {
+    console.error('[Medal] load error', err);
+    res.status(500).json({ error: 'server error' });
+  }
 });
 
 app.post('/api/user/medals/featured', authMiddleware, async (req, res) => {
@@ -1392,7 +1494,10 @@ app.post('/api/user/medals/featured', authMiddleware, async (req, res) => {
     });
     await inventory.save();
     res.json({ ok: true, medals: inventory.medals });
-  } catch { res.status(500).json({ error: 'server error' }); }
+  } catch (err) {
+    console.error('[Medal] featured update error', err);
+    res.status(500).json({ error: 'server error' });
+  }
 });
 
 app.post('/api/user/medals/recalculate', authMiddleware, async (req, res) => {
@@ -1400,7 +1505,10 @@ app.post('/api/user/medals/recalculate', authMiddleware, async (req, res) => {
     await recalculateTotalFlightTimeMedal(req.jwtUser.discordId);
     const inventory = await MedalInventory.findOne({ discordId: req.jwtUser.discordId }).lean();
     res.json({ ok: true, medals: inventory?.medals || [] });
-  } catch { res.status(500).json({ error: 'server error' }); }
+  } catch (err) {
+    console.error('[Medal] recalc error', err);
+    res.status(500).json({ error: 'server error' });
+  }
 });
 // ============ Flight History API Routes ============
 

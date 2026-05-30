@@ -169,6 +169,31 @@ const ProfileApp = (() => {
     return apiGet(`/api/flights/user/${encodeURIComponent(discordId)}?limit=${limit}`);
   }
 
+  async function loadMedals(discordId) {
+    if (!discordId) return [];
+    try {
+      const payload = await apiGet(`/api/users/${encodeURIComponent(discordId)}/medals`);
+      return Array.isArray(payload?.medals) ? payload.medals : [];
+    } catch (error) {
+      console.warn('Medals failed to load:', error);
+      return [];
+    }
+  }
+
+  async function setFeaturedMedal(medalId) {
+    const response = await fetch('/api/user/medals/featured', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ medalId })
+    });
+    if (!response.ok) {
+      const text = await response.text();
+      throw new Error(`${response.status} ${response.statusText}: ${text}`);
+    }
+    return response.json();
+  }
+
   function resolveAvatar(user) {
     if (user?.photos?.length) {
       return user.photos[0];
@@ -660,6 +685,121 @@ const ProfileApp = (() => {
       <div class="profile-status-tooltip-row"><span class="label">Activity</span><span class="value">${lastSeenLabel}</span></div>
     `;
   }
+
+  function createMedalCard(medal, isOwnProfile) {
+    const card = document.createElement('div');
+    card.className = `profile-medal-card${medal.featured ? ' featured' : ''}`;
+
+    const icon = document.createElement('img');
+    icon.className = 'profile-medal-icon';
+    icon.src = medal.iconUrl || '/medals/time-gray.png';
+    icon.alt = medal.name || 'Medal';
+    icon.loading = 'lazy';
+
+    const body = document.createElement('div');
+    body.className = 'profile-medal-body';
+
+    const title = document.createElement('div');
+    title.className = 'profile-medal-title';
+    title.textContent = medal.name || 'Medal';
+
+    const description = document.createElement('div');
+    description.className = 'profile-medal-description';
+    description.textContent = medal.description || 'Unlocked medal';
+
+    body.append(title, description);
+    card.append(icon, body);
+
+    if (medal.featured) {
+      const badge = document.createElement('span');
+      badge.className = 'profile-medal-featured-badge';
+      badge.textContent = 'Featured';
+      card.appendChild(badge);
+    } else if (isOwnProfile) {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'profile-medal-feature-button';
+      button.textContent = 'Feature';
+      button.addEventListener('click', async () => {
+        button.disabled = true;
+        try {
+          const payload = await setFeaturedMedal(medal.medalId);
+          state.medals = Array.isArray(payload?.medals) ? payload.medals : state.medals;
+          renderFeaturedMedal(state.medals);
+          renderMedalInventory(state.medals, true);
+        } catch (error) {
+          console.error(error);
+          alert('Failed to update featured medal.');
+          button.disabled = false;
+        }
+      });
+      card.appendChild(button);
+    }
+
+    return card;
+  }
+
+  function renderFeaturedMedal(medals) {
+    if (!DOM.featuredMedal) return;
+    DOM.featuredMedal.innerHTML = '';
+    const featured = (medals || []).find(medal => medal.featured);
+    if (!featured) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.className = 'profile-featured-medal';
+
+    const icon = document.createElement('img');
+    icon.src = featured.iconUrl || '/medals/time-gray.png';
+    icon.alt = featured.name || 'Featured medal';
+    icon.loading = 'lazy';
+
+    const label = document.createElement('span');
+    label.textContent = featured.name || 'Featured medal';
+
+    wrapper.append(icon, label);
+    DOM.featuredMedal.appendChild(wrapper);
+  }
+
+  function renderMedalInventory(medals, isOwnProfile) {
+    if (!DOM.medalInventory) return;
+    DOM.medalInventory.innerHTML = '';
+
+    const earned = Array.isArray(medals) ? medals : [];
+    if (!earned.length) {
+      const empty = document.createElement('div');
+      empty.className = 'profile-medal-empty';
+      empty.textContent = 'No medals earned yet.';
+      DOM.medalInventory.appendChild(empty);
+      return;
+    }
+
+    const grid = document.createElement('div');
+    grid.className = 'profile-medal-grid';
+    earned.forEach(medal => grid.appendChild(createMedalCard(medal, isOwnProfile)));
+    DOM.medalInventory.appendChild(grid);
+
+    if (isOwnProfile && earned.some(medal => medal.featured)) {
+      const clearButton = document.createElement('button');
+      clearButton.type = 'button';
+      clearButton.className = 'profile-medal-clear-button';
+      clearButton.textContent = 'Clear featured medal';
+      clearButton.addEventListener('click', async () => {
+        clearButton.disabled = true;
+        try {
+          const payload = await setFeaturedMedal('none');
+          state.medals = Array.isArray(payload?.medals) ? payload.medals : state.medals;
+          renderFeaturedMedal(state.medals);
+          renderMedalInventory(state.medals, true);
+        } catch (error) {
+          console.error(error);
+          alert('Failed to update featured medal.');
+          clearButton.disabled = false;
+        }
+      });
+      DOM.medalInventory.appendChild(clearButton);
+    }
+  }
+
 function renderProfileHeatmap(flights) {
   // 尋找你的 Heatmap 包裹容器（請確認你 HTML 中放網格的 div 的 id 或 class 叫什麼，這裡假設是 #profileHeatmapGrid）
   const container = document.getElementById('profileHeatmapGrid') || document.querySelector('.profile-heatmap-wrap');
@@ -980,16 +1120,18 @@ function applyCustomProfileSettings() {
     try {
       let stats = null;
       let flights = [];
+      let medals = [];
       if (state.discordId) {
-      [stats, flights, medals] = await Promise.all([
-        loadStats(state.discordId),
-        loadFlights(state.discordId, 200),
-        loadMedals(state.discordId)
-      ]);
-      state.medals = Array.isArray(medals) ? medals : [];
+        [stats, flights, medals] = await Promise.all([
+          loadStats(state.discordId),
+          loadFlights(state.discordId, 200),
+          loadMedals(state.discordId)
+        ]);
+        state.medals = Array.isArray(medals) ? medals : [];
       } else if (geofsUserId) {
         flights = await loadFlightsByGeofsId(geofsUserId, 200);
         stats = computeStatsFromFlights(flights);
+        state.medals = [];
       }
       state.user = targetUser;
       state.stats = stats;
@@ -1009,8 +1151,8 @@ function applyCustomProfileSettings() {
       renderNavActions(currentViewer, state.discordId);
       applyProfileCustomizations(Boolean(currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId));
       const isOwnProfile = Boolean(
-      currentViewer?.authenticated &&
-      currentViewer.user?.discordId === state.discordId
+        currentViewer?.authenticated &&
+        currentViewer.user?.discordId === state.discordId
       );
       renderFeaturedMedal(state.medals);
       renderMedalInventory(state.medals, isOwnProfile);

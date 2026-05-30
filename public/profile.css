@@ -580,6 +580,26 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 
 .profile-username .at { color: var(--pf-accent); }
 
+.profile-featured-medal {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 8px;
+  padding: 5px 10px;
+  border: 1px solid rgba(255, 213, 0, 0.28);
+  border-radius: 999px;
+  background: rgba(255, 213, 0, 0.08);
+  color: var(--pf-gold);
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-featured-medal img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .profile-joined {
   font-size: 11px;
   color: var(--pf-text-dim);
@@ -684,6 +704,108 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 .achievement-badge:hover .achievement-badge-tooltip { opacity: 1; }
+
+.profile-medal-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.profile-medal-card {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 82px;
+  padding: 12px;
+  border: 1px solid var(--pf-glass-border);
+  border-radius: var(--pf-radius-sm);
+  background: var(--pf-glass);
+  overflow: hidden;
+}
+
+.profile-medal-card.featured {
+  border-color: rgba(255, 213, 0, 0.36);
+  box-shadow: 0 0 18px rgba(255, 213, 0, 0.08);
+}
+
+.profile-medal-icon {
+  width: 54px;
+  height: 54px;
+  flex: 0 0 54px;
+  object-fit: contain;
+}
+
+.profile-medal-body {
+  min-width: 0;
+  flex: 1;
+}
+
+.profile-medal-title {
+  color: var(--pf-text);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.profile-medal-description {
+  color: var(--pf-text-muted);
+  font-size: 11px;
+  line-height: 1.35;
+  margin-top: 4px;
+}
+
+.profile-medal-featured-badge,
+.profile-medal-feature-button {
+  flex: 0 0 auto;
+  border-radius: 999px;
+  padding: 4px 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.profile-medal-featured-badge {
+  border: 1px solid rgba(255, 213, 0, 0.28);
+  color: var(--pf-gold);
+  background: rgba(255, 213, 0, 0.08);
+}
+
+.profile-medal-feature-button,
+.profile-medal-clear-button {
+  border: 1px solid rgba(0, 207, 255, 0.2);
+  background: rgba(0, 207, 255, 0.08);
+  color: var(--pf-accent);
+  font-family: var(--pf-font);
+  cursor: pointer;
+  transition: var(--pf-transition);
+}
+
+.profile-medal-feature-button:hover,
+.profile-medal-clear-button:hover {
+  border-color: var(--pf-accent);
+  background: rgba(0, 207, 255, 0.15);
+}
+
+.profile-medal-feature-button:disabled,
+.profile-medal-clear-button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.profile-medal-clear-button {
+  margin-top: 12px;
+  padding: 7px 12px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.profile-medal-empty {
+  padding: 14px 16px;
+  border: 1px dashed var(--pf-glass-border);
+  border-radius: var(--pf-radius-sm);
+  color: var(--pf-text-muted);
+  font-size: 13px;
+}
 
 /* ═══════════════════════
    STATS GRID
