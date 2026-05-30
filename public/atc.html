@@ -1216,7 +1216,7 @@
     <div id="flpBody"></div>
   </div>
 
-  <div id="pilotProfileModal" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;">
+  <div id="pilotProfileModal" tabindex="-1" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;">
     <div style="position:relative;width:min(560px,calc(100vw - 20px));max-height:90vh;overflow-y:auto;overflow-x:hidden;background:#07101b;border:1px solid rgba(255,255,255,0.10);border-radius:20px;box-shadow:0 28px 90px rgba(0,0,0,0.6);">
       <button id="pilotProfileClose" type="button" style="all:unset;position:sticky;float:right;top:10px;right:10px;z-index:10;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border-radius:50%;color:#fff;font-size:20px;cursor:pointer;margin:10px 10px 0 0;">×</button>
       <div id="pilotProfileContent" style="min-height:200px;color:#e2eef7;line-height:1.55;clear:both;"></div>
@@ -4456,6 +4456,7 @@ function _saveProfileSettings(modalId) {
 
       // Show loading
       modal.style.display = 'flex';
+      try { modal.focus({ preventScroll: true }); } catch { modal.focus(); }
       window._profileModalOpen = true;
       if (map && map.dragging) map.dragging.disable();
       if (map && map.scrollWheelZoom) map.scrollWheelZoom.disable();
@@ -4595,14 +4596,43 @@ function _saveProfileSettings(modalId) {
       setTimeout(() => _initProfileMap(visitedAirports), 80);
     }
 
-    document.addEventListener('click', (e) => {
-      if (e.target.id === 'pilotProfileModal' || e.target.id === 'pilotProfileClose') {
-        closePilotProfile();
-      }
-    });
+    function setupPilotProfileModalEventBoundary() {
+      const modal = document.getElementById('pilotProfileModal');
+      if (!modal || modal.dataset.boundaryReady === 'true') return;
+      modal.dataset.boundaryReady = 'true';
+
+      [
+        'pointerdown', 'pointerup', 'mousedown', 'mouseup',
+        'dblclick', 'contextmenu', 'wheel', 'touchstart', 'touchmove'
+      ].forEach(eventName => {
+        modal.addEventListener(eventName, event => {
+          event.stopPropagation();
+        });
+      });
+
+      modal.addEventListener('click', event => {
+        event.stopPropagation();
+        if (event.target === modal || event.target.id === 'pilotProfileClose') {
+          closePilotProfile();
+        }
+      });
+
+      modal.addEventListener('keydown', event => {
+        event.stopPropagation();
+        if (event.key === 'Escape') {
+          event.preventDefault();
+          closePilotProfile();
+        }
+      });
+    }
+
+    setupPilotProfileModalEventBoundary();
 
     document.addEventListener('keydown', (e) => {
       if (!window._profileModalOpen) return;
+      if (e.target.closest('#pilotProfileModal')) {
+        return;
+      }
       if (e.target.closest('input, textarea, select, button, a')) return;
       e.preventDefault();
       e.stopImmediatePropagation();
