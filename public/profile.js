@@ -12,7 +12,6 @@ const ProfileApp = (() => {
     displayName: document.getElementById('profileDisplayName'),
     username: document.getElementById('profileUsername'),
     joined: document.getElementById('profileJoined'),
-    achievements: document.getElementById('profileAchievements'),
     statsGrid: document.getElementById('profileStatsGrid'),
     heatmapCanvas: document.getElementById('profileHeatmapCanvas'),
     heatmapYear: document.getElementById('heatmapYear'),
@@ -432,44 +431,6 @@ const ProfileApp = (() => {
     } else {
       prompt('Copy this profile URL:', shareUrl);
     }
-  }
-
-  function buildAchievements(stats) {
-    const earned = [];
-    const totalFlights = stats.totalFlights || 0;
-    const totalDistance = stats.totalDistanceNm || 0;
-    const totalDuration = stats.totalDuration || 0;
-    const maxSpeed = stats.maxSpeed || 0;
-
-    earned.push({ icon: '🛫', label: 'First Flight', active: totalFlights >= 1, hint: 'Logged first flight' });
-    earned.push({ icon: '✈️', label: '10 Flights', active: totalFlights >= 10, hint: 'Completed 10 flights' });
-    earned.push({ icon: '🌍', label: '1,000 nm', active: totalDistance >= 1000, hint: 'Accumulated 1,000 nautical miles' });
-    earned.push({ icon: '⏱️', label: '25 Hours', active: totalDuration >= 25 * 3600, hint: 'Flown 25 hours' });
-
-    const badges = earned.map(item => {
-      const wrapper = document.createElement('div');
-      wrapper.className = 'achievement-badge' + (item.active ? '' : ' empty');
-      wrapper.innerHTML = `
-        <span>${item.icon}</span>
-        <div class="achievement-badge-tooltip">${item.label}<br><small>${item.hint}</small></div>
-      `;
-      return wrapper;
-    });
-
-    while (badges.length < 6) {
-      const placeholder = document.createElement('div');
-      placeholder.className = 'achievement-badge empty';
-      placeholder.textContent = '—';
-      badges.push(placeholder);
-    }
-
-    return badges;
-  }
-
-  function renderAchievements(stats) {
-    DOM.achievements.innerHTML = '';
-    const badges = buildAchievements(stats);
-    badges.forEach(badge => DOM.achievements.appendChild(badge));
   }
 
   function renderStats(stats, flights) {
@@ -1143,7 +1104,6 @@ function applyCustomProfileSettings() {
       if (state.heatmapYear > state.maxYear) state.heatmapYear = state.maxYear;
 
       renderHeader(state.user, state.stats, state.flights);
-      renderAchievements(state.stats);
       renderStats(state.stats, state.flights);
       renderFlights(state.flights);
       renderHeatmap(state.heatmapYear);

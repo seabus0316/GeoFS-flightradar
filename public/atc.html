@@ -3565,6 +3565,8 @@
       const pilotLabel = profileUserId
         ? (data.displayName || data.username || `GeoFS #${profileUserId}`)
         : 'Unknown pilot';
+      const featuredMedal = profileUserId ? await fetchFeaturedMedalByGeofsId(profileUserId) : null;
+      const aircraftPanelMedalHtml = renderFeaturedMedalBadge(featuredMedal, 'aircraft-panel');
 
       // 處理 flight plan
       let plan = data.flightPlan;
@@ -3819,6 +3821,7 @@
           <div style="margin-top:10px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
             <span style="font-size:11px;color:#8a9db0;text-transform:uppercase;letter-spacing:0.6px;">Pilot</span>
             <button id="pilotProfileButton" type="button" style="all:unset;cursor:pointer;color:#7ec8e3;font-weight:700;line-height:1;">${escapeHtml(pilotLabel)}</button>
+            ${aircraftPanelMedalHtml}
           </div>
         ` : ''}
       </div>
@@ -4132,6 +4135,7 @@
 
     // Pilot profile modal
     const pilotProfileCache = new Map();
+    const featuredMedalCache = new Map();
 
     async function fetchUserByGeofsId(userId) {
       if (!userId) return null;
@@ -4146,6 +4150,54 @@
         console.error('Failed to fetch pilot profile', err);
         return null;
       }
+    }
+
+    async function fetchFeaturedMedalByDiscordId(discordId) {
+      if (!discordId) return null;
+      const cacheKey = `discord:${discordId}`;
+      if (featuredMedalCache.has(cacheKey)) return featuredMedalCache.get(cacheKey);
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(discordId)}/medals`);
+        if (!res.ok) throw new Error(`Medals request failed: ${res.status}`);
+        const payload = await res.json();
+        const medal = (Array.isArray(payload?.medals) ? payload.medals : []).find(item => item.featured) || null;
+        featuredMedalCache.set(cacheKey, medal);
+        return medal;
+      } catch (err) {
+        console.warn('Failed to fetch featured medal', err);
+        featuredMedalCache.set(cacheKey, null);
+        return null;
+      }
+    }
+
+    async function fetchFeaturedMedalByGeofsId(userId) {
+      if (!userId) return null;
+      const cacheKey = `geofs:${userId}`;
+      if (featuredMedalCache.has(cacheKey)) return featuredMedalCache.get(cacheKey);
+      const user = await fetchUserByGeofsId(userId);
+      const medal = await fetchFeaturedMedalByDiscordId(user?.discordId);
+      featuredMedalCache.set(cacheKey, medal);
+      return medal;
+    }
+
+    function renderFeaturedMedalBadge(medal, variant = 'profile') {
+      if (!medal) return '';
+      const isPanel = variant === 'aircraft-panel';
+      const iconSize = isPanel ? 20 : 24;
+      const fontSize = isPanel ? 11 : 12;
+      const padding = isPanel ? '3px 8px 3px 4px' : '5px 10px 5px 5px';
+      return `
+        <span title="${escapeHtml(medal.description || medal.name || 'Featured medal')}"
+          style="display:inline-flex;align-items:center;gap:6px;max-width:100%;
+                 padding:${padding};border-radius:999px;
+                 background:rgba(255,213,0,0.10);border:1px solid rgba(255,213,0,0.28);
+                 color:#f5d77e;font-size:${fontSize}px;font-weight:800;line-height:1;">
+          <img src="${escapeHtml(medal.iconUrl || '/medals/time-gray.png')}" alt=""
+            style="width:${iconSize}px;height:${iconSize}px;border-radius:50%;clip-path:circle(50%);object-fit:cover;flex:0 0 ${iconSize}px;"
+            onerror="this.style.display='none'">
+          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(medal.name || 'Featured medal')}</span>
+        </span>
+      `;
     }
 
     function closePilotProfile() {
@@ -4429,6 +4481,8 @@ function _saveProfileSettings(modalId) {
       const displayName = user?.displayName || `GeoFS #${userId}`;
       const username = user?.username || '';
       const discordId = user?.discordId || '';
+      const featuredMedal = discordId ? await fetchFeaturedMedalByDiscordId(discordId) : null;
+      const profileFeaturedMedalHtml = renderFeaturedMedalBadge(featuredMedal, 'profile');
 
       // Avatar URL
       const avatarSrc = (discordId && user?.avatar)
@@ -4492,6 +4546,7 @@ function _saveProfileSettings(modalId) {
               <div style="font-size:19px;font-weight:800;color:#fff;line-height:1.15;">${escapeHtml(displayName)}</div>
               ${username ? `<div style="font-size:12px;color:#4a6a80;margin-top:1px;">@${escapeHtml(username)}</div>` : ''}
               ${!discordId ? `<div style="font-size:11px;color:#4a6070;margin-top:2px;">GeoFS ID: ${escapeHtml(String(userId))}</div>` : ''}
+              ${profileFeaturedMedalHtml ? `<div style="display:flex;margin-top:8px;">${profileFeaturedMedalHtml}</div>` : ''}
             </div>
           </div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;">${tags}</div>` : ''}
