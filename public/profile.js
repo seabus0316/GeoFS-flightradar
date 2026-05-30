@@ -23,7 +23,9 @@ const ProfileApp = (() => {
     mapContainer: document.getElementById('profileWorldMap'),
     mapStats: document.getElementById('profileMapStats'),
     flightsList: document.getElementById('profileFlightsList'),
-    navActions: document.getElementById('profileNavActions')
+    navActions: document.getElementById('profileNavActions'),
+    featuredMedal:  document.getElementById('profileFeaturedMedal'),   // 新增
+    medalInventory: document.getElementById('profileMedalInventory'),
   };
 
   const state = {
@@ -38,7 +40,8 @@ const ProfileApp = (() => {
     heatmapSeries: {},
     map: null,
     tileLayer: null,
-    airportMarkers: []
+    airportMarkers: [],
+    medals: [] 
   };
 
   const DEFAULT_AVATAR = 'https://i.ibb.co/Tg6mDts/default-avatar.png';
@@ -978,10 +981,12 @@ function applyCustomProfileSettings() {
       let stats = null;
       let flights = [];
       if (state.discordId) {
-        [stats, flights] = await Promise.all([
-          loadStats(state.discordId),
-          loadFlights(state.discordId, 200)
-        ]);
+      [stats, flights, medals] = await Promise.all([
+        loadStats(state.discordId),
+        loadFlights(state.discordId, 200),
+        loadMedals(state.discordId)
+      ]);
+      state.medals = Array.isArray(medals) ? medals : [];
       } else if (geofsUserId) {
         flights = await loadFlightsByGeofsId(geofsUserId, 200);
         stats = computeStatsFromFlights(flights);
@@ -1003,6 +1008,12 @@ function applyCustomProfileSettings() {
       setupHeatmapListeners();
       renderNavActions(currentViewer, state.discordId);
       applyProfileCustomizations(Boolean(currentViewer?.authenticated && currentViewer.user?.discordId === state.discordId));
+      const isOwnProfile = Boolean(
+      currentViewer?.authenticated &&
+      currentViewer.user?.discordId === state.discordId
+      );
+      renderFeaturedMedal(state.medals);
+      renderMedalInventory(state.medals, isOwnProfile);
 
       showContent();
       configureLeafletIcons();

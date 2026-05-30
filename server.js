@@ -358,6 +358,7 @@ mongoose.connect(MONGODB_URI)
     await FlightHistory.collection.createIndex({ sessionId: 1 }, { unique: true, sparse: true });
     await User.collection.createIndex({ discordId: 1 }, { unique: true });
     await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
+    await MedalInventory.collection.createIndex({ discordId: 1 }, { unique: true });
     console.log('✅ MongoDB indexes created');
     await maintainFlightSessions();
     await backfillFlightHistoryFromSessions();
@@ -777,6 +778,11 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     aircrafts.delete(aircraftId);
     alertedSquawks.delete(aircraftId);
     waypointState.delete(aircraftId);
+    if (user?.discordId) {
+  recalculateTotalFlightTimeMedal(user.discordId).catch(e =>
+    console.error('[Medal] background recalc error', e)
+  );
+}
 
     // Discord 飛行完成通報（飛行時間 > 2 分鐘才通報）
     if (FLIGHT_WEBHOOK_URL && duration >= 120) {
@@ -1365,7 +1371,37 @@ app.get('/api/users/geofs/:geofsUserId', async (req, res) => {
     res.json(user);
   } catch { res.status(500).json({ error: 'server error' }); }
 });
+// ── Medal API ──────────────────────────────────────────────────────────
 
+app.get('/api/users/:discordId/medals', async (req, res) => {
+  try {
+    const inventory = await MedalInventory.findOne({ discordId: req.params.discordId }).lean();
+    res.json({ medals: inventory?.medals || [] });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+app.post('/api/user/medals/featured', authMiddleware, async (req, res) => {
+  try {
+    const { medalId } = req.body;
+    const { discordId } = req.jwtUser;
+    const inventory = await MedalInventory.findOne({ discordId });
+    if (!inventory) return res.status(404).json({ error: 'No medals found' });
+    const targetId = (medalId && medalId !== 'none') ? medalId : null;
+    inventory.medals.forEach(m => {
+      m.featured = Boolean(targetId && m.medalId === targetId);
+    });
+    await inventory.save();
+    res.json({ ok: true, medals: inventory.medals });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
+
+app.post('/api/user/medals/recalculate', authMiddleware, async (req, res) => {
+  try {
+    await recalculateTotalFlightTimeMedal(req.jwtUser.discordId);
+    const inventory = await MedalInventory.findOne({ discordId: req.jwtUser.discordId }).lean();
+    res.json({ ok: true, medals: inventory?.medals || [] });
+  } catch { res.status(500).json({ error: 'server error' }); }
+});
 // ============ Flight History API Routes ============
 
 // 所有歷史飛行（含分頁 & 篩選）
