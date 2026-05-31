@@ -1645,6 +1645,7 @@ app.get('/api/flights/history', async (req, res) => {
     const filter = {};
     if (req.query.callsign)  filter.callsign  = new RegExp(req.query.callsign, 'i');
     if (req.query.discordId) filter.discordId = req.query.discordId;
+    if (req.query.geofsUserId) filter.geofsUserId = String(req.query.geofsUserId).trim();
     if (req.query.departure) filter.departure = req.query.departure.toUpperCase();
     if (req.query.arrival)   filter.arrival   = req.query.arrival.toUpperCase();
 
