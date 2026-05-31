@@ -1824,7 +1824,71 @@ app.patch('/admin/users/:discordId/geofs', requireAdmin, async (req, res) => {
     res.status(500).json({ error: 'server error' });
   }
 });
+// ============ Admin: 直接為未登入過的玩家建立 link ============
+app.post('/admin/users/create-link', requireAdmin, async (req, res) => {
+  try {
+    const discordId   = String(req.body.discordId   || '').trim();
+    const geofsUserId = String(req.body.geofsUserId || '').trim();
 
+    if (!discordId)   return res.status(400).json({ error: 'discordId required' });
+    if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
+    if (!/^\d+$/.test(discordId))   return res.status(400).json({ error: 'discordId must be numbers' });
+    if (!/^\d+$/.test(geofsUserId)) return res.status(400).json({ error: 'geofsUserId must be numbers' });
+
+    // 檢查 GeoFS ID 是否被別人占用
+    const takenByGeofs = await User.findOne({
+      geofsUserId,
+      discordId: { $ne: discordId }
+    }).select('discordId username displayName geofsUserId').lean();
+    if (takenByGeofs) {
+      return res.status(409).json({
+        error: 'GeoFS ID is already linked to another user',
+        user: takenByGeofs
+      });
+    }
+
+    const admin = getAdminActor(req);
+    const before = await User.findOne({ discordId })
+      .select('discordId username displayName geofsUserId linkedAt').lean();
+
+    // upsert：若玩家之後正常登入，OAuth 不會覆蓋 geofsUserId（$set 不含它）
+    const user = await User.findOneAndUpdate(
+      { discordId },
+      {
+        $set: {
+          geofsUserId,
+          linkedAt: new Date(),
+          geofsUpdatedBy: {
+            ...admin,
+            previousGeofsUserId: before?.geofsUserId || null,
+            at: new Date()
+          }
+        },
+        $setOnInsert: {
+          username:    discordId,         // 暫用 discordId 當 placeholder
+          displayName: `User ${discordId}`,
+          photos:      [],
+          apiKey:      generateApiKey(),
+          createdAt:   new Date()
+        }
+      },
+      { upsert: true, new: true }
+    ).select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy').lean();
+
+    await logAdminAction(req, {
+      action: before ? 'user.geofs.admin-update' : 'user.geofs.admin-create',
+      targetType: 'user',
+      targetId: discordId,
+      before: { geofsUserId: before?.geofsUserId || null },
+      after:  { geofsUserId }
+    });
+
+    res.json({ ok: true, created: !before, user });
+  } catch (err) {
+    console.error('Admin create-link error:', err);
+    res.status(500).json({ error: err.message || 'server error' });
+  }
+});
 app.get('/admin/photos/pending', requireAdmin, async (req, res) => {
   try { res.json(await Photo.find({ status: 'pending' }).sort({ createdAt: -1 })); }
   catch { res.status(500).json({ error: 'server error' }); }

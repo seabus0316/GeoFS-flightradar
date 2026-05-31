@@ -298,7 +298,18 @@
       <div id="auditStatus" class="status"></div>
       <div id="auditResults"></div>
     </section>
-
+<section class="admin-section">
+  <h2>Direct Link (New Player)</h2>
+  <p style="color:#8b949e;font-size:13px;margin:0 0 12px;">
+Manually link geofs ID
+  </p>
+  <div class="user-tools">
+    <input id="newDiscordId"   type="text" inputmode="numeric" placeholder="Discord ID（純數字）" style="min-width:200px;">
+    <input id="newGeofsId"     type="text" inputmode="numeric" placeholder="GeoFS ID（純數字）"  style="min-width:160px;">
+    <button onclick="createLink()">Link</button>
+  </div>
+  <div id="createLinkStatus" class="status"></div>
+</section>
     <h2>Pending Photos</h2>
     <div id="photos"></div>
   </div>
@@ -385,7 +396,39 @@
         box.appendChild(div);
       });
     }
+    function setCreateLinkStatus(message, kind = '') {
+  const el = document.getElementById('createLinkStatus');
+  el.textContent = message;
+  el.className = `status ${kind}`.trim();
+}
 
+async function createLink() {
+  const discordId   = document.getElementById('newDiscordId').value.trim();
+  const geofsUserId = document.getElementById('newGeofsId').value.trim();
+
+  if (!/^\d+$/.test(discordId))   return setCreateLinkStatus('Discord ID 必須是純數字。', 'err');
+  if (!/^\d+$/.test(geofsUserId)) return setCreateLinkStatus('GeoFS ID 必須是純數字。', 'err');
+
+  setCreateLinkStatus('Processing...');
+  const res = await fetch('/admin/users/create-link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    credentials: 'same-origin',
+    body: JSON.stringify({ discordId, geofsUserId })
+  });
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) return setCreateLinkStatus(data.error || 'Failed.', 'err');
+
+  const verb = data.created ? 'Created' : 'Updated';
+  setCreateLinkStatus(
+    `${verb}: Discord ${data.user.discordId} ↔ GeoFS ${data.user.geofsUserId}`,
+    'ok'
+  );
+  document.getElementById('newDiscordId').value = '';
+  document.getElementById('newGeofsId').value   = '';
+  loadAudit();
+}
     function escapeHtml(value) {
       return String(value || '').replace(/[&<>"']/g, ch => ({
         '&': '&amp;',
