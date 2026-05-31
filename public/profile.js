@@ -982,8 +982,8 @@ function applyCustomProfileSettings() {
         worldCopyJump: true,
         zoomControl: false
       }).setView([20, 0], 2);
-      state.tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
+      state.tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+        attribution: '© CartoDB'
       }).addTo(state.map);
     }
 
