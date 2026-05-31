@@ -323,7 +323,48 @@ const TOTAL_FLIGHT_TIME_MEDALS = [
     tier: 'glow'
   }
 ];
-
+const VISITED_AIRPORTS_MEDALS = [
+  {
+    medalId: 'visited-gray',
+    name: 'First Departure',
+    description: 'Visited 5 airports',
+    thresholdCount: 5,
+    iconUrl: '/medals/visited-gray.png',
+    tier: 'gray'
+  },
+  {
+    medalId: 'visited-bronze',
+    name: 'Constellation Track',
+    description: 'Visited 10 airports',
+    thresholdCount: 10,
+    iconUrl: '/medals/visited-bronze.png',
+    tier: 'bronze'
+  },
+  {
+    medalId: 'visited-silver',
+    name: 'Global Tide',
+    description: 'Visited 50 airports',
+    thresholdCount: 50,
+    iconUrl: '/medals/visited-silver.png',
+    tier: 'silver'
+  },
+  {
+    medalId: 'visited-gold',
+    name: 'Boundless Horizon',
+    description: 'Visited 100 airports',
+    thresholdCount: 100,
+    iconUrl: '/medals/visited-gold.png',
+    tier: 'gold'
+  },
+  {
+    medalId: 'visited-glow',
+    name: 'Universal Vault',
+    description: 'Visited 200 airports',
+    thresholdCount: 200,
+    iconUrl: '/medals/visited-glow.png',
+    tier: 'glow'
+  }
+];
 const medalSchema = new mongoose.Schema({
   medalId:     { type: String, required: true },
   name:        String,
@@ -553,49 +594,124 @@ async function upsertFlightHistoryFromSession(session, user = null) {
 
 async function recalculateTotalFlightTimeMedal(discordId) {
   if (!discordId) return null;
-
+ 
   const [stats] = await FlightHistory.aggregate([
     { $match: { discordId } },
     { $group: { _id: '$discordId', totalDuration: { $sum: '$duration' } } }
   ]);
   const totalDuration = Number(stats?.totalDuration || 0);
-
+ 
   const existing = await MedalInventory.findOne({ discordId }).lean();
-  const previousById = new Map((existing?.medals || []).map(medal => [medal.medalId, medal]));
-  const previousFeaturedId = (existing?.medals || []).find(medal => medal.featured)?.medalId || null;
-
-  const medals = TOTAL_FLIGHT_TIME_MEDALS
-    .filter(definition => totalDuration >= definition.thresholdSeconds)
-    .map(definition => {
-      const previous = previousById.get(definition.medalId);
+  const previousById        = new Map((existing?.medals || []).map(m => [m.medalId, m]));
+  const previousFeaturedId  = (existing?.medals || []).find(m => m.featured)?.medalId || null;
+  // 精選狀態只在本類別（time-*）內有效
+  const featuredIsHere      = previousFeaturedId?.startsWith('time-') ?? false;
+ 
+  const timeMedals = TOTAL_FLIGHT_TIME_MEDALS
+    .filter(def => totalDuration >= def.thresholdSeconds)
+    .map(def => {
+      const prev = previousById.get(def.medalId);
       return {
-        medalId: definition.medalId,
-        name: definition.name,
-        description: definition.description,
-        iconUrl: definition.iconUrl,
-        tier: definition.tier,
-        metric: totalDuration,
-        unlockedAt: previous?.unlockedAt || new Date(),
-        featured: previousFeaturedId === definition.medalId
+        medalId:     def.medalId,
+        name:        def.name,
+        description: def.description,
+        iconUrl:     def.iconUrl,
+        tier:        def.tier,
+        metric:      totalDuration,
+        unlockedAt:  prev?.unlockedAt || new Date(),
+        featured:    featuredIsHere && previousFeaturedId === def.medalId
       };
     });
-
-  if (previousFeaturedId && !medals.some(medal => medal.featured)) {
-    medals.sort((a, b) => {
-      const aDef = TOTAL_FLIGHT_TIME_MEDALS.find(definition => definition.medalId === a.medalId);
-      const bDef = TOTAL_FLIGHT_TIME_MEDALS.find(definition => definition.medalId === b.medalId);
+ 
+  // 精選的 time medal 不再達標時（極罕見），自動改精選最高等級
+  if (featuredIsHere && !timeMedals.some(m => m.featured)) {
+    timeMedals.sort((a, b) => {
+      const aDef = TOTAL_FLIGHT_TIME_MEDALS.find(d => d.medalId === a.medalId);
+      const bDef = TOTAL_FLIGHT_TIME_MEDALS.find(d => d.medalId === b.medalId);
       return (bDef?.thresholdSeconds || 0) - (aDef?.thresholdSeconds || 0);
     });
-    if (medals[0]) medals[0].featured = true;
+    if (timeMedals[0]) timeMedals[0].featured = true;
   }
-
+ 
+  // 保留非 time-* 類別的 medals（如 visited-*），只替換 time-* 部分
+  const otherMedals  = (existing?.medals || []).filter(m => !m.medalId.startsWith('time-'));
+  const mergedMedals = [...otherMedals, ...timeMedals];
+ 
   return MedalInventory.findOneAndUpdate(
     { discordId },
-    { $set: { medals, updatedAt: new Date() } },
+    { $set: { medals: mergedMedals, updatedAt: new Date() } },
     { new: true, upsert: true }
   ).lean();
 }
-
+async function recalculateVisitedAirportsMedal(discordId) {
+  if (!discordId) return null;
+ 
+  // 統計所有飛行紀錄中的唯一機場代碼
+  const flights = await FlightHistory.find(
+    { discordId },
+    { departure: 1, arrival: 1, _id: 0 }
+  ).lean();
+ 
+  const INVALID_CODES = new Set(['', 'N/A', 'UNK', 'UNKNOWN', '?', '-', 'NONE', 'NULL']);
+  const visitedSet = new Set();
+  for (const f of flights) {
+    for (const code of [f.departure, f.arrival]) {
+      if (!code) continue;
+      const normalized = String(code).trim().toUpperCase();
+      if (normalized.length >= 3 && !INVALID_CODES.has(normalized)) {
+        visitedSet.add(normalized);
+      }
+    }
+  }
+  const uniqueAirportCount = visitedSet.size;
+ 
+  const existing = await MedalInventory.findOne({ discordId }).lean();
+  const previousById       = new Map((existing?.medals || []).map(m => [m.medalId, m]));
+  const previousFeaturedId = (existing?.medals || []).find(m => m.featured)?.medalId || null;
+  const featuredIsHere     = previousFeaturedId?.startsWith('visited-') ?? false;
+ 
+  const visitedMedals = VISITED_AIRPORTS_MEDALS
+    .filter(def => uniqueAirportCount >= def.thresholdCount)
+    .map(def => {
+      const prev = previousById.get(def.medalId);
+      return {
+        medalId:     def.medalId,
+        name:        def.name,
+        description: def.description,
+        iconUrl:     def.iconUrl,
+        tier:        def.tier,
+        metric:      uniqueAirportCount,
+        unlockedAt:  prev?.unlockedAt || new Date(),
+        featured:    featuredIsHere && previousFeaturedId === def.medalId
+      };
+    });
+ 
+  if (featuredIsHere && !visitedMedals.some(m => m.featured)) {
+    visitedMedals.sort((a, b) => {
+      const aDef = VISITED_AIRPORTS_MEDALS.find(d => d.medalId === a.medalId);
+      const bDef = VISITED_AIRPORTS_MEDALS.find(d => d.medalId === b.medalId);
+      return (bDef?.thresholdCount || 0) - (aDef?.thresholdCount || 0);
+    });
+    if (visitedMedals[0]) visitedMedals[0].featured = true;
+  }
+ 
+  // 保留非 visited-* 類別的 medals，只替換 visited-* 部分
+  const otherMedals  = (existing?.medals || []).filter(m => !m.medalId.startsWith('visited-'));
+  const mergedMedals = [...otherMedals, ...visitedMedals];
+ 
+  return MedalInventory.findOneAndUpdate(
+    { discordId },
+    { $set: { medals: mergedMedals, updatedAt: new Date() } },
+    { new: true, upsert: true }
+  ).lean();
+}
+ 
+// 統一入口：一次重算所有 Medal 類別
+async function recalculateAllMedals(discordId) {
+  if (!discordId) return null;
+  await recalculateTotalFlightTimeMedal(discordId);
+  return recalculateVisitedAirportsMedal(discordId); // 回傳最終 inventory
+}
 async function backfillFlightHistoryFromSessions() {
   try {
     let copied = 0;
@@ -887,7 +1003,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     alertedSquawks.delete(aircraftId);
     waypointState.delete(aircraftId);
     if (user?.discordId) {
-  recalculateTotalFlightTimeMedal(user.discordId).catch(e =>
+  recalculateAllMedals(user.discordId).catch(e =>
     console.error('[Medal] background recalc error', e)
   );
 }
@@ -1483,7 +1599,7 @@ app.get('/api/users/geofs/:geofsUserId', async (req, res) => {
 
 app.get('/api/users/:discordId/medals', async (req, res) => {
   try {
-    const inventory = await recalculateTotalFlightTimeMedal(req.params.discordId);
+    const inventory = await recalculateAllMedals(req.params.discordId);
     res.json({ medals: inventory?.medals || [] });
   } catch (err) {
     console.error('[Medal] load error', err);
@@ -1511,7 +1627,7 @@ app.post('/api/user/medals/featured', authMiddleware, async (req, res) => {
 
 app.post('/api/user/medals/recalculate', authMiddleware, async (req, res) => {
   try {
-    await recalculateTotalFlightTimeMedal(req.jwtUser.discordId);
+    await recalculateAllMedals(req.jwtUser.discordId);
     const inventory = await MedalInventory.findOne({ discordId: req.jwtUser.discordId }).lean();
     res.json({ ok: true, medals: inventory?.medals || [] });
   } catch (err) {
