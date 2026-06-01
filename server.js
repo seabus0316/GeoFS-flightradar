@@ -252,6 +252,10 @@ const DISCONNECT_FINALIZE_GRACE_MS = 90 * 1000;
 const COMPLETION_GROUND_ALT_FT = 150;
 const COMPLETION_GROUND_SPEED_KTS = 40;
 const COMPLETION_STABLE_POINTS = 3;
+const RECORD_ALTITUDE_MIN_FT = -1500;
+const RECORD_ALTITUDE_MAX_FT = 100000;
+const RECORD_SPEED_MIN_KTS = 0;
+const RECORD_SPEED_MAX_KTS = 2500;
 const pendingFlightFinalizations = new Map();
 
 // ✅ 新增：Discord 用戶帳號
@@ -491,9 +495,36 @@ function simplifyTrack(track, maxPoints = 1000) {
   return simplified;
 }
 
+function isRecordAltitude(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= RECORD_ALTITUDE_MIN_FT && num <= RECORD_ALTITUDE_MAX_FT;
+}
+
+function isRecordSpeed(value) {
+  const num = Number(value);
+  return Number.isFinite(num) && num >= RECORD_SPEED_MIN_KTS && num <= RECORD_SPEED_MAX_KTS;
+}
+
+function sanitizeRecordAltitude(value) {
+  return isRecordAltitude(value) ? Number(value) : null;
+}
+
+function sanitizeRecordSpeed(value) {
+  return isRecordSpeed(value) ? Number(value) : null;
+}
+
+function sanitizeFlightHistoryRecord(record) {
+  if (!record) return record;
+  return {
+    ...record,
+    maxAlt: sanitizeRecordAltitude(record.maxAlt) ?? 0,
+    maxSpeed: sanitizeRecordSpeed(record.maxSpeed) ?? 0
+  };
+}
+
 function buildSessionTrackSnapshot(track) {
   return simplifyTrack(track, SESSION_SNAPSHOT_MAX_POINTS)
-    .map(({ lat, lon, alt, ts }) => ({ lat, lon, alt, ts }));
+    .map(({ lat, lon, alt, ts }) => ({ lat, lon, alt: sanitizeRecordAltitude(alt) ?? 0, ts }));
 }
 
 function getFlightSessionExpiryDate(baseTime) {
@@ -514,10 +545,14 @@ function inferFlightCompletionStatus(docs, requestedStatus = 'completed') {
   if (!Array.isArray(docs) || docs.length < COMPLETION_STABLE_POINTS) return 'aborted';
 
   const tail = docs.slice(-COMPLETION_STABLE_POINTS);
-  const grounded = tail.every(point =>
-    Number(point.alt || 0) <= COMPLETION_GROUND_ALT_FT &&
-    Number(point.speed || 0) <= COMPLETION_GROUND_SPEED_KTS
-  );
+  const grounded = tail.every(point => {
+    const alt = Number(point.alt);
+    const speed = Number(point.speed);
+    return Number.isFinite(alt) &&
+      Number.isFinite(speed) &&
+      alt <= COMPLETION_GROUND_ALT_FT &&
+      speed <= COMPLETION_GROUND_SPEED_KTS;
+  });
 
   return grounded ? 'completed' : 'aborted';
 }
@@ -568,8 +603,8 @@ function buildFlightHistoryDocument(session, user = null) {
     takeoffTime: session.startTime || null,
     landingTime: session.endTime || null,
     duration:    session.duration || 0,
-    maxAlt:      session.maxAlt || 0,
-    maxSpeed:    session.maxSpeed || 0,
+    maxAlt:      sanitizeRecordAltitude(session.maxAlt) ?? 0,
+    maxSpeed:    sanitizeRecordSpeed(session.maxSpeed) ?? 0,
     distanceNm:  session.distanceNm || 0,
     status:      session.status || 'completed',
     landingQuality: session.landingQuality || null
@@ -905,7 +940,11 @@ async function loadReplayMetaForAircraft(aircraftId, startTime, endTime) {
 
 async function saveFlightPoint(pt) {
   try {
-    await FlightPoint.create(pt);
+    await FlightPoint.create({
+      ...pt,
+      alt: sanitizeRecordAltitude(pt.alt),
+      speed: sanitizeRecordSpeed(pt.speed)
+    });
     const now = Date.now();
     if (now - lastFlightPointPruneAt >= PRUNE_INTERVAL_MS) {
       lastFlightPointPruneAt = now;
@@ -968,8 +1007,8 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     let distanceNm = 0, maxAlt = 0, maxSpeed = 0;
     for (let i = 1; i < docs.length; i++) {
       distanceNm += haversineNm(docs[i - 1].lat, docs[i - 1].lon, docs[i].lat, docs[i].lon);
-      if (docs[i].alt)   maxAlt   = Math.max(maxAlt,   docs[i].alt);
-      if (docs[i].speed) maxSpeed = Math.max(maxSpeed, docs[i].speed);
+      if (isRecordAltitude(docs[i].alt)) maxAlt = Math.max(maxAlt, Number(docs[i].alt));
+      if (isRecordSpeed(docs[i].speed)) maxSpeed = Math.max(maxSpeed, Number(docs[i].speed));
     }
     distanceNm = Math.round(distanceNm);
 
@@ -1573,7 +1612,7 @@ app.get('/api/my-flights', authMiddleware, async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 50, 200);
     const flights = await FlightHistory.find({ discordId: user.discordId })
       .sort({ startTime: -1 }).limit(limit).lean();
-    res.json(flights);
+    res.json(flights.map(sanitizeFlightHistoryRecord));
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
@@ -1653,7 +1692,7 @@ app.get('/api/flights/history', async (req, res) => {
       FlightHistory.find(filter).sort({ startTime: -1 }).skip(page * limit).limit(limit).lean(),
       FlightHistory.countDocuments(filter)
     ]);
-    res.json({ flights, total, page, limit, pages: Math.ceil(total / limit) });
+    res.json({ flights: flights.map(sanitizeFlightHistoryRecord), total, page, limit, pages: Math.ceil(total / limit) });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
@@ -1663,7 +1702,7 @@ app.get('/api/flights/user/:discordId', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const flights = await FlightHistory.find({ discordId: req.params.discordId })
       .sort({ startTime: -1 }).limit(limit).lean();
-    res.json(flights);
+    res.json(flights.map(sanitizeFlightHistoryRecord));
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
@@ -1673,7 +1712,7 @@ app.get('/api/flights/geofs/:geofsUserId', async (req, res) => {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
     const flights = await FlightHistory.find({ geofsUserId: req.params.geofsUserId })
       .sort({ startTime: -1 }).limit(limit).lean();
-    res.json(flights);
+    res.json(flights.map(sanitizeFlightHistoryRecord));
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
@@ -1684,7 +1723,7 @@ app.get('/api/flights/:sessionId', async (req, res) => {
       await FlightHistory.findById(req.params.sessionId).lean() ||
       await FlightSession.findById(req.params.sessionId).lean();
     if (!flight) return res.status(404).json({ error: 'not found' });
-    res.json(flight);
+    res.json(sanitizeFlightHistoryRecord(flight));
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
@@ -1698,8 +1737,22 @@ app.get('/api/flights/stats/:discordId', async (req, res) => {
         totalFlights:    { $sum: 1 },
         totalDistanceNm: { $sum: '$distanceNm' },
         totalDuration:   { $sum: '$duration' },
-        maxAlt:          { $max: '$maxAlt' },
-        maxSpeed:        { $max: '$maxSpeed' }
+        maxAlt:          { $max: { $cond: [
+          { $and: [
+            { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
+            { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
+          ] },
+          '$maxAlt',
+          0
+        ] } },
+        maxSpeed:        { $max: { $cond: [
+          { $and: [
+            { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
+            { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
+          ] },
+          '$maxSpeed',
+          0
+        ] } }
       }}
     ]);
     res.json(stats[0] || { totalFlights: 0, totalDistanceNm: 0, totalDuration: 0 });

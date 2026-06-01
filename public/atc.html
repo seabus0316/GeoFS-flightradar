@@ -1333,7 +1333,10 @@
 
     // 嘗試取得登入用戶，讓 history tab 預設顯示自己的紀錄
     fetch("/api/user/me").then(r => r.ok ? r.json() : null).then(u => {
-      if (u && u.authenticated) window._myDiscordId = u.user.discordId;
+      if (u && u.authenticated) {
+        window._myDiscordId = u.user.discordId;
+        window._myGeofsUserId = u.user.geofsUserId || null;
+      }
     }).catch(() => { });
 
     // Get logo URL directly from airlines.json "logo" field
@@ -4482,20 +4485,29 @@ function _saveProfileSettings(modalId) {
       const displayName = user?.displayName || `GeoFS #${userId}`;
       const username = user?.username || '';
       const discordId = user?.discordId || '';
+      const fullProfileParams = new URLSearchParams();
+      if (discordId) fullProfileParams.set('discordId', discordId);
+      else fullProfileParams.set('geofsUserId', String(userId));
+      const fullProfileUrl = `/profile.html?${fullProfileParams.toString()}`;
       const featuredMedal = discordId ? await fetchFeaturedMedalByDiscordId(discordId) : null;
       const profileFeaturedMedalHtml = renderFeaturedMedalBadge(featuredMedal, 'profile');
-
-      // Avatar URL
-      const avatarSrc = (discordId && user?.avatar)
-        ? `https://cdn.discordapp.com/avatars/${discordId}/${user.avatar}.png?size=128`
-        : `https://cdn.discordapp.com/embed/avatars/${(userId.charCodeAt?.(userId.length - 1) || 0) % 6}.png`;
 
       // Is this user currently flying?
       const isFlying = typeof aircrafts !== 'undefined' && [...aircrafts.values()]
         .some(obj => String(obj.data?.userId) === String(userId) || String(obj.data?.geofsUserId) === String(userId));
 
       // Is this the logged-in user?
-      const isOwnProfile = window._myGeofsUserId && String(window._myGeofsUserId) === String(userId);
+      const isOwnProfile =
+        (window._myGeofsUserId && String(window._myGeofsUserId) === String(userId)) ||
+        (discordId && window._myDiscordId && String(window._myDiscordId) === String(discordId));
+
+      // Avatar URL
+      const savedAvatar = isOwnProfile ? (localStorage.getItem('cfg_avatar') || '').trim() : '';
+      const avatarSrc = savedAvatar
+        || (Array.isArray(user?.photos) && user.photos[0])
+        || ((discordId && user?.avatar)
+          ? `https://cdn.discordapp.com/avatars/${discordId}/${user.avatar}.png?size=128`
+          : `https://cdn.discordapp.com/embed/avatars/${(userId.charCodeAt?.(userId.length - 1) || 0) % 6}.png`);
 
       // Stats
       const totalFlights = flights.length;
@@ -4512,11 +4524,11 @@ function _saveProfileSettings(modalId) {
 
       // Banner + visited airports
       const visitedAirports = _profileVisitedAirports(flights);
-      // 判斷是否為玩家自己 (假設你有一個變數代表目前登入者，例如 currentUserId 或藉由比對名字)
-      // 這裡示範如果 displayName 符合，或是你可以直接讓「自己看自己」時套用
-      const isMe = true; // 註：如果之後有區分他人，這裡可以改成 userId === myCurrentId 
-      const savedBanner = localStorage.getItem('cfg_banner');
-      const banner = (isMe && savedBanner) ? savedBanner : _profileBannerGradient(userId + displayName);
+      const savedBannerImage = isOwnProfile ? (localStorage.getItem('cfg_banner_image') || '').trim() : '';
+      const savedBanner = isOwnProfile ? (localStorage.getItem('cfg_banner') || '').trim() : '';
+      const banner = savedBannerImage
+        ? `url("${savedBannerImage.replace(/"/g, '%22')}") center / cover no-repeat`
+        : (savedBanner || _profileBannerGradient(userId + displayName));
       const chart = _profileHeatmapChart(flights); // 改用新的 heatmap
 
       // Joined date
@@ -4529,7 +4541,7 @@ function _saveProfileSettings(modalId) {
 
       content.innerHTML = `
         <!-- ① Banner -->
-        <div style="height:110px;background:${banner};border-radius:20px 20px 0 0;position:relative;flex-shrink:0;">
+        <div style="height:110px;background:${escapeHtml(banner)};border-radius:20px 20px 0 0;position:relative;flex-shrink:0;">
           ${isOwnProfile ? `<button title="Profile Settings" style="all:unset;position:absolute;bottom:10px;right:12px;cursor:pointer;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:14px;">⚙</button>` : ''}
         </div>
 
@@ -4552,6 +4564,9 @@ function _saveProfileSettings(modalId) {
           </div>
           ${tags ? `<div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:10px;">${tags}</div>` : ''}
           ${joinedStr ? `<div style="font-size:11px;color:#3a5060;margin-top:8px;">Joined ${joinedStr}</div>` : ''}
+          <a href="${escapeHtml(fullProfileUrl)}" style="display:inline-flex;align-items:center;justify-content:center;margin-top:12px;min-height:34px;padding:0 14px;border-radius:8px;background:#00cfff;color:#041018;text-decoration:none;font-size:12px;font-weight:800;letter-spacing:0;">
+            Visit Full Profile
+          </a>
         </div>
 
         <!-- Stats bar -->
@@ -5647,6 +5662,7 @@ function _saveProfileSettings(modalId) {
         username.textContent = '@' + u.user.username;
         // 讓 history tab 知道目前的 discordId
         window._myDiscordId = u.user.discordId;
+        window._myGeofsUserId = u.user.geofsUserId || null;
         if (u.user.geofsUserId) {
           linkedBadge.textContent = '\u2705 GeoFS ID: ' + u.user.geofsUserId;
           linkedBadge.style.display = 'block';
@@ -5686,6 +5702,7 @@ function _saveProfileSettings(modalId) {
             linkedBadge.textContent = '\u2705 GeoFS ID: ' + id;
             linkedBadge.style.display = 'block';
             linkForm.style.display = 'none';
+            window._myGeofsUserId = id;
           } else {
             alert(data.error || 'Link failed, please try again.');
           }

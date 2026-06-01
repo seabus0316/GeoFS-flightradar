@@ -150,6 +150,12 @@ function fmtDateShort(ts) {
 function isMongoReady() {
   return mongoose.connection.readyState === 1;
 }
+
+const RECORD_ALTITUDE_MIN_FT = -1500;
+const RECORD_ALTITUDE_MAX_FT = 100000;
+const RECORD_SPEED_MIN_KTS = 0;
+const RECORD_SPEED_MAX_KTS = 2500;
+
 // 在檔案頂部加這個 helper
 function withTimeout(promise, ms, label = 'Operation') {
   return Promise.race([
@@ -589,8 +595,22 @@ client.on('interactionCreate', async interaction => {
           totalFlights:    { $sum: 1 },
           totalDistanceNm: { $sum: '$distanceNm' },
           totalDuration:   { $sum: '$duration' },
-          maxAlt:          { $max: '$maxAlt' },
-          maxSpeed:        { $max: '$maxSpeed' },
+          maxAlt:          { $max: { $cond: [
+            { $and: [
+              { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
+              { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
+            ] },
+            '$maxAlt',
+            0
+          ] } },
+          maxSpeed:        { $max: { $cond: [
+            { $and: [
+              { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
+              { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
+            ] },
+            '$maxSpeed',
+            0
+          ] } },
           completed:       { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }
         }}
       ]);
