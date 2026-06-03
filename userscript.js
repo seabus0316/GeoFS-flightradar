@@ -178,7 +178,7 @@
   }
 
   // --- 全域變數 ---
-window.geofsFlightInfo = { departure: '', arrival: '', flightNo: '', squawk: '' };
+window.geofsFlightInfo = { departure: '', arrival: '', flightNo: '', squawk: '', confirmed: false };
 let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
@@ -389,8 +389,22 @@ let flightInfo = window.geofsFlightInfo;
     return 'HARD LANDING';
   }
 
+  function shouldReportLandingQuality() {
+    return Boolean(
+      flightInfo?.confirmed &&
+      takeoffTimeUTC &&
+      flightInfo.departure &&
+      flightInfo.arrival
+    );
+  }
+
   // --- 著陸回報 ---
   function reportLanding(vertSpeedFpm, groundSpeedKts, gForce, rollDeg) {
+    if (!shouldReportLandingQuality()) {
+      log('Landing detected, but flight is not confirmed. Skipping landing quality report.');
+      return;
+    }
+
     const quality = classifyLanding(vertSpeedFpm);
     const landingTime = new Date().toISOString();
     log('Landing detected:', quality, { vertSpeedFpm, groundSpeedKts, gForce, rollDeg });
@@ -408,6 +422,7 @@ let flightInfo = window.geofsFlightInfo;
         groundSpeed:   Math.round(groundSpeedKts),
         gForce:        Math.round(gForce * 100) / 100,
         rollAngle:     Math.round(rollDeg * 10) / 10,
+        flightConfirmed: true,
         landingQuality: quality
       }
     });
@@ -497,6 +512,7 @@ function buildPayload(snap) {
     arrival: flightInfo.arrival,
     takeoffTime: takeoffTimeUTC,
     squawk: flightInfo.squawk,
+    flightConfirmed: Boolean(flightInfo.confirmed),
     flightPlan: flightPlan,
     nextWaypoint: geofs.flightPlan?.trackedWaypoint?.ident || null,  // ← 加這行
     userId: userId  // ← 添加這行
@@ -577,6 +593,7 @@ function buildPayload(snap) {
       input.style.textTransform = 'uppercase';
       input.addEventListener('input', () => {
         input.value = input.value.toUpperCase();
+        flightInfo.confirmed = false;
       });
     });
 
@@ -605,8 +622,7 @@ function buildPayload(snap) {
 
       depInput.value = departure;
       arrInput.value = arrival;
-      flightInfo.departure = departure;
-      flightInfo.arrival = arrival;
+      flightInfo.confirmed = false;
       showToast(`Fetched ${departure} -> ${arrival}`);
     };
 
@@ -615,7 +631,9 @@ function buildPayload(snap) {
       flightInfo.arrival = arrInput.value.trim();
       flightInfo.flightNo = fltInput.value.trim();
       flightInfo.squawk = sqkInput.value.trim();
-      showToast('Flight Info Saved');};
+      flightInfo.confirmed = Boolean(flightInfo.departure && flightInfo.arrival);
+      showToast(flightInfo.confirmed ? 'Flight Info Saved' : 'Flight info incomplete');
+    };
   }
   injectFlightUI();
 

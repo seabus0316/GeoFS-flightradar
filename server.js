@@ -193,6 +193,7 @@ const flightPointSchema = new mongoose.Schema({
   userId: String, flightNo: String,
   departure: String, arrival: String,
   takeoffTime: String, squawk: String,
+  flightConfirmed: Boolean,
   speed: Number, heading: Number,
   ts: { type: Number, index: true }
 }, { versionKey: false });
@@ -217,7 +218,8 @@ const flightSessionSchema = new mongoose.Schema({
   expiresAt:     { type: Date, index: true },
   trackSnapshot: [{ lat: Number, lon: Number, alt: Number, ts: Number }],
   status:        { type: String, default: 'completed' }, // 'completed' | 'aborted'
-  landingQuality: { type: String, default: null }  // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
+  landingQuality: { type: String, default: null }, // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
+  flightConfirmed: { type: Boolean, default: false }
 }, { versionKey: false, timestamps: true });
 flightSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
@@ -243,7 +245,8 @@ const flightHistorySchema = new mongoose.Schema({
   maxSpeed:      Number,
   distanceNm:    Number,
   status:        { type: String, default: 'completed', index: true },
-  landingQuality: { type: String, default: null }  // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
+  landingQuality: { type: String, default: null }, // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
+  flightConfirmed: { type: Boolean, default: false }
 }, { versionKey: false, timestamps: true });
 flightHistorySchema.index({ sessionId: 1 }, { unique: true, sparse: true });
 const FlightHistory = mongoose.model('FlightHistory', flightHistorySchema, 'flightHistory');
@@ -544,6 +547,21 @@ function inferFlightCompletionStatus(docs, requestedStatus = 'completed') {
   if (requestedStatus !== 'completed') return requestedStatus;
   if (!Array.isArray(docs) || docs.length < COMPLETION_STABLE_POINTS) return 'aborted';
 
+  const hasFormalFlight = docs.some(point => point.flightConfirmed === true) ||
+    docs.some(point => String(point.departure || '').trim() && String(point.arrival || '').trim());
+  if (!hasFormalFlight) return 'aborted';
+
+  const hasTakeoff = docs.some(point => String(point.takeoffTime || '').trim());
+  if (!hasTakeoff) return 'aborted';
+
+  const hasAirborneSegment = docs.some(point => {
+    const alt = Number(point.alt);
+    const speed = Number(point.speed);
+    return (Number.isFinite(alt) && alt > COMPLETION_GROUND_ALT_FT) ||
+      (Number.isFinite(speed) && speed > COMPLETION_GROUND_SPEED_KTS);
+  });
+  if (!hasAirborneSegment) return 'aborted';
+
   const tail = docs.slice(-COMPLETION_STABLE_POINTS);
   const grounded = tail.every(point => {
     const alt = Number(point.alt);
@@ -607,7 +625,8 @@ function buildFlightHistoryDocument(session, user = null) {
     maxSpeed:    sanitizeRecordSpeed(session.maxSpeed) ?? 0,
     distanceNm:  session.distanceNm || 0,
     status:      session.status || 'completed',
-    landingQuality: session.landingQuality || null
+    landingQuality: session.landingQuality || null,
+    flightConfirmed: Boolean(session.flightConfirmed)
   };
   if (sessionId) history.sessionId = sessionId;
   return history;
@@ -1032,7 +1051,8 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
       startTime, endTime, duration,
       maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
       trackSnapshot, status: finalStatus,
-      landingQuality  // ← 附帶著陸品質（若有）
+      landingQuality,  // ← 附帶著陸品質（若有）
+      flightConfirmed: docs.some(d => d.flightConfirmed === true)
     });
 
     console.log(`[FlightSession] ${finalStatus} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
@@ -1248,6 +1268,7 @@ io.on('connection', async (socket) => {
       flightNo: p.flightNo || '', userId: p.userId || null,
       departure: p.departure || '', arrival: p.arrival || '',
       takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+      flightConfirmed: Boolean(p.flightConfirmed),
       flightPlan: p.flightPlan || [], ts: Date.now()
     };
 
@@ -1262,6 +1283,7 @@ io.on('connection', async (socket) => {
       arrival: payload.arrival || '',
       takeoffTime: payload.takeoffTime || '',
       squawk: payload.squawk || '',
+      flightConfirmed: Boolean(payload.flightConfirmed),
       lat: payload.lat,
       lon: payload.lon,
       alt: payload.alt,
@@ -1359,7 +1381,8 @@ wss.on('connection', (ws) => {
           geofsMajorMinor: typeof p.geofsMajorMinor === 'string' ? p.geofsMajorMinor.slice(0, 8) : '',
           userId: p.userId || null, flightNo: p.flightNo || '',
           departure: p.departure || '', arrival: p.arrival || '',
-          takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+      takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+          flightConfirmed: Boolean(p.flightConfirmed),
           ts: Date.now(), flightPlan: p.flightPlan || []
         };
 
@@ -1374,6 +1397,7 @@ wss.on('connection', (ws) => {
           arrival: payload.arrival || '',
           takeoffTime: payload.takeoffTime || '',
           squawk: payload.squawk || '',
+          flightConfirmed: Boolean(payload.flightConfirmed),
           lat: payload.lat,
           lon: payload.lon,
           alt: payload.alt,
@@ -1399,6 +1423,9 @@ wss.on('connection', (ws) => {
         if (!quality) return;
 
         const aircraftId = ws.aircraftId || null;
+        const payload = aircraftId ? aircrafts.get(aircraftId)?.payload : null;
+        const isConfirmedFlight = Boolean(payload?.flightConfirmed || p.flightConfirmed);
+        if (!isConfirmedFlight) return;
         console.log(`[Landing] ${p.callsign || 'UNK'} — ${quality} | VS: ${p.verticalSpeed} fpm | GS: ${p.groundSpeed} kts | G: ${p.gForce}g | Roll: ${p.rollAngle}°`);
 
         // 暫存著陸品質到 aircrafts map，finalizeFlightSession 時會帶入
@@ -1421,7 +1448,7 @@ wss.on('connection', (ws) => {
           if (filter) {
             await FlightHistory.findOneAndUpdate(
               { ...filter, landingQuality: null },
-              { $set: { landingQuality: quality } },
+              { $set: { landingQuality: quality, flightConfirmed: true } },
               { sort: { startTime: -1 } }
             );
           }
