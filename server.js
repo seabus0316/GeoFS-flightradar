@@ -55,11 +55,33 @@ const atcClients      = new Set();
 const playerClients   = new Set();
 const ioAtcClients    = new Set();
 const ioPlayerClients = new Set();
+const aircraftBroadcastState = new Map();
+
+const SMART_UPDATE_ENABLED = process.env.SMART_UPDATE_ENABLED !== 'false';
+const SMART_UPDATE_MIN_MS = parsePositiveInt(process.env.SMART_UPDATE_MIN_MS, 1500);
+const SMART_UPDATE_MAX_MS = parsePositiveInt(process.env.SMART_UPDATE_MAX_MS, 10000);
+const SMART_UPDATE_TIERS = [
+  { users: 10, intervalMs: 1500 },
+  { users: 25, intervalMs: 2500 },
+  { users: 50, intervalMs: 4000 },
+  { users: 100, intervalMs: 6000 },
+  { users: Infinity, intervalMs: 10000 }
+];
+let lastSmartUpdateIntervalMs = null;
 
 const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
 const waypointState = new Map(); // aircraftId → { planHash, triggered }
  
 let lastFlightPointPruneAt = 0;
+
+function parsePositiveInt(value, fallback) {
+  const parsed = Number.parseInt(value, 10);
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
+}
+
+function clampNumber(value, min, max) {
+  return Math.max(min, Math.min(max, value));
+}
 
 function normalizeFlightLookup(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
@@ -995,6 +1017,93 @@ function broadcastToATC(obj) {
   ioAtcClients.forEach(socket => socket.emit(obj.type, obj.payload || obj));
 }
 
+function getOnlineUserCount() {
+  return atcClients.size + playerClients.size + ioAtcClients.size + ioPlayerClients.size;
+}
+
+function getSmartUpdateIntervalMs() {
+  if (!SMART_UPDATE_ENABLED) return 0;
+  const users = getOnlineUserCount();
+  const tier = SMART_UPDATE_TIERS.find(t => users <= t.users) || SMART_UPDATE_TIERS[SMART_UPDATE_TIERS.length - 1];
+  return clampNumber(tier.intervalMs, SMART_UPDATE_MIN_MS, SMART_UPDATE_MAX_MS);
+}
+
+function buildSmartUpdateConfig() {
+  return {
+    smartUpdateEnabled: SMART_UPDATE_ENABLED,
+    onlineUsers: getOnlineUserCount(),
+    positionIntervalMs: getSmartUpdateIntervalMs()
+  };
+}
+
+function sendSmartUpdateConfig(target) {
+  const payload = buildSmartUpdateConfig();
+  try {
+    if (typeof target.emit === 'function') {
+      target.emit('server_config', payload);
+    } else if (target.readyState === WebSocket.OPEN) {
+      target.send(JSON.stringify({ type: 'server_config', payload }));
+    }
+  } catch (err) {
+    console.warn('sendSmartUpdateConfig error', err);
+  }
+}
+
+function publishSmartUpdateConfigIfChanged() {
+  const intervalMs = getSmartUpdateIntervalMs();
+  if (intervalMs === lastSmartUpdateIntervalMs) return;
+  lastSmartUpdateIntervalMs = intervalMs;
+  playerClients.forEach(sendSmartUpdateConfig);
+  ioPlayerClients.forEach(sendSmartUpdateConfig);
+  console.log(`[SmartUpdate] interval=${intervalMs}ms users=${getOnlineUserCount()}`);
+}
+
+function flushAdaptiveAircraftUpdate(aircraftId) {
+  const state = aircraftBroadcastState.get(aircraftId);
+  if (!state?.payload) return;
+  if (state.timer) clearTimeout(state.timer);
+  state.timer = null;
+  state.lastSentAt = Date.now();
+
+  const message = { type: 'aircraft_update', payload: state.payload };
+  if (state.trackPoint) message.trackPoint = state.trackPoint;
+  state.payload = null;
+  state.trackPoint = null;
+  broadcastToATC(message);
+}
+
+function scheduleAdaptiveAircraftUpdate(payload, trackPoint = null) {
+  if (!payload?.id) return;
+  const intervalMs = getSmartUpdateIntervalMs();
+  if (!SMART_UPDATE_ENABLED || intervalMs <= 0) {
+    broadcastToATC({ type: 'aircraft_update', payload, ...(trackPoint ? { trackPoint } : {}) });
+    return;
+  }
+
+  const now = Date.now();
+  const state = aircraftBroadcastState.get(payload.id) || { lastSentAt: 0, timer: null, payload: null, trackPoint: null };
+  state.payload = payload;
+  state.trackPoint = trackPoint || null;
+
+  const elapsed = now - state.lastSentAt;
+  if (elapsed >= intervalMs) {
+    aircraftBroadcastState.set(payload.id, state);
+    flushAdaptiveAircraftUpdate(payload.id);
+    return;
+  }
+
+  if (!state.timer) {
+    state.timer = setTimeout(() => flushAdaptiveAircraftUpdate(payload.id), intervalMs - elapsed);
+  }
+  aircraftBroadcastState.set(payload.id, state);
+}
+
+function clearAdaptiveAircraftUpdate(aircraftId) {
+  const state = aircraftBroadcastState.get(aircraftId);
+  if (state?.timer) clearTimeout(state.timer);
+  aircraftBroadcastState.delete(aircraftId);
+}
+
 // Haversine 距離（海里）
 function haversineNm(lat1, lon1, lat2, lon2) {
   const R = 3440.065;
@@ -1058,6 +1167,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     console.log(`[FlightSession] ${finalStatus} ${session._id} — ${session.callsign}, ${distanceNm} nm, ${Math.floor(duration / 60)}m`);
     await upsertFlightHistoryFromSession(session, user);
     await FlightPoint.deleteMany({ aircraftId });
+    clearAdaptiveAircraftUpdate(aircraftId);
     aircrafts.delete(aircraftId);
     alertedSquawks.delete(aircraftId);
     waypointState.delete(aircraftId);
@@ -1233,6 +1343,8 @@ io.on('connection', async (socket) => {
   } catch { /* 未登入，忽略 */ }
 
   socket.on('hello', async (msg) => {
+    ioAtcClients.delete(socket);
+    ioPlayerClients.delete(socket);
     socket.role = msg.role || 'unknown';
     if (socket.role === 'atc') {
       ioAtcClients.add(socket);
@@ -1245,7 +1357,9 @@ io.on('connection', async (socket) => {
     if (socket.role === 'player') {
       ioPlayerClients.add(socket);
       socket.aircraftId = null;
+      sendSmartUpdateConfig(socket);
     }
+    publishSmartUpdateConfigIfChanged();
   });
 
   socket.on('position_update', async (p) => {
@@ -1296,7 +1410,7 @@ io.on('connection', async (socket) => {
     } catch (err) {
       console.error('[Reminder] Socket.IO check failed:', err);
     }
-    broadcastToATC({ type: 'aircraft_update', payload });
+    scheduleAdaptiveAircraftUpdate(payload);
     await sendSquawkAlert(payload);
   });
 
@@ -1306,6 +1420,7 @@ io.on('connection', async (socket) => {
     if (socket.role === 'player' && socket.aircraftId) {
       scheduleFlightFinalization(socket.aircraftId, 'completed');
     }
+    publishSmartUpdateConfigIfChanged();
     console.log('Socket.IO client disconnected:', socket.id);
   });
 });
@@ -1345,6 +1460,8 @@ wss.on('connection', (ws) => {
       const msg = JSON.parse(data);
 
       if (msg.type === 'hello') {
+        atcClients.delete(ws);
+        playerClients.delete(ws);
         ws.role = msg.role || 'unknown';
         if (ws.role === 'atc') {
           atcClients.add(ws);
@@ -1356,7 +1473,9 @@ wss.on('connection', (ws) => {
         } else if (ws.role === 'player') {
           playerClients.add(ws);
           ws.aircraftId = null;
+          sendSmartUpdateConfig(ws);
         }
+        publishSmartUpdateConfigIfChanged();
         return;
       }
 
@@ -1410,8 +1529,7 @@ wss.on('connection', (ws) => {
         } catch (err) {
           console.error('[Reminder] WebSocket check failed:', err);
         }
-        broadcastToATC({ type: 'aircraft_update', payload,
-          trackPoint: { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } });
+        scheduleAdaptiveAircraftUpdate(payload, { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts });
         await sendSquawkAlert(payload);
         return;
       }
@@ -1485,6 +1603,7 @@ wss.on('connection', (ws) => {
         console.error('Error finalizing on close', err);
       }
     }
+    publishSmartUpdateConfigIfChanged();
     console.log('WebSocket closed. total clients:', clients.size);
   });
 
@@ -2299,6 +2418,7 @@ setInterval(async () => {
     if (now - v.lastSeen > 30_000) {
       if (pendingFlightFinalizations.has(id)) continue;
       removed.push(id);
+      clearAdaptiveAircraftUpdate(id);
       try {
         scheduleFlightFinalization(id, 'aborted', 0);
       } catch (err) {
