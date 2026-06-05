@@ -2046,6 +2046,13 @@
     "country": "South Africa",
     "logo": "https://www.image2url.com/r2/default/images/1780637947055-8c037151-b0cd-4177-83a6-22ac4b88d052.png"
   },
+  "SFR": {
+    "name": "FlySafair",
+    "icao": "SFR",
+    "iata": "FA",
+    "country": "South Africa",
+    "logo": "https://images.kiwi.com/airlines/64/FA.png"
+  },
   "NMB": {
     "name": "Air Namibia",
     "icao": "NMB",

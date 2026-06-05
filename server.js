@@ -2147,6 +2147,22 @@ app.get('/admin/users/search', requireAdmin, async (req, res) => {
   }
 });
 
+app.get('/admin/users/upload-bans', requireAdmin, async (req, res) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 100, 300);
+    const users = await User.find({ uploadBanned: true })
+      .select('discordId username displayName geofsUserId lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy')
+      .sort({ uploadBannedAt: -1, createdAt: -1 })
+      .limit(limit)
+      .lean();
+
+    res.json(users);
+  } catch (err) {
+    console.error('Admin upload ban list error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
 app.get('/admin/audit', requireAdmin, async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit, 10) || 50, 200);

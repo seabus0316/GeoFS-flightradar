@@ -199,7 +199,8 @@
       border: 1px solid #30363d;
       color: #e6edf3;
     }
-    #userResults {
+    #userResults,
+    #banResults {
       display: flex;
       flex-direction: column;
       gap: 10px;
@@ -269,6 +270,11 @@
       color: #f85149;
       font-weight: 600;
     }
+    .empty-note {
+      color: #8b949e;
+      font-size: 13px;
+      margin: 0;
+    }
     .status {
       min-height: 20px;
       font-size: 13px;
@@ -301,6 +307,15 @@
       </div>
       <a class="discord-login" href="/auth/logout" style="background:#30363d;">Logout</a>
     </div>
+
+    <section class="admin-section">
+      <h2>Upload Ban List</h2>
+      <div class="user-tools">
+        <button onclick="loadUploadBans()">Refresh Bans</button>
+      </div>
+      <div id="banStatus" class="status"></div>
+      <div id="banResults"></div>
+    </section>
 
     <section class="admin-section">
       <h2>User Link Manager</h2>
@@ -368,6 +383,7 @@ Manually link geofs ID
       document.getElementById('adminDiscordId').textContent = `Discord: ${currentAdmin.discordId}`;
       document.getElementById('login').style.display = 'none';
       document.getElementById('panel').style.display = 'block';
+      loadUploadBans();
       loadPending();
       loadAudit();
     }
@@ -472,6 +488,12 @@ async function createLink() {
       status.className = `status ${kind}`.trim();
     }
 
+    function setBanStatus(message, kind = '') {
+      const status = document.getElementById('banStatus');
+      status.textContent = message;
+      status.className = `status ${kind}`.trim();
+    }
+
     function formatDate(value) {
       if (!value) return 'unknown time';
       return new Date(value).toLocaleString();
@@ -493,6 +515,37 @@ async function createLink() {
       if (!user.uploadBanned) return '<small>Upload access: allowed</small>';
       const reason = user.uploadBanReason ? ` · ${user.uploadBanReason}` : '';
       return `<small class="ban-state">Upload access: banned${escapeHtml(reason)}</small>`;
+    }
+
+    function renderUserRow(user, { showGeofsInput = true } = {}) {
+      const row = document.createElement('div');
+      row.className = 'user-row';
+      const banIps = user.uploadBanIps || [];
+      const recordedIps = user.loginIps || [];
+      row.innerHTML = `
+        <div class="user-meta">
+          <strong>${escapeHtml(user.displayName || user.username || 'Unknown')}</strong>
+          <small>@${escapeHtml(user.username || 'unknown')} · Discord: ${escapeHtml(user.discordId)}</small>
+          <small>Current GeoFS ID: ${escapeHtml(user.geofsUserId || 'not linked')}</small>
+          ${showGeofsInput ? renderGeofsUpdatedBy(user) : ''}
+          ${renderUploadBanStatus(user)}
+          <small>Last login IP: ${escapeHtml(user.lastLoginIp || 'unknown')}</small>
+          <small>Recorded IPs: ${escapeHtml(recordedIps.join(', ') || 'none')}</small>
+          <small>Banned IPs: ${escapeHtml(banIps.join(', ') || 'none')}</small>
+          ${user.uploadBannedAt ? `<small>Banned at: ${escapeHtml(formatDate(user.uploadBannedAt))}</small>` : ''}
+          ${user.uploadBannedBy ? `<small>Banned by: ${escapeHtml(formatAdminLabel(user.uploadBannedBy))}</small>` : ''}
+        </div>
+        ${showGeofsInput
+          ? `<input class="geofs-edit" inputmode="numeric" value="${escapeHtml(user.geofsUserId || '')}" placeholder="Correct GeoFS ID">`
+          : '<div></div>'}
+        <div class="user-actions">
+          ${showGeofsInput ? `<button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>` : ''}
+          <button class="${user.uploadBanned ? 'unban' : 'ban'}" onclick="toggleUploadBan('${escapeHtml(user.discordId)}', ${Boolean(user.uploadBanned)}, this)">
+            ${user.uploadBanned ? 'Unban Upload' : 'Ban Upload'}
+          </button>
+        </div>
+      `;
+      return row;
     }
 
     function formatAuditValue(value) {
@@ -527,28 +580,29 @@ async function createLink() {
 
       setUserStatus(`Found ${users.length} user(s).`);
       users.forEach(user => {
-        const row = document.createElement('div');
-        row.className = 'user-row';
-        row.innerHTML = `
-          <div class="user-meta">
-            <strong>${escapeHtml(user.displayName || user.username || 'Unknown')}</strong>
-            <small>@${escapeHtml(user.username || 'unknown')} · Discord: ${escapeHtml(user.discordId)}</small>
-            <small>Current GeoFS ID: ${escapeHtml(user.geofsUserId || 'not linked')}</small>
-            ${renderGeofsUpdatedBy(user)}
-            ${renderUploadBanStatus(user)}
-            <small>Last login IP: ${escapeHtml(user.lastLoginIp || 'unknown')}</small>
-            <small>Recorded IPs: ${escapeHtml((user.loginIps || []).join(', ') || 'none')}</small>
-          </div>
-          <input class="geofs-edit" inputmode="numeric" value="${escapeHtml(user.geofsUserId || '')}" placeholder="Correct GeoFS ID">
-          <div class="user-actions">
-            <button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>
-            <button class="${user.uploadBanned ? 'unban' : 'ban'}" onclick="toggleUploadBan('${escapeHtml(user.discordId)}', ${Boolean(user.uploadBanned)}, this)">
-              ${user.uploadBanned ? 'Unban Upload' : 'Ban Upload'}
-            </button>
-          </div>
-        `;
-        box.appendChild(row);
+        box.appendChild(renderUserRow(user));
       });
+    }
+
+    async function loadUploadBans() {
+      setBanStatus('Loading banned users...');
+      const res = await fetch('/admin/users/upload-bans?limit=200', { credentials: 'same-origin' });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        return setBanStatus(err.error || 'Failed to load upload bans.', 'err');
+      }
+
+      const users = await res.json();
+      const box = document.getElementById('banResults');
+      box.innerHTML = '';
+      if (!users.length) {
+        setBanStatus('No upload-banned users.');
+        box.innerHTML = '<p class="empty-note">No Discord accounts or recorded IPs are currently blocked from JetPhotos uploads.</p>';
+        return;
+      }
+
+      setBanStatus(`Showing ${users.length} banned user(s).`, 'ok');
+      users.forEach(user => box.appendChild(renderUserRow(user, { showGeofsInput: false })));
     }
 
     async function updateUserGeofsId(discordId, button) {
@@ -610,6 +664,7 @@ async function createLink() {
       setUserStatus(`${banned ? 'Upload access banned.' : 'Upload access restored.'}${ipNote}`, 'ok');
       loadAudit();
       loadPending();
+      loadUploadBans();
       if (document.getElementById('userSearch').value.trim()) searchUsers();
     }
 
