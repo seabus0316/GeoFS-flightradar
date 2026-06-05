@@ -249,6 +249,26 @@
       border: 1px solid #30363d;
       color: #e6edf3;
     }
+    .user-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      justify-content: flex-end;
+    }
+    .user-actions button {
+      font-size: 13px;
+      padding: 7px 10px;
+    }
+    button.ban {
+      background: #da3633;
+    }
+    button.unban {
+      background: #8957e5;
+    }
+    .ban-state {
+      color: #f85149;
+      font-weight: 600;
+    }
     .status {
       min-height: 20px;
       font-size: 13px;
@@ -390,6 +410,7 @@ Manually link geofs ID
           <div class="actions">
             <button onclick="approve('${p._id}')">✓ Approve</button>
             <button class="reject" onclick="openRejectModal('${p._id}')">✗ Reject</button>
+            ${p.discordId ? `<button class="ban" onclick="toggleUploadBan('${escapeHtml(p.discordId)}', false, this)">Ban Uploader</button>` : ''}
             <button class="delete" onclick="deletePhoto('${p._id}')">🗑</button>
           </div>
         `;
@@ -468,6 +489,23 @@ async function createLink() {
       return `<small>Last admin edit: ${escapeHtml(formatAdminLabel(info))} at ${escapeHtml(formatDate(info.at))}</small>`;
     }
 
+    function renderUploadBanStatus(user) {
+      if (!user.uploadBanned) return '<small>Upload access: allowed</small>';
+      const reason = user.uploadBanReason ? ` · ${user.uploadBanReason}` : '';
+      return `<small class="ban-state">Upload access: banned${escapeHtml(reason)}</small>`;
+    }
+
+    function formatAuditValue(value) {
+      if (!value) return '';
+      if (Object.prototype.hasOwnProperty.call(value, 'geofsUserId')) return value.geofsUserId || 'empty';
+      if (Object.prototype.hasOwnProperty.call(value, 'status')) return value.status || 'empty';
+      if (Object.prototype.hasOwnProperty.call(value, 'uploadBanned')) {
+        const ips = Array.isArray(value.uploadBanIps) ? value.uploadBanIps.length : 0;
+        return `uploadBanned=${Boolean(value.uploadBanned)}, IPs=${ips}`;
+      }
+      return '';
+    }
+
     async function searchUsers() {
       const q = document.getElementById('userSearch').value.trim();
       if (!q) return setUserStatus('Enter something to search.', 'err');
@@ -497,9 +535,17 @@ async function createLink() {
             <small>@${escapeHtml(user.username || 'unknown')} · Discord: ${escapeHtml(user.discordId)}</small>
             <small>Current GeoFS ID: ${escapeHtml(user.geofsUserId || 'not linked')}</small>
             ${renderGeofsUpdatedBy(user)}
+            ${renderUploadBanStatus(user)}
+            <small>Last login IP: ${escapeHtml(user.lastLoginIp || 'unknown')}</small>
+            <small>Recorded IPs: ${escapeHtml((user.loginIps || []).join(', ') || 'none')}</small>
           </div>
           <input class="geofs-edit" inputmode="numeric" value="${escapeHtml(user.geofsUserId || '')}" placeholder="Correct GeoFS ID">
-          <button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>
+          <div class="user-actions">
+            <button onclick="updateUserGeofsId('${escapeHtml(user.discordId)}', this)">Update</button>
+            <button class="${user.uploadBanned ? 'unban' : 'ban'}" onclick="toggleUploadBan('${escapeHtml(user.discordId)}', ${Boolean(user.uploadBanned)}, this)">
+              ${user.uploadBanned ? 'Unban Upload' : 'Ban Upload'}
+            </button>
+          </div>
         `;
         box.appendChild(row);
       });
@@ -536,6 +582,37 @@ async function createLink() {
       loadAudit();
     }
 
+    async function toggleUploadBan(discordId, currentlyBanned, button) {
+      const banned = !currentlyBanned;
+      let reason = '';
+      if (banned) {
+        reason = prompt('Reason for upload ban (optional):', 'Repeated invalid jet photo uploads') || '';
+      } else if (!confirm('Restore this user and their recorded IPs to upload access?')) {
+        return;
+      }
+
+      if (button) button.disabled = true;
+      setUserStatus(banned ? 'Banning upload access...' : 'Restoring upload access...');
+      const res = await fetch(`/admin/users/${encodeURIComponent(discordId)}/upload-ban`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ banned, reason })
+      });
+      if (button) button.disabled = false;
+
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) return setUserStatus(data.error || 'Upload ban update failed.', 'err');
+
+      const ipNote = banned
+        ? ` Recorded IPs banned: ${data.bannedIpCount || 0}.`
+        : '';
+      setUserStatus(`${banned ? 'Upload access banned.' : 'Upload access restored.'}${ipNote}`, 'ok');
+      loadAudit();
+      loadPending();
+      if (document.getElementById('userSearch').value.trim()) searchUsers();
+    }
+
     async function loadAudit() {
       setAuditStatus('Loading...');
       const res = await fetch('/admin/audit?limit=30', { credentials: 'same-origin' });
@@ -556,8 +633,8 @@ async function createLink() {
       entries.forEach(entry => {
         const row = document.createElement('div');
         row.className = 'audit-row';
-        const before = entry.before?.geofsUserId ?? entry.before?.status ?? '';
-        const after = entry.after?.geofsUserId ?? entry.after?.status ?? '';
+        const before = formatAuditValue(entry.before);
+        const after = formatAuditValue(entry.after);
         row.innerHTML = `
           <strong>${escapeHtml(entry.action)}</strong> on ${escapeHtml(entry.targetType)} ${escapeHtml(entry.targetId)}
           <br>by ${escapeHtml(formatAdminLabel(entry.admin))} at ${escapeHtml(formatDate(entry.createdAt))}

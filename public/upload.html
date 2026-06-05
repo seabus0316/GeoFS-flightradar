@@ -310,6 +310,7 @@
     const authBar    = document.getElementById('authBar');
 
     let currentUser = null;
+    setUploadEnabled(false, 'Discord login required to upload jet photos.');
 
     // ── Auth Check ──────────────────────────────────────────────
     async function checkAuth() {
@@ -319,11 +320,18 @@
           const data = await res.json();
           currentUser = data.user;
           renderLoggedIn(data.user);
+          if (data.user.uploadBanned) {
+            setUploadEnabled(false, data.user.uploadBanReason || 'Upload access is banned for this account.');
+          } else {
+            setUploadEnabled(true);
+          }
         } else {
           renderLoggedOut();
+          setUploadEnabled(false, 'Discord login required to upload jet photos.');
         }
       } catch {
         renderLoggedOut();
+        setUploadEnabled(false, 'Discord login required to upload jet photos.');
       }
     }
 
@@ -335,7 +343,7 @@
           <div>
             <div class="name">${escHtml(user.displayName || user.username)}</div>
           </div>
-          <span class="badge">✓ Discord linked — review results will be sent to your DMs</span>
+          <span class="badge">${user.uploadBanned ? 'Upload access suspended' : '✓ Discord linked — review results will be sent to your DMs'}</span>
         </div>
         <button class="btn-logout" onclick="logout()">Log out</button>
       `;
@@ -344,7 +352,7 @@
     function renderLoggedOut() {
       authBar.innerHTML = `
         <span class="auth-note">
-          <strong>Login with Discord</strong> to receive approval/rejection notifications in your DMs.
+          <strong>Discord login required</strong> to upload jet photos.
         </span>
         <a class="btn-discord" href="/auth/discord?return_to=/upload.html">
           <svg width="18" height="18" viewBox="0 0 71 55" fill="white" xmlns="http://www.w3.org/2000/svg">
@@ -359,15 +367,34 @@
       await fetch('/auth/logout', { method: 'POST' });
       currentUser = null;
       renderLoggedOut();
+      setUploadEnabled(false, 'Discord login required to upload jet photos.');
     }
 
     function escHtml(str) {
       return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
 
+    function setUploadEnabled(enabled, message = '') {
+      [...form.elements].forEach(el => { el.disabled = !enabled; });
+      submitBtn.disabled = !enabled;
+      submitBtn.textContent = enabled ? 'Upload Photo' : 'Discord Login Required';
+      if (message) {
+        msg.textContent = message;
+        msg.className = enabled ? 'info' : 'error';
+      }
+    }
+
     // ── Upload ───────────────────────────────────────────────────
     form.addEventListener('submit', async e => {
       e.preventDefault();
+      if (!currentUser) {
+        setUploadEnabled(false, 'Discord login required to upload jet photos.');
+        return;
+      }
+      if (currentUser.uploadBanned) {
+        setUploadEnabled(false, currentUser.uploadBanReason || 'Upload access is banned for this account.');
+        return;
+      }
       submitBtn.disabled = true;
       msg.textContent = '⏳ Uploading...';
       msg.className = 'info';
@@ -386,9 +413,7 @@
         }
 
         if (res.ok) {
-          const notifNote = currentUser
-            ? ' We\'ll DM you on Discord when it\'s reviewed.'
-            : '';
+          const notifNote = ' We\'ll DM you on Discord when it\'s reviewed.';
           msg.textContent = `✅ Upload successful! Your photo will be displayed after admin approval.${notifNote}`;
           msg.className = 'success';
           form.reset();
@@ -402,7 +427,10 @@
         msg.textContent = '⚠️ Error: ' + err.message + '\n\nCheck console for details (F12)';
         msg.className = 'error';
       } finally {
-        submitBtn.disabled = false;
+        if (currentUser && !currentUser.uploadBanned) {
+          submitBtn.disabled = false;
+          submitBtn.textContent = 'Upload Photo';
+        }
       }
     });
 

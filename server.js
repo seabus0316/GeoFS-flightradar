@@ -20,6 +20,7 @@ const { appendAirlineSubmission } = require('./airline-submission-log');
 const app = express();
 const server = http.createServer(app);
 const wss = new WebSocket.Server({ noServer: true });
+app.set('trust proxy', true);
 
 // ============ 環境變數 ============
 const PORT                = process.env.PORT                || 3000;
@@ -292,6 +293,17 @@ const userSchema = new mongoose.Schema({
   photos:           [String], // Discord avatar URL 陣列
   geofsUserId:      { type: String, index: true, sparse: true },
   apiKey:           { type: String, index: true, sparse: true },
+  lastLoginIp:      { type: String, index: true, sparse: true },
+  loginIps:         { type: [String], default: [] },
+  uploadBanned:     { type: Boolean, default: false, index: true },
+  uploadBanReason:  String,
+  uploadBanIps:     { type: [String], default: [] },
+  uploadBannedAt:   Date,
+  uploadBannedBy:   {
+    discordId: String,
+    username: String,
+    displayName: String
+  },
   // 管理員權限
   isSuperAdmin:     { type: Boolean, default: false },
   managedAirlines:  { type: [String], default: [] }, // e.g. ['EVA', 'CAL']
@@ -433,6 +445,25 @@ function generateApiKey() {
   return require('crypto').randomBytes(24).toString('hex');
 }
 
+function normalizeIp(ip) {
+  return String(ip || '')
+    .trim()
+    .replace(/^::ffff:/, '')
+    .replace(/^\[|\]$/g, '');
+}
+
+function getRequestIp(req) {
+  const forwarded = String(req.headers['x-forwarded-for'] || '')
+    .split(',')
+    .map(normalizeIp)
+    .find(Boolean);
+  return normalizeIp(forwarded || req.ip || req.socket?.remoteAddress || '');
+}
+
+function uniqueStrings(values) {
+  return [...new Set((values || []).map(v => String(v || '').trim()).filter(Boolean))];
+}
+
 // 把 User document 轉成前端期望的格式
 function formatUserForClient(user) {
   return {
@@ -443,7 +474,9 @@ function formatUserForClient(user) {
       username:    user.username,
       photos:      user.photos || [],
       apiKey:      user.apiKey || null,
-      geofsUserId: user.geofsUserId || null
+      geofsUserId: user.geofsUserId || null,
+      uploadBanned: Boolean(user.uploadBanned),
+      uploadBanReason: user.uploadBanReason || null
     },
     admin: {
       isSuperAdmin:     user.isSuperAdmin || false,
@@ -491,6 +524,8 @@ mongoose.connect(MONGODB_URI)
     await FlightHistory.collection.createIndex({ sessionId: 1 }, { unique: true, sparse: true });
     await User.collection.createIndex({ discordId: 1 }, { unique: true });
     await User.collection.createIndex({ geofsUserId: 1 }, { sparse: true });
+    await User.collection.createIndex({ loginIps: 1 });
+    await User.collection.createIndex({ uploadBanned: 1, uploadBanIps: 1 });
     await MedalInventory.collection.createIndex({ discordId: 1 }, { unique: true });
     console.log('✅ MongoDB indexes created');
     await maintainFlightSessions();
@@ -1279,6 +1314,45 @@ function getOptionalAuthUser(req) {
   }
 }
 
+async function requirePhotoUploadAccess(req, res, next) {
+  try {
+    const token = req.cookies.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
+    if (!token) return res.status(401).json({ error: 'Discord login required to upload jet photos' });
+
+    const decoded = jwt.verify(token, JWT_SECRET);
+    const currentIp = getRequestIp(req);
+    const user = await User.findOne({ discordId: decoded.discordId })
+      .select('discordId username displayName uploadBanned uploadBanReason loginIps lastLoginIp')
+      .lean();
+    if (!user) return res.status(401).json({ error: 'User not found' });
+
+    if (currentIp) {
+      await User.updateOne(
+        { discordId: user.discordId },
+        { $set: { lastLoginIp: currentIp }, $addToSet: { loginIps: currentIp } }
+      );
+    }
+
+    const candidateIps = uniqueStrings([currentIp, user.lastLoginIp, ...(user.loginIps || [])]);
+    const ipBan = candidateIps.length
+      ? await User.findOne({ uploadBanned: true, uploadBanIps: { $in: candidateIps } })
+        .select('discordId uploadBanReason uploadBanIps')
+        .lean()
+      : null;
+
+    if (user.uploadBanned || ipBan) {
+      return res.status(403).json({
+        error: user.uploadBanReason || ipBan?.uploadBanReason || 'Upload access is banned for this Discord account or IP'
+      });
+    }
+
+    req.uploadUser = user;
+    next();
+  } catch {
+    res.status(401).json({ error: 'Invalid Discord session' });
+  }
+}
+
 async function requireAdmin(req, res, next) {
   try {
     const token = req.cookies.auth_token || (req.headers.authorization || '').replace('Bearer ', '');
@@ -1660,24 +1734,26 @@ app.get('/auth/discord/callback', async (req, res) => {
       ? `https://cdn.discordapp.com/avatars/${du.id}/${du.avatar}.png`
       : `https://cdn.discordapp.com/embed/avatars/${Number(du.discriminator || 0) % 5}.png`;
 
-    // 查是否已有此用戶（保留原有 apiKey、admin 設定）
-    const existing = await User.findOne({ discordId: du.id });
+    const loginIp = getRequestIp(req);
+    const update = {
+      $set: {
+        discordId:     du.id,
+        username:      du.username,
+        displayName:   du.global_name || du.username,
+        discriminator: du.discriminator || '0',
+        photos:        [avatarUrl],
+        accessToken:   tokenData.access_token,
+        refreshToken:  tokenData.refresh_token || null,
+        ...(loginIp ? { lastLoginIp: loginIp } : {})
+      },
+      // 首次登入才產生 API Key
+      $setOnInsert: { apiKey: generateApiKey() }
+    };
+    if (loginIp) update.$addToSet = { loginIps: loginIp };
 
     const user = await User.findOneAndUpdate(
       { discordId: du.id },
-      {
-        $set: {
-          discordId:     du.id,
-          username:      du.username,
-          displayName:   du.global_name || du.username,
-          discriminator: du.discriminator || '0',
-          photos:        [avatarUrl],
-          accessToken:   tokenData.access_token,
-          refreshToken:  tokenData.refresh_token || null
-        },
-        // 首次登入才產生 API Key
-        $setOnInsert: { apiKey: generateApiKey() }
-      },
+      update,
       { upsert: true, new: true }
     );
 
@@ -2059,7 +2135,7 @@ app.get('/admin/users/search', requireAdmin, async (req, res) => {
         { displayName: new RegExp(escaped, 'i') }
       ]
     })
-      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy')
+      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy')
       .sort({ createdAt: -1 })
       .limit(20)
       .lean();
@@ -2108,7 +2184,7 @@ app.patch('/admin/users/:discordId/geofs', requireAdmin, async (req, res) => {
     }
 
     const before = await User.findOne({ discordId: req.params.discordId })
-      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy')
+      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy')
       .lean();
     if (!before) return res.status(404).json({ error: 'user not found' });
 
@@ -2125,7 +2201,7 @@ app.patch('/admin/users/:discordId/geofs', requireAdmin, async (req, res) => {
         }
       },
       { new: true }
-    ).select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy').lean();
+    ).select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy').lean();
 
     await logAdminAction(req, {
       action: 'user.geofs.update',
@@ -2137,6 +2213,66 @@ app.patch('/admin/users/:discordId/geofs', requireAdmin, async (req, res) => {
     res.json({ ok: true, user });
   } catch (err) {
     console.error('Admin GeoFS update error:', err);
+    res.status(500).json({ error: 'server error' });
+  }
+});
+
+app.patch('/admin/users/:discordId/upload-ban', requireAdmin, async (req, res) => {
+  try {
+    const banned = req.body.banned !== false;
+    const reason = String(req.body.reason || '').trim().slice(0, 500);
+    const before = await User.findOne({ discordId: req.params.discordId })
+      .select('discordId username displayName lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy')
+      .lean();
+    if (!before) return res.status(404).json({ error: 'user not found' });
+
+    const admin = getAdminActor(req);
+    const banIps = banned
+      ? uniqueStrings([before.lastLoginIp, ...(before.loginIps || [])])
+      : [];
+
+    const update = banned
+      ? {
+        $set: {
+          uploadBanned: true,
+          uploadBanReason: reason || 'Upload privileges suspended by admin',
+          uploadBanIps: banIps,
+          uploadBannedAt: new Date(),
+          uploadBannedBy: admin
+        }
+      }
+      : {
+        $set: { uploadBanned: false, uploadBanIps: [] },
+        $unset: { uploadBanReason: '', uploadBannedAt: '', uploadBannedBy: '' }
+      };
+
+    const user = await User.findOneAndUpdate(
+      { discordId: req.params.discordId },
+      update,
+      { new: true }
+    )
+      .select('discordId username displayName geofsUserId linkedAt createdAt geofsUpdatedBy lastLoginIp loginIps uploadBanned uploadBanReason uploadBanIps uploadBannedAt uploadBannedBy')
+      .lean();
+
+    await logAdminAction(req, {
+      action: banned ? 'user.upload-ban' : 'user.upload-unban',
+      targetType: 'user',
+      targetId: req.params.discordId,
+      before: {
+        uploadBanned: Boolean(before.uploadBanned),
+        uploadBanReason: before.uploadBanReason || null,
+        uploadBanIps: before.uploadBanIps || []
+      },
+      after: {
+        uploadBanned: Boolean(user.uploadBanned),
+        uploadBanReason: user.uploadBanReason || null,
+        uploadBanIps: user.uploadBanIps || []
+      }
+    });
+
+    res.json({ ok: true, user, bannedIpCount: banIps.length });
+  } catch (err) {
+    console.error('Admin upload-ban error:', err);
     res.status(500).json({ error: 'server error' });
   }
 });
@@ -2358,7 +2494,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage, limits: { fileSize: 30 * 1024 * 1024 } });
 
-app.post('/api/upload', upload.single('photo'), async (req, res) => {
+app.post('/api/upload', requirePhotoUploadAccess, upload.single('photo'), async (req, res) => {
   try {
     const file = req.file;
     if (!file) return res.status(400).json({ error: 'no file' });
@@ -2371,23 +2507,13 @@ app.post('/api/upload', upload.single('photo'), async (req, res) => {
     if (!imgbbData.success) throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown'));
     fs.unlinkSync(file.path);
 
-    // 從 JWT cookie 取得登入者的 discordId（若有登入）
-    let discordId = null;
-    try {
-      const token = req.cookies.auth_token;
-      if (token) {
-        const decoded = jwt.verify(token, JWT_SECRET);
-        discordId = decoded.discordId || null;
-      }
-    } catch { /* 未登入，忽略 */ }
-
     const { photographer = 'anon', caption = '', tags = '', lat, lon, userId } = req.body;
     const photo = await Photo.create({
       file: imgbbData.data.url, thumb: imgbbData.data.url,
       photographer, caption,
       tags: tags.split(',').map(s => s.trim()).filter(Boolean),
       lat: lat ? Number(lat) : null, lon: lon ? Number(lon) : null,
-      userId: userId || null, discordId, status: 'pending'
+      userId: userId || null, discordId: req.uploadUser.discordId, status: 'pending'
     });
     res.json({ ok: true, photo });
   } catch (err) {

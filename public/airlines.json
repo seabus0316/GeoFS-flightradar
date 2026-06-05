@@ -2010,5 +2010,285 @@
     "iata": "A7",
     "country": "Australia",
     "logo": "https://media.discordapp.net/attachments/1507493567776690296/1509396863231590552/Screenshot_2026-05-27_at_11.24.10_PM.png?ex=6a19af9f&is=6a185e1f&hm=49735a2e832d2db2b9ba6374a6e335a0d165b37b42e048a0950976eef3381eb8&=&format=webp&quality=lossless&width=1910&height=1648"
+  },
+    "KAI": {
+    "name": "Kruger International Airways",
+    "icao": "KAI",
+    "iata": "KI",
+    "country": "South Africa",
+    "logo": "https://ibb.co/wN42fv1P"
+  },
+  "MGY": {
+    "name": "Air Madagascar",
+    "icao": "MGY",
+    "iata": "MD",
+    "country": "Madagascar",
+    "logo": "https://www.image2url.com/r2/default/images/1780601938644-789b6f2d-f22b-42d9-bf05-74b201a92f4d.png"
+  },
+  "BRS": {
+    "name": "Brazilian Air Force",
+    "icao": "BRS",
+    "iata": "AB",
+    "country": "Brazil",
+    "logo": "https://ibb.co/rKdjSKmW"
+  },
+  "TUA": {
+    "name": "Turkmenistan Airlines",
+    "icao": "TUA",
+    "iata": "T5",
+    "country": "Turkmenistan",
+    "logo": "https://www.image2url.com/r2/default/images/1780637478637-78a7dbd8-aaf2-4d82-ab79-3b580f6444dc.png"
+  },
+  "LNK": {
+    "name": "Airlink",
+    "icao": "LNK",
+    "iata": "4Z",
+    "country": "South Africa",
+    "logo": "https://www.image2url.com/r2/default/images/1780637947055-8c037151-b0cd-4177-83a6-22ac4b88d052.png"
+  },
+  "SFR": {
+    "name": "FlySafair",
+    "icao": "SFR",
+    "iata": "FA",
+    "country": "South Africa",
+    "logo": "https://img.sanishtech.com/u/724ca929524da77c59d0cbdbbd8d958d.png"
+  },
+  "NMB": {
+    "name": "Air Namibia",
+    "icao": "NMB",
+    "iata": "SW",
+    "country": "Namibia",
+    "logo": "https://img.sanishtech.com/u/1c5bae60cac3e0aeb7a67cb4aea87e6c.png"
+  },
+  "DAO": {
+    "name": "Daallo Airlines",
+    "icao": "DAO",
+    "iata": "D3",
+    "country": "Somalia",
+    "logo": "https://img.sanishtech.com/u/97d610ad1c070bdaa5eb04f3d2338fd1.png"
+  },
+  "FIE": {
+    "name": "FlyOne Armenia",
+    "icao": "FIE",
+    "iata": "3F",
+    "country": "Armenia",
+    "logo": "https://images.kiwi.com/airlines/64/3F.png"
+  },
+  "AHY": {
+    "name": "Azerbaijan Airlines",
+    "icao": "AHY",
+    "iata": "J2",
+    "country": "Azerbaijan",
+    "logo": "https://images.kiwi.com/airlines/64/J2.png"
+  },
+  "AZW": {
+    "name": "Air Zimbabwe",
+    "icao": "AZW",
+    "iata": "UM",
+    "country": "Zimbabwe",
+    "logo": "https://images.kiwi.com/airlines/64/UM.png"
+  },
+  "BOT": {
+    "name": "Air Botswana",
+    "icao": "BOT",
+    "iata": "BP",
+    "country": "Botswana",
+    "logo": "https://images.kiwi.com/airlines/64/BP.png"
+  },
+  "FJW": {
+    "name": "Fastjet Zimbabwe",
+    "icao": "FJW",
+    "iata": "FN",
+    "country": "Zimbabwe",
+    "logo": "https://images.kiwi.com/airlines/64/FN.png"
+  },
+  "SZL": {
+    "name": "Eswatini Air",
+    "icao": "SZL",
+    "iata": "RN",
+    "country": "Eswatini",
+    "logo": "https://images.kiwi.com/airlines/64/RN.png"
+  },
+  "EWR": {
+    "name": "EWA Air",
+    "icao": "EWR",
+    "iata": "ZD",
+    "country": "Mayotte",
+    "logo": "https://images.kiwi.com/airlines/64/ZD.png"
+  },
+  "AZB": {
+    "name": "Zambia Airways",
+    "icao": "AZB",
+    "iata": "ZN",
+    "country": "Zambia",
+    "logo": "https://images.kiwi.com/airlines/64/ZN.png"
+  },
+  "PFZ": {
+    "name": "Proflight Zambia",
+    "icao": "PFZ",
+    "iata": "P0",
+    "country": "Zambia",
+    "logo": "https://images.kiwi.com/airlines/64/P0.png"
+  },
+  "MWI": {
+    "name": "Malawi Airlines",
+    "icao": "MWI",
+    "iata": "3W",
+    "country": "Malawi",
+    "logo": "https://img.sanishtech.com/u/8e3bf29dab56a5d16427206bbf1037e2.png"
+  },
+  "ATC": {
+    "name": "Air Tanzania",
+    "icao": "ATC",
+    "iata": "TC",
+    "country": "Tanzania",
+    "logo": "https://images.kiwi.com/airlines/64/TC.png"
+  },
+  "RWD": {
+    "name": "RwandAir",
+    "icao": "RWD",
+    "iata": "WB",
+    "country": "Rwanda",
+    "logo": "https://images.kiwi.com/airlines/64/WB.png"
+  },
+  "SKK": {
+    "name": "ASKY Airlines",
+    "icao": "SKK",
+    "iata": "KP",
+    "country": "Togo",
+    "logo": "https://images.kiwi.com/airlines/64/KP.png"
+  },
+  "DBP": {
+    "name": "flyCAA",
+    "icao": "DBP",
+    "iata": "BU",
+    "country": "Democratic Republic of the Congo",
+    "logo": "https://images.kiwi.com/airlines/64/BU.png"
+  },
+  "SEY": {
+    "name": "Air Seychelles",
+    "icao": "SEY",
+    "iata": "HM",
+    "country": "Seychelles",
+    "logo": "https://images.kiwi.com/airlines/64/HM.png"
+  },
+  "STP": {
+    "name": "STP Airways",
+    "icao": "STP",
+    "iata": "8F",
+    "country": "São Tomé and Príncipe",
+    "logo": "https://images.kiwi.com/airlines/64/8F.png"
+  },
+  "CRA": {
+    "name": "Cronos Airlines",
+    "icao": "CRA",
+    "iata": "C8",
+    "country": "Equatorial Guinea",
+    "logo": "https://images.kiwi.com/airlines/64/C8.png"
+  },
+  "CRC": {
+    "name": "Camair-Co",
+    "icao": "CRC",
+    "iata": "QC",
+    "country": "Cameroon",
+    "logo": "https://images.kiwi.com/airlines/64/QC.png"
+  },
+  "TSG": {
+    "name": "Trans Air Congo",
+    "icao": "TSG",
+    "iata": "T8",
+    "country": "Republic of Congo",
+    "logo": "https://img.sanishtech.com/u/5569838e45ebd109c3491bbcc5d95735.png"
+  },
+  "ABS": {
+    "name": "FlyGabon",
+    "icao": "ABS",
+    "iata": "J7",
+    "country": "Gabon",
+    "logo": "https://img.sanishtech.com/u/d35c9f326ab2db62bfcb3fc4303453c8.jpg"
+  },
+  "NIG": {
+    "name": "Aero",
+    "icao": "NIG",
+    "iata": "N2",
+    "country": "Nigeria",
+    "logo": "https://img.sanishtech.com/u/6c4552255721835fa72a9ab7a1c80381.png"
+  },
+  "ARA": {
+    "name": "Arik Air",
+    "icao": "ARA",
+    "iata": "W3",
+    "country": "Nigeria",
+    "logo": "https://images.kiwi.com/airlines/64/W3.png"
+  },
+  "AZM": {
+    "name": "Azman Air",
+    "icao": "AZM",
+    "iata": "ZU",
+    "country": "Nigeria",
+    "logo": "https://img.sanishtech.com/u/0180e613c8447d4c21b6a70426bdb955.png"
+  },
+  "LWA": {
+    "name": "Libyan Wings",
+    "icao": "LWA",
+    "iata": "YL",
+    "country": "Libya",
+    "logo": "https://images.kiwi.com/airlines/64/YL.png"
+  },
+  "TCV": {
+    "name": "Cabo Verde Airlines",
+    "icao": "TCV",
+    "iata": "VR",
+    "country": "Cabo Verde",
+    "logo": "https://images.kiwi.com/airlines/64/VR.png"
+  },
+  "JBW": {
+    "name": "Jubba Airways",
+    "icao": "JBW",
+    "iata": "3J",
+    "country": "Somalia",
+    "logo": "https://images.kiwi.com/airlines/64/3J.png"
+  },
+  "OMS": {
+    "name": "SalamAir",
+    "icao": "OMS",
+    "iata": "OV",
+    "country": "Oman",
+    "logo": "https://images.kiwi.com/airlines/64/OV.png"
+  },
+  "IAW": {
+    "name": "Iraqi Airways",
+    "icao": "IAW",
+    "iata": "IA",
+    "country": "Iraq",
+    "logo": "https://images.kiwi.com/airlines/64/IA.png"
+  },
+  "SMR": {
+    "name": "Somon Air",
+    "icao": "SMR",
+    "iata": "SZ",
+    "country": "Tajikistan",
+    "logo": "https://images.kiwi.com/airlines/64/SZ.png"
+  },
+  "TEZ": {
+    "name": "Tez Jet Airlines",
+    "icao": "TEZ",
+    "iata": "K9",
+    "country": "Kyrgyzstan",
+    "logo": "https://images.kiwi.com/airlines/64/K9.png"
+  },
+  "AVJ": {
+    "name": "Avia Traffic",
+    "icao": "AVJ",
+    "iata": "YK",
+    "country": "Kyrgyzstan",
+    "logo": "https://images.kiwi.com/airlines/64/YK.png"
+  },
+  "ANK": {
+    "name": "Aero Nomad",
+    "icao": "ANK",
+    "iata": "A10",
+    "country": "Kyrgyzstan",
+    "logo": "https://img.sanishtech.com/u/e175c9b661436d57cd21b61467978654.png"
   }
 }
