@@ -2030,7 +2030,7 @@
     "icao": "BRS",
     "iata": "AB",
     "country": "Brazil",
-    "logo": "https://ibb.co/rKdjSKmW"
+    "logo": "https://i.ibb.co/DPrJyPtq/FAB-logo.png"
   },
   "TUA": {
     "name": "Turkmenistan Airlines",
@@ -2290,5 +2290,19 @@
     "iata": "A10",
     "country": "Kyrgyzstan",
     "logo": "https://img.sanishtech.com/u/e175c9b661436d57cd21b61467978654.png"
+  },
+    "LAM": {
+    "name": "LAM Mozambique Airline",
+    "icao": "LAM",
+    "iata": "TM",
+    "country": "Mozambique",
+    "logo": "https://images.kiwi.com/airlines/64/TM.png"
+  },
+  "GBB": {
+    "name": "Lift",
+    "icao": "GBB",
+    "iata": "GE",
+    "country": "South Africa",
+    "logo": "https://images.kiwi.com/airlines/64/GE.png"
   }
 }
