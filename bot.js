@@ -371,7 +371,7 @@ client.on('messageCreate', async message => {
       return message.reply('Usage: `?export`, `?export pending`, or `?export skip ICAO reason`');
     }
 
-    const batch = buildAirlineExportBatch(50);
+    const batch = buildAirlineExportBatch(500);
     if (!batch.count) {
       return message.reply('No new airline submissions to export.');
     }

@@ -3004,5 +3004,12 @@
     "iata": "7I",
     "country": "Libya",
     "logo": "https://images.kiwi.com/airlines/64/7I.png"
+  },
+    "CSB": {
+    "name": "21 Air",
+    "icao": "CSB",
+    "iata": "2I",
+    "country": "United States",
+    "logo": "https://img.sanishtech.com/u/d7830dac334b87ad93c988d8f8a0563a.png"
   }
 }
