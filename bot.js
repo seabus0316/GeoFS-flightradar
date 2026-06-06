@@ -331,7 +331,7 @@ client.on('messageCreate', async message => {
     const subcommand = String(subcommandRaw || '').toLowerCase();
 
     if (subcommand === 'pending') {
-      const pending = getPendingAirlineSubmissions(50);
+      const pending = getPendingAirlineSubmissions(500);
       if (!pending.length) {
         return message.reply('No pending airline submissions.');
       }
