@@ -146,6 +146,15 @@ const ProfileApp = (() => {
     return apiGet(`/api/flights/geofs/${encodeURIComponent(geofsUserId)}?limit=${limit}`);
   }
 
+  async function loadLiveStatusByGeofsId(geofsUserId) {
+    if (!geofsUserId) return null;
+    try {
+      return await apiGet(`/api/users/geofs/${encodeURIComponent(geofsUserId)}/live`);
+    } catch {
+      return null;
+    }
+  }
+
   function computeStatsFromFlights(flights) {
     const stats = {
       totalFlights: 0,
@@ -620,7 +629,7 @@ const ProfileApp = (() => {
     DOM.flightsList.innerHTML = cards.join('');
   }
 
-  function renderHeader(user, stats, flights) {
+  function renderHeader(user, stats, flights, liveStatus = null) {
     DOM.avatar.src = resolveAvatar(user);
     DOM.displayName.textContent = user.displayName || user.username || 'Pilot';
     DOM.username.innerHTML = `@<span class="at">${user.username || 'unknown'}</span>`;
@@ -629,18 +638,23 @@ const ProfileApp = (() => {
     const latestFlight = sortFlights(flights)[0];
     const lastSeenTime = latestFlight ? Number(latestFlight.endTime || latestFlight.startTime || 0) : 0;
     const now = Date.now();
-    const recentlyActive = lastSeenTime && now - lastSeenTime < STATUS_ONLINE_THRESHOLD_MS;
-    DOM.status.classList.toggle('online', recentlyActive);
-    DOM.status.classList.toggle('offline', !recentlyActive);
+    const liveLastSeen = Number(liveStatus?.aircraft?.lastSeen || 0);
+    const isLive = Boolean(liveStatus?.live);
+    const recentlyActive = !isLive && lastSeenTime && now - lastSeenTime < STATUS_ONLINE_THRESHOLD_MS;
+    const isOnline = isLive || recentlyActive;
+    DOM.status.classList.toggle('online', isOnline);
+    DOM.status.classList.toggle('offline', !isOnline);
 
-    const statusLabel = recentlyActive ? 'Online' : 'Offline';
-    const lastSeenLabel = latestFlight
-      ? `${formatDuration(Math.round((now - lastSeenTime) / 1000))} since last flight`
-      : 'No flight activity yet';
+    const statusLabel = isOnline ? 'Online' : 'Offline';
+    const lastSeenLabel = isLive
+      ? `Live now${liveLastSeen ? ` · ${formatDuration(Math.round((now - liveLastSeen) / 1000))} ago` : ''}`
+      : latestFlight
+        ? `${formatDuration(Math.round((now - lastSeenTime) / 1000))} since last flight`
+        : 'No flight activity yet';
 
     DOM.statusTooltip.innerHTML = `
       <div class="profile-status-tooltip-title">
-        <span class="dot ${recentlyActive ? 'online' : 'offline'}"></span>
+        <span class="dot ${isOnline ? 'online' : 'offline'}"></span>
         ${statusLabel}
       </div>
       <div class="profile-status-tooltip-row"><span class="label">Activity</span><span class="value">${lastSeenLabel}</span></div>
@@ -1082,6 +1096,7 @@ function applyCustomProfileSettings() {
       let stats = null;
       let flights = [];
       let medals = [];
+      let liveStatus = null;
       if (state.discordId) {
         [stats, flights, medals] = await Promise.all([
           loadStats(state.discordId),
@@ -1094,6 +1109,7 @@ function applyCustomProfileSettings() {
         stats = computeStatsFromFlights(flights);
         state.medals = [];
       }
+      liveStatus = await loadLiveStatusByGeofsId(targetUser.geofsUserId || geofsUserId);
       state.user = targetUser;
       state.stats = stats;
       state.flights = Array.isArray(flights) ? flights : [];
@@ -1103,7 +1119,7 @@ function applyCustomProfileSettings() {
       if (state.heatmapYear < state.minYear) state.heatmapYear = state.minYear;
       if (state.heatmapYear > state.maxYear) state.heatmapYear = state.maxYear;
 
-      renderHeader(state.user, state.stats, state.flights);
+      renderHeader(state.user, state.stats, state.flights, liveStatus);
       renderStats(state.stats, state.flights);
       renderFlights(state.flights);
       renderHeatmap(state.heatmapYear);

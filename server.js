@@ -1856,6 +1856,46 @@ app.get('/api/users/geofs/:geofsUserId', async (req, res) => {
     res.json(user);
   } catch { res.status(500).json({ error: 'server error' }); }
 });
+
+app.get('/api/users/geofs/:geofsUserId/live', async (req, res) => {
+  try {
+    const geofsUserId = String(req.params.geofsUserId || '').trim();
+    if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
+
+    const live = Array.from(aircrafts.values()).find(({ payload }) =>
+      String(payload?.userId || '').trim() === geofsUserId
+    );
+
+    if (!live?.payload) {
+      return res.json({
+        live: false,
+        geofsUserId,
+        lastSeen: null
+      });
+    }
+
+    const user = await User.findOne({ geofsUserId }).lean();
+
+    res.json({
+      live: true,
+      geofsUserId,
+      aircraft: {
+        callsign: live.payload.callsign || '',
+        flightNo: live.payload.flightNo || '',
+        type: live.payload.type || '',
+        departure: live.payload.departure || '',
+        arrival: live.payload.arrival || '',
+        lastSeen: live.lastSeen || Date.now()
+      },
+      discordId: user?.discordId || null,
+      username: user?.username || null,
+      displayName: user?.displayName || null
+    });
+  } catch (err) {
+    console.error('GET /api/users/geofs/:geofsUserId/live error', err);
+    res.status(500).json({ error: 'Failed to lookup live status' });
+  }
+});
 // ── Medal API ──────────────────────────────────────────────────────────
 
 app.get('/api/users/:discordId/medals', async (req, res) => {
@@ -2523,7 +2563,8 @@ app.post('/api/upload', requirePhotoUploadAccess, upload.single('photo'), async 
     if (!imgbbData.success) throw new Error('ImgBB upload failed: ' + (imgbbData.error?.message || 'unknown'));
     fs.unlinkSync(file.path);
 
-    const { photographer = 'anon', caption = '', tags = '', lat, lon, userId } = req.body;
+    const photographer = req.uploadUser.username || req.uploadUser.displayName || 'anon';
+    const { caption = '', tags = '', lat, lon, userId } = req.body;
     const photo = await Photo.create({
       file: imgbbData.data.url, thumb: imgbbData.data.url,
       photographer, caption,

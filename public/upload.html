@@ -271,7 +271,7 @@
 
       <div class="form-group">
         <label for="photographer">Photographer Name:</label>
-        <input type="text" id="photographer" name="photographer" placeholder="Your name (optional)">
+        <input type="text" id="photographer" name="photographer" placeholder="Discord username" readonly>
       </div>
 
       <div class="form-group" style="flex-grow: 1;">
@@ -337,6 +337,8 @@
 
     function renderLoggedIn(user) {
       const avatar = user.photos?.[0] || `https://cdn.discordapp.com/embed/avatars/0.png`;
+      const photographer = document.getElementById('photographer');
+      if (photographer) photographer.value = user.username || user.displayName || '';
       authBar.innerHTML = `
         <div class="auth-user">
           <img src="${avatar}" alt="">
@@ -350,6 +352,8 @@
     }
 
     function renderLoggedOut() {
+      const photographer = document.getElementById('photographer');
+      if (photographer) photographer.value = '';
       authBar.innerHTML = `
         <span class="auth-note">
           <strong>Discord login required</strong> to upload jet photos.

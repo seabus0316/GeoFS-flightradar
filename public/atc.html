@@ -68,6 +68,19 @@
   <button id="globeBtn" class="atc-mode-btn" onclick="toggleGlobeMode()" title="3D Globe Mode">
     <i data-lucide="globe"></i>
   </button>
+  <button id="globeResetBtn" class="atc-mode-btn" onclick="resetGlobeMapView()" title="Reset map view" style="display:none;">
+    <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
+      <path d="M4 12a8 8 0 0 1 13.66-5.66" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M18 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round" />
+      <path d="M20 12a8 8 0 0 1-13.66 5.66" fill="none" stroke="currentColor" stroke-width="2.2"
+        stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M6 21v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round" />
+      <path d="M12 8l3 7-3-1.35L9 15z" fill="currentColor" />
+    </svg>
+  </button>
 
   <!-- Settings 按鈕 -->
   <div style="position:relative;">
@@ -671,7 +684,7 @@
   }
 
   const GLOBE_HOME_VIEW = {
-    destination: { lon: 0, lat: 20, height: 22000000 },
+    destination: { lon: 121, lat: 23.7, height: 2200000 },
     orientation: { heading: 0, pitch: -Math.PI / 2, roll: 0 }
   };
 
@@ -690,6 +703,11 @@
     } else {
       cesiumViewer.camera.setView(options);
     }
+  }
+
+  function resetGlobeMapView() {
+    resetGlobeCameraReference();
+    resetGlobeCameraHome(0.9);
   }
 
   let _ignoreOutsidePanelCloseUntil = 0;
@@ -5785,12 +5803,14 @@ function _saveProfileSettings(modalId) {
     async function toggleGlobeMode() {
       globeMode = !globeMode;
       const globeBtn = document.getElementById('globeBtn');
+      const globeResetBtn = document.getElementById('globeResetBtn');
       const mapDiv = document.getElementById('map');
       const globeDiv = document.getElementById('globe');
 
       if (globeMode) {
         globeBtn.classList.add('active');
         globeBtn.style.color = '#ffd500';
+        if (globeResetBtn) globeResetBtn.style.display = 'flex';
         mapDiv.style.opacity = '0';
         setTimeout(() => { if (globeMode) mapDiv.style.display = 'none'; }, 300);
         globeDiv.style.display = 'block';
@@ -5852,7 +5872,7 @@ function _saveProfileSettings(modalId) {
                     const northAngle = worldPos
                       ? getScreenNorthAngle(worldPos)
                       : (cesiumViewer.camera.heading || 0);
-                    entity.billboard.rotation = originalHeading - northAngle;
+                    entity.billboard.rotation = northAngle - originalHeading;
                   }
                 }
               });
@@ -5880,6 +5900,7 @@ function _saveProfileSettings(modalId) {
           globeMode = false;
           globeBtn.classList.remove('active');
           globeBtn.style.color = '';
+          if (globeResetBtn) globeResetBtn.style.display = 'none';
           globeDiv.style.display = 'none';
           mapDiv.style.display = 'block';
           mapDiv.style.opacity = '1';
@@ -5887,6 +5908,7 @@ function _saveProfileSettings(modalId) {
       } else {
         globeBtn.classList.remove('active');
         globeBtn.style.color = '';
+        if (globeResetBtn) globeResetBtn.style.display = 'none';
         globeDiv.style.display = 'none';
         mapDiv.style.display = 'block';
         mapDiv.style.opacity = '1';
@@ -5931,16 +5953,18 @@ function _saveProfileSettings(modalId) {
       const dx = np.x - sp.x;
       const dy = np.y - sp.y;
       // Screen Y increases downward, so "up" on screen is -dy.
-      // atan2(dx, -dy) gives clockwise angle from screen-up → same convention as camera.heading
+      // atan2(dx, -dy) gives clockwise angle from screen-up to local north.
       return Math.atan2(dx, -dy);
     }
 
     async function updateGlobeAircraft(id, data) {
       if (!cesiumViewer || !globeMode) return;
 
-      const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
-      // Use the same north-up icon baseline as Leaflet.
+      const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, 0);
+      // Keep aircraft on the same visual plane as the globe surface.
       const heading = Cesium.Math.toRadians(data.heading || 0);
+      // Cesium billboard rotation is opposite CSS rotate(), so subtract heading
+      // from local screen north to match the Leaflet aircraft direction.
       // Compensate for local screen-space north at this aircraft's position.
       // Using per-aircraft getScreenNorthAngle() instead of the global camera.heading
       // fixes heading errors for aircraft far from the screen centre (spherical distortion).
@@ -5954,7 +5978,7 @@ function _saveProfileSettings(modalId) {
         entity.position = position;
         entity._originalHeading = smoothedHeading;  // Store original heading for camera sync
         const northAngle = getScreenNorthAngle(position);
-        entity.billboard.rotation = smoothedHeading - northAngle;
+        entity.billboard.rotation = northAngle - smoothedHeading;
         entity.billboard.image = await getColoredIconDataUrl(data.type, iconColor);
 
         // Throttled track refresh for focused aircraft (max once per 5 s)
@@ -6005,7 +6029,7 @@ function _saveProfileSettings(modalId) {
             image: iconUrl,
             width: 32,
             height: 32,
-            rotation: heading - northAngle,
+            rotation: northAngle - heading,
             sizeInMeters: false,
             verticalOrigin: Cesium.VerticalOrigin.CENTER,
             horizontalOrigin: Cesium.HorizontalOrigin.CENTER,
