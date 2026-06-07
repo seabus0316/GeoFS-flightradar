@@ -178,7 +178,16 @@
   }
 
   // --- 全域變數 ---
-window.geofsFlightInfo = { departure: '', arrival: '', flightNo: '', squawk: '', confirmed: false };
+window.geofsFlightInfo = {
+  departure: '',
+  arrival: '',
+  originalArrival: '',
+  actualArrival: '',
+  flightNo: '',
+  squawk: '',
+  confirmed: false,
+  isDiverted: false
+};
 let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
@@ -510,6 +519,9 @@ function buildPayload(snap) {
     flightNo: flightInfo.flightNo,
     departure: flightInfo.departure,
     arrival: flightInfo.arrival,
+    originalArrival: flightInfo.originalArrival || flightInfo.arrival,
+    actualArrival: flightInfo.actualArrival || flightInfo.arrival,
+    isDiverted: Boolean(flightInfo.isDiverted),
     takeoffTime: takeoffTimeUTC,
     squawk: flightInfo.squawk,
     flightConfirmed: Boolean(flightInfo.confirmed),
@@ -571,6 +583,17 @@ function buildPayload(snap) {
     `;
   }
 
+  function createDivertIcon() {
+    return `
+      <svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true" focusable="false">
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 18h4c4.5 0 6.5-3 8.5-8.5"/>
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M4 6h4c2.5 0 4.2 1 5.6 3"/>
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M14 4h6v6"/>
+        <path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M16 14h6v6"/>
+      </svg>
+    `;
+  }
+
   function injectFlightUI() {
     flightUI = document.createElement("div");
     flightUI.style.cssText =
@@ -584,6 +607,7 @@ function buildPayload(snap) {
       <div style="display:flex;align-items:center;gap:4px;margin-top:4px">
         <button id="fetchPlanBtn" type="button" title="Fetch departure and arrival from the first and last flight plan waypoint" aria-label="Fetch departure and arrival from flight plan" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid #4eaaff;border-radius:6px;background:#1e3f6e;color:#d7ecff;cursor:pointer">${createFetchPlanIcon()}</button>
         <button id="saveBtn">Save</button>
+        <button id="divertBtn" type="button" title="Mark current arrival as diversion" aria-label="Mark current arrival as diversion" style="display:inline-flex;align-items:center;justify-content:center;width:24px;height:24px;padding:0;border:1px solid #ff6b5f;border-radius:6px;background:#5c1d1a;color:#ffd8d3;cursor:pointer">${createDivertIcon()}</button>
       </div>
     `;
 
@@ -602,6 +626,13 @@ function buildPayload(snap) {
     });
     fetchPlanBtn.addEventListener('mouseleave', () => {
       fetchPlanBtn.style.background = '#1e3f6e';
+    });
+
+    divertBtn.addEventListener('mouseenter', () => {
+      divertBtn.style.background = '#7a2824';
+    });
+    divertBtn.addEventListener('mouseleave', () => {
+      divertBtn.style.background = '#5c1d1a';
     });
 
     fetchPlanBtn.onclick = () => {
@@ -629,10 +660,36 @@ function buildPayload(snap) {
     saveBtn.onclick = () => {
       flightInfo.departure = depInput.value.trim();
       flightInfo.arrival = arrInput.value.trim();
+      flightInfo.originalArrival = flightInfo.arrival;
+      flightInfo.actualArrival = flightInfo.arrival;
       flightInfo.flightNo = fltInput.value.trim();
       flightInfo.squawk = sqkInput.value.trim();
       flightInfo.confirmed = Boolean(flightInfo.departure && flightInfo.arrival);
+      flightInfo.isDiverted = false;
       showToast(flightInfo.confirmed ? 'Flight Info Saved' : 'Flight info incomplete');
+    };
+
+    divertBtn.onclick = () => {
+      const newArrival = arrInput.value.trim();
+      const originalArrival = flightInfo.originalArrival || flightInfo.arrival;
+
+      if (!flightInfo.confirmed || !originalArrival) {
+        showToast('Save original flight first');
+        return;
+      }
+      if (!newArrival) {
+        showToast('Arrival airport required');
+        return;
+      }
+      if (newArrival === originalArrival) {
+        showToast('Arrival unchanged');
+        return;
+      }
+
+      flightInfo.actualArrival = newArrival;
+      flightInfo.isDiverted = true;
+      flightInfo.confirmed = Boolean(flightInfo.departure && flightInfo.arrival);
+      showToast(`Diverting to ${newArrival}`);
     };
   }
   injectFlightUI();

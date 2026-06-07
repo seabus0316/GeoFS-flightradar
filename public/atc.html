@@ -1444,7 +1444,7 @@
           // 新飛機 → 建立元素
           const fnBadge = d.flightNo ? `<span class="fl-badge">${esc(d.flightNo)}</span>` : "";
           const typeBadge = type ? `<span class="fl-badge type">${type}</span>` : "";
-          const divBadge = d.isDiverted ? `<span class="fl-diverted">DIV</span>` : "";
+          const divBadge = `<span class="fl-diverted" style="${d.isDiverted ? "" : "display:none"}">DIV</span>`;
           el = document.createElement("div");
           el.className = `fl-item${id === flSelectedId ? " selected" : ""}`;
           el.dataset.flid = id;
@@ -1478,6 +1478,12 @@
         }
         const r3El = el.querySelector(".fl-r3");
         if (r3El && r3El.textContent !== row3) r3El.textContent = row3;
+        const divEl = el.querySelector(".fl-diverted");
+        if (divEl) divEl.style.display = d.isDiverted ? "" : "none";
+        const depEl = el.querySelector(".fl-dep");
+        if (depEl && depEl.textContent !== dep4) depEl.textContent = dep4;
+        const arrEl = el.querySelector(".fl-arr");
+        if (arrEl && arrEl.textContent !== arr4) arrEl.textContent = arr4;
       });
     }
 
@@ -2252,7 +2258,8 @@
       const labelClass = isEmergency ? 'label emergency' : 'label';
       const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
       const depShort = (data.departure || '').substring(0, 4);
-      const arrShort = (data.arrival || '').substring(0, 4);
+      const arrShort = (data.actualArrival || data.arrival || '').substring(0, 4);
+      const divertText = data.isDiverted ? `<div style="font-size:10px;font-weight:bold;color:#ff6b5f;">DIVERTING TO ${escapeHtml(arrShort)}</div>` : '';
 
       return L.divIcon({
         html: `
@@ -2264,6 +2271,7 @@
           ${escapeHtml(data.type || '??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        ${divertText}
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
       </div>
     </div>`,
@@ -3357,7 +3365,8 @@
           const isEmergency = data.squawk === '7700';
           const squawkText = data.squawk ? `SQK:${escapeHtml(data.squawk)}` : '';
           const depShort = (data.departure || '').substring(0, 4);
-          const arrShort = (data.arrival || '').substring(0, 4);
+          const arrShort = (data.actualArrival || data.arrival || '').substring(0, 4);
+          const divertText = data.isDiverted ? `<div style="font-size:10px;font-weight:bold;color:#ff6b5f;">DIVERTING TO ${escapeHtml(arrShort)}</div>` : '';
 
           label.className = isEmergency ? 'label emergency' : 'label';
           label.style.borderLeft = `3px solid ${color}`;
@@ -3367,6 +3376,7 @@
           ${escapeHtml(data.type || '??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
         <div style="font-size:11px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        ${divertText}
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
       `;
         }
@@ -3478,9 +3488,10 @@
         (data.departure && data.departure.length === 4 && a.ident.endsWith(data.departure))
       );
 
+      const destination = data.actualArrival || data.arrival;
       let arrAirport = airports.find(a =>
-        a.ident === data.arrival ||
-        (data.arrival && data.arrival.length === 4 && a.ident.endsWith(data.arrival))
+        a.ident === destination ||
+        (destination && destination.length === 4 && a.ident.endsWith(destination))
       );
 
       // 🔥 【新增區塊】 2. 如果資料庫找不到，就去查我們的手動補丁 (MANUAL_AIRPORTS)
@@ -3489,9 +3500,9 @@
         depAirport = { ident: data.departure, name: m.name, latitude_deg: m.lat, longitude_deg: m.lon };
       }
 
-      if (!arrAirport && data.arrival && MANUAL_AIRPORTS[data.arrival]) {
-        const m = MANUAL_AIRPORTS[data.arrival];
-        arrAirport = { ident: data.arrival, name: m.name, latitude_deg: m.lat, longitude_deg: m.lon };
+      if (!arrAirport && destination && MANUAL_AIRPORTS[destination]) {
+        const m = MANUAL_AIRPORTS[destination];
+        arrAirport = { ident: destination, name: m.name, latitude_deg: m.lat, longitude_deg: m.lon };
       }
 
       // --- 以下邏輯保持不變 ---
@@ -5085,6 +5096,36 @@ function _saveProfileSettings(modalId) {
       return null;
     }
 
+    function findAirportByIcao(icao) {
+      const code = String(icao || '').trim().toUpperCase();
+      if (!code || !Array.isArray(airportsData)) return null;
+      return airportsData.find(a =>
+        a.ident === code ||
+        (code.length === 4 && typeof a.ident === 'string' && a.ident.endsWith(code))
+      ) || null;
+    }
+
+    function getAirportLocalClockInfo(icao) {
+      const airport = findAirportByIcao(icao);
+      const lon = Number(airport?.longitude_deg);
+      if (!Number.isFinite(lon)) {
+        return {
+          label: 'Local',
+          timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone,
+          utcOffsetMinutes: null
+        };
+      }
+
+      const offsetHours = Math.max(-12, Math.min(14, Math.round(lon / 15)));
+      const sign = offsetHours >= 0 ? '+' : '-';
+      return {
+        label: `${String(icao || '').toUpperCase()} LT`,
+        timeZone: null,
+        utcOffsetMinutes: offsetHours * 60,
+        offsetLabel: `UTC${sign}${String(Math.abs(offsetHours)).padStart(2, '0')}`
+      };
+    }
+
     function showMetarWidget(metar, icao) {
       let widget = document.getElementById('metarWidget');
       let toggleBtn = document.getElementById('metarToggle');
@@ -5157,13 +5198,17 @@ function _saveProfileSettings(modalId) {
       const clockContainer = document.createElement("div");
       clockContainer.style.cssText = "display:flex;justify-content:space-around;margin:8px 0;padding:8px 0;border-top:1px solid #333;border-bottom:1px solid #333;";
 
-      function createClock(label, timeZone) {
+      function createClock(label, timeZone, utcOffsetMinutes = null, subLabel = '') {
         const container = document.createElement("div");
         container.style.cssText = "text-align:center;";
 
         const labelDiv = document.createElement("div");
         labelDiv.textContent = label;
         labelDiv.style.cssText = "font-size:10px;margin-bottom:4px;color:#aaa;";
+
+        const subLabelDiv = document.createElement("div");
+        subLabelDiv.textContent = subLabel;
+        subLabelDiv.style.cssText = "font-size:9px;margin-top:-2px;margin-bottom:3px;color:#777;";
 
         const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
         svg.setAttribute("width", "50");
@@ -5172,8 +5217,12 @@ function _saveProfileSettings(modalId) {
 
         let hourNow = 12;
         try {
-          const tStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", timeZone });
-          hourNow = parseInt(tStr, 10);
+          if (typeof utcOffsetMinutes === 'number') {
+            hourNow = new Date(Date.now() + utcOffsetMinutes * 60000).getUTCHours();
+          } else {
+            const tStr = new Date().toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", timeZone });
+            hourNow = parseInt(tStr, 10);
+          }
         } catch { }
 
         const isDay = hourNow >= 6 && hourNow < 18;
@@ -5193,15 +5242,24 @@ function _saveProfileSettings(modalId) {
     `;
 
         container.appendChild(labelDiv);
+        if (subLabel) container.appendChild(subLabelDiv);
         container.appendChild(svg);
 
         function updateClock() {
           try {
             const now = new Date();
-            const timeStr = now.toLocaleTimeString("en-US", {
-              hour12: false, hour: "2-digit", minute: "2-digit", timeZone
-            });
-            const [h, m] = timeStr.split(":").map(Number);
+            let h;
+            let m;
+            if (typeof utcOffsetMinutes === 'number') {
+              const shifted = new Date(now.getTime() + utcOffsetMinutes * 60000);
+              h = shifted.getUTCHours();
+              m = shifted.getUTCMinutes();
+            } else {
+              const timeStr = now.toLocaleTimeString("en-US", {
+                hour12: false, hour: "2-digit", minute: "2-digit", timeZone
+              });
+              [h, m] = timeStr.split(":").map(Number);
+            }
             const hourHand = svg.querySelector(`#${uniqueId}-hour`);
             const minuteHand = svg.querySelector(`#${uniqueId}-minute`);
             if (hourHand && minuteHand) {
@@ -5218,8 +5276,13 @@ function _saveProfileSettings(modalId) {
       }
 
       const utcClock = createClock("UTC", "UTC");
-      const localTz = Intl.DateTimeFormat().resolvedOptions().timeZone;
-      const localClock = createClock("Asia/Taipei", localTz);
+      const airportClock = getAirportLocalClockInfo(icao);
+      const localClock = createClock(
+        airportClock.label,
+        airportClock.timeZone,
+        airportClock.utcOffsetMinutes,
+        airportClock.offsetLabel || ''
+      );
 
       clockContainer.appendChild(utcClock);
       clockContainer.appendChild(localClock);
