@@ -3011,5 +3011,131 @@
     "iata": "2I",
     "country": "United States",
     "logo": "https://img.sanishtech.com/u/d7830dac334b87ad93c988d8f8a0563a.png"
+  },
+    "ACP": {
+    "name": "Astral Aviation",
+    "icao": "ACP",
+    "iata": "8V",
+    "country": "Kenya",
+    "logo": "https://images.kiwi.com/airlines/64/8V.png"
+  },
+  "TBZ": {
+    "name": "ATA Airlines",
+    "icao": "TBZ",
+    "iata": "I3",
+    "country": "Iran",
+    "logo": "https://images.kiwi.com/airlines/64/I3.png"
+  },
+  "VAS": {
+    "name": "Atran",
+    "icao": "VAS",
+    "iata": "V8",
+    "country": "Russia",
+    "logo": "https://i.postimg.cc/RCcgqhyN/Untitled-05-June-2026-at-07-48-10.png"
+  },
+  "AMP": {
+    "name": "Atsa Airlines",
+    "icao": "AMP",
+    "iata": "4A",
+    "country": "Peru",
+    "logo": "https://images.kiwi.com/airlines/64/4A.png"
+  },
+  "AUR": {
+    "name": "Aurigny",
+    "icao": "AUR",
+    "iata": "GR",
+    "country": "Guernsey",
+    "logo": "https://images.kiwi.com/airlines/64/GR.png"
+  },
+  "AZS": {
+    "name": "Aviacon Zitotrans",
+    "icao": "AZS",
+    "iata": "ZR",
+    "country": "Russia",
+    "logo": "https://i.postimg.cc/rwnkbQNJ/download-(2).png"
+  },
+  "TPA": {
+    "name": "Avianca Cargo",
+    "icao": "TPA",
+    "iata": "QT",
+    "country": "Colombia",
+    "logo": "https://i.postimg.cc/vHYCs5TZ/Untitled-05-June-2026-at-07-48-10.png"
+  },
+  "HZS": {
+    "name": "Aviation Horizons",
+    "icao": "HZS",
+    "iata": "ZS",
+    "country": "Saudi Arabia",
+    "logo": "https://i.postimg.cc/tCstWgms/Untitled-05-June-2026-at-07-48-10-(1).png"
+  },
+  "NVD": {
+    "name": "Avion Express",
+    "icao": "NVD",
+    "iata": "X9",
+    "country": "Lithuania",
+    "logo": "https://images.kiwi.com/airlines/64/X9.png"
+  },
+  "ROI": {
+    "name": "Avior Airlines",
+    "icao": "ROI",
+    "iata": "9V",
+    "country": "Venezuela",
+    "logo": "https://images.kiwi.com/airlines/64/9V.png"
+  },
+  "AZY": {
+    "name": "Aztec Airways",
+    "icao": "AZY",
+    "iata": "AJ",
+    "country": "United States",
+    "logo": "https://i.postimg.cc/K8Xw4PKD/Untitled-05-June-2026-at-07-48-10-(3).png"
+  },
+  "ACN": {
+    "name": "Azul Conecta",
+    "icao": "ACN",
+    "iata": "2F",
+    "country": "Brazil",
+    "logo": "https://images.kiwi.com/airlines/64/2F.png"
+  },
+  "BDR": {
+    "name": "Badr Airlines",
+    "icao": "BDR",
+    "iata": "J4",
+    "country": "Sudan",
+    "logo": "https://images.kiwi.com/airlines/64/J4.png"
+  },
+  "BHS": {
+    "name": "Bahamasair",
+    "icao": "BHS",
+    "iata": "UP",
+    "country": "Bahamas",
+    "logo": "https://images.kiwi.com/airlines/64/UP.png"
+  },
+  "BAV": {
+    "name": "Bamboo Airways",
+    "icao": "BAV",
+    "iata": "QH",
+    "country": "Vietnam",
+    "logo": "https://images.kiwi.com/airlines/64/QH.png"
+  },
+  "BKP": {
+    "name": "Bangkok Airways",
+    "icao": "BKP",
+    "iata": "PG",
+    "country": "Thailand",
+    "logo": "https://images.kiwi.com/airlines/64/PG.png"
+  },
+  "BPS": {
+    "name": "BASe Airlines",
+    "icao": "BPS",
+    "iata": "RP",
+    "country": "Hungary",
+    "logo": "https://i.postimg.cc/g2HxTK85/Untitled-05-June-2026-at-07-48-10-(3).png"
+  },
+  "FLN": {
+    "name": "FlyNamibia",
+    "icao": "FLN",
+    "iata": "WV",
+    "country": "Namibia",
+    "logo": "https://images.kiwi.com/airlines/64/WV.png"
   }
 }

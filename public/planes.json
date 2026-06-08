@@ -69,6 +69,7 @@
   { "model": "Grumman JF2-5 Duck", "icon": "cessna.svg" },
   { "model": "Lockheed L-1011-1", "icon": "md11.svg" },
   { "model": "Mcdonnel Douglas MD-11", "icon": "md11.svg" },
+  { "model": "Mcdonnel Douglas DC-10-40", "icon": "md11.svg" },
   { "model": "Lockheed Martin P-791 (LMH-1)", "icon": "f11.svg" },
   { "model": "Lockheed SR-71A Blackbird", "icon": "a6.svg" },
   { "model": "MQ9B Reaper", "icon": "a6.svg" },
