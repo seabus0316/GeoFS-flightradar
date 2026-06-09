@@ -566,20 +566,25 @@ input:checked + .slider:before {
 }
 
 /* 選單連結 hover 效果 */
-#sideMenu a:hover {
-  background: rgba(255,255,255,0.1) !important;
+@media (hover: hover) {
+  #sideMenu a:hover {
+    background: rgba(255,255,255,0.1) !important;
+  }
 }
 
 /* 漢堡選單按鈕 — Light Liquid Glass */
 #menuToggle {
   transition: all 0.2s ease !important;
+  touch-action: manipulation;
 }
 
-#menuToggle:hover {
-  background: rgba(255, 255, 255, 0.75) !important;
-  border-color: rgba(255, 255, 255, 0.9) !important;
-  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255,255,255,1) inset !important;
-  transform: scale(1.05);
+@media (hover: hover) {
+  #menuToggle:hover {
+    background: rgba(255, 255, 255, 0.75) !important;
+    border-color: rgba(255, 255, 255, 0.9) !important;
+    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255,255,255,1) inset !important;
+    transform: scale(1.05);
+  }
 }
 
 /* ＋ － tileBtn wxBtn — iOS 26 Liquid Glass */
@@ -604,6 +609,7 @@ input:checked + .slider:before {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 .map-control-btn::before {
@@ -614,13 +620,15 @@ input:checked + .slider:before {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
 }
 
-.map-control-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow:
-    0 6px 32px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.85) inset;
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .map-control-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.75);
+    box-shadow:
+      0 6px 32px rgba(0, 0, 0, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    transform: translateY(-1px);
+  }
 }
 /* ===== ATC Mode Radar Blip ===== */
 .atc-radar-blip {
@@ -659,6 +667,7 @@ input:checked + .slider:before {
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 .atc-mode-btn::before {
@@ -669,13 +678,15 @@ input:checked + .slider:before {
   background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
 }
 
-.atc-mode-btn:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow:
-    0 6px 32px rgba(0, 0, 0, 0.22),
-    0 1px 0 rgba(255, 255, 255, 0.85) inset;
-  transform: translateY(-1px);
+@media (hover: hover) {
+  .atc-mode-btn:hover {
+    background: rgba(255, 255, 255, 0.35);
+    border-color: rgba(255, 255, 255, 0.75);
+    box-shadow:
+      0 6px 32px rgba(0, 0, 0, 0.22),
+      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    transform: translateY(-1px);
+  }
 }
 
 .atc-mode-btn.active {
