@@ -3137,5 +3137,12 @@
     "iata": "WV",
     "country": "Namibia",
     "logo": "https://images.kiwi.com/airlines/64/WV.png"
+  },
+    "C6": {
+    "name": "My Freighter",
+    "icao": "C6",
+    "iata": "MFX",
+    "country": "Uzbekistan",
+    "logo": "https://i.postimg.cc/qqrVBXnJ/1630454773733.jpg"
   }
 }
