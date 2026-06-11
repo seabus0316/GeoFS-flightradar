@@ -199,9 +199,36 @@ let flightInfo = window.geofsFlightInfo;
   let preLandingGroundSpeed = 0;      // 觸地前地速（kts）
   let preLandingGForce = 1.0;         // 觸地前 G 力
   let preLandingRoll = 0;             // 觸地前坡度
-  // --- WebSocket 管理 ---
+  // --- WebSocket & Socket.IO 管理 ---
   let ws;
-  function connect() {
+  let isSocketIO = window.geofsFlightRadarConfig && window.geofsFlightRadarConfig.mode === 'socket.io';
+
+  async function connect() {
+    if (isSocketIO && window.GeoFSSocketIO) {
+      log('Connecting using Socket.IO...');
+      ws = await window.GeoFSSocketIO.initSocketIOConnection(WS_URL);
+      if (!ws) {
+        log('Socket.IO init failed, falling back to WebSocket');
+        isSocketIO = false;
+        connectWebSocket();
+        return;
+      }
+      ws.on('connect', () => {
+        log('Socket.IO connected');
+        safeSend({ type: 'hello', role: 'player' });
+      });
+      ws.on('disconnect', () => {
+        log('Socket.IO disconnected, it will auto-reconnect...');
+      });
+      ws.on('connect_error', (e) => {
+        console.warn('[ATC-Reporter] Socket.IO error', e);
+      });
+    } else {
+      connectWebSocket();
+    }
+  }
+
+  function connectWebSocket() {
     try {
       ws = new WebSocket(WS_URL);
       ws.addEventListener('open', () => {
@@ -210,7 +237,7 @@ let flightInfo = window.geofsFlightInfo;
       });
       ws.addEventListener('close', () => {
         log('WS closed, retrying...');
-        setTimeout(connect, 2000);
+        setTimeout(connectWebSocket, 2000);
       });
       ws.addEventListener('error', (e) => {
         console.warn('[ATC-Reporter] WS error', e);
@@ -218,14 +245,19 @@ let flightInfo = window.geofsFlightInfo;
       });
     } catch (e) {
       console.warn('[ATC-Reporter] WS connect error', e);
-      setTimeout(connect, 2000);
+      setTimeout(connectWebSocket, 2000);
     }
   }
+  
   connect();
 
   function safeSend(obj) {
     try {
-      if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+      if (isSocketIO) {
+        if (ws && ws.connected) ws.send(JSON.stringify(obj));
+      } else {
+        if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
+      }
     } catch (e) {
       console.warn('[ATC-Reporter] send error', e);
     }
@@ -533,7 +565,11 @@ function buildPayload(snap) {
 
   // --- 定期傳送 ---
   setInterval(() => {
-    if (!ws || ws.readyState !== 1) return;
+    if (isSocketIO) {
+      if (!ws || !ws.connected) return;
+    } else {
+      if (!ws || ws.readyState !== 1) return;
+    }
     const snap = readSnapshot();
     if (!snap) return;
     const payload = buildPayload(snap);

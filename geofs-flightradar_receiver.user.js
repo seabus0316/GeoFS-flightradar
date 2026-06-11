@@ -18,7 +18,11 @@
     // ==============================
 
     const BASE = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/';
-    const scripts = ['userscript.js', 'radarthing.js'];
+    const scripts = [];
+    if (mode === 'socket.io') {
+        scripts.push('socketio.js');
+    }
+    scripts.push('userscript.js', 'radarthing.js');
 
     // 將設定傳給全域物件，讓 userscript.js 可以訪問
     window.geofsFlightRadarConfig = {
