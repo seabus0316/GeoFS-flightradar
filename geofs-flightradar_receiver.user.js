@@ -8,6 +8,8 @@
 // @match        https://*/geofs.php*
 // @grant        GM_xmlhttpRequest
 // @connect      raw.githubusercontent.com
+// @connect      cdn.socket.io
+// @connect      geofs-flightradar.duckdns.org
 // ==/UserScript==
 
 (function () {

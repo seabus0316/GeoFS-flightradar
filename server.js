@@ -23,26 +23,26 @@ const wss = new WebSocket.Server({ noServer: true });
 app.set('trust proxy', true);
 
 // ============ 環境變數 ============
-const PORT                = process.env.PORT                || 3000;
-const MONGODB_URI         = process.env.MONGODB_URI         || 'mongodb://localhost:27017/geofs_flightradar';
-const IMGBB_API_KEY       = process.env.IMGBB_API_KEY       || '';
-const DISCORD_ADMIN_IDS   = new Set(
+const PORT = process.env.PORT || 3000;
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
+const IMGBB_API_KEY = process.env.IMGBB_API_KEY || '';
+const DISCORD_ADMIN_IDS = new Set(
   String(process.env.DISCORD_ADMIN_IDS || '')
     .split(',')
     .map(id => id.trim())
     .filter(Boolean)
 );
 const AIRLINE_WEBHOOK_URL = process.env.AIRLINE_WEBHOOK_URL || '';
-const FLIGHT_WEBHOOK_URL  = process.env.FLIGHT_WEBHOOK_URL  || ''; // 飛行完成通報
-const ALERT_WEBHOOK_URL   = process.env.ALERT_WEBHOOK_URL   || ''; // 緊急 Squawk 警報
+const FLIGHT_WEBHOOK_URL = process.env.FLIGHT_WEBHOOK_URL || ''; // 飛行完成通報
+const ALERT_WEBHOOK_URL = process.env.ALERT_WEBHOOK_URL || ''; // 緊急 Squawk 警報
 // Discord OAuth
-const DISCORD_CLIENT_ID     = process.env.DISCORD_CLIENT_ID     || '';
+const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
-const DISCORD_REDIRECT_URI  = process.env.DISCORD_REDIRECT_URI  || ''; // e.g. https://geofs-flightradar.duckdns.org/auth/discord/callback
-const JWT_SECRET            = process.env.JWT_SECRET            || 'change_this_secret';
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || ''; // e.g. https://geofs-flightradar.duckdns.org/auth/discord/callback
+const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
 
 // ============ 共用變數 ============
-const aircrafts    = new Map();
+const aircrafts = new Map();
 const RETENTION_MS = 12 * 60 * 60 * 1000;
 const FLIGHT_SESSION_RETENTION_MS = 2 * 24 * 60 * 60 * 1000;
 const DEFAULT_REPLAY_WINDOW_MS = 6 * 60 * 60 * 1000;
@@ -51,10 +51,10 @@ const MIN_REPLAY_BUCKET_MS = 15 * 1000;
 const PRUNE_INTERVAL_MS = 5 * 60 * 1000;
 const SESSION_SNAPSHOT_MAX_POINTS = 40;
 
-const clients         = new Set();
-const atcClients      = new Set();
-const playerClients   = new Set();
-const ioAtcClients    = new Set();
+const clients = new Set();
+const atcClients = new Set();
+const playerClients = new Set();
+const ioAtcClients = new Set();
 const ioPlayerClients = new Set();
 const aircraftBroadcastState = new Map();
 
@@ -72,7 +72,7 @@ let lastSmartUpdateIntervalMs = null;
 
 const alertedSquawks = new Map(); // aircraftId → squawk code（防重複警報）
 const waypointState = new Map(); // aircraftId → { planHash, triggered }
- 
+
 let lastFlightPointPruneAt = 0;
 
 function parsePositiveInt(value, fallback) {
@@ -130,47 +130,47 @@ function haversineNm(lat1, lon1, lat2, lon2) {
     Math.sin(dLon / 2) ** 2;
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
- 
+
 async function checkWaypointReminder(payload) {
   const { id: aircraftId, flightPlan, lat, lon, userId, callsign, arrival } = payload;
- 
+
   // 至少要有 2 個航點，且飛機有綁定用戶
   if (!flightPlan || flightPlan.length < 2 || !userId) return;
- 
+
   const penultimate = flightPlan[flightPlan.length - 2];
   if (!penultimate || typeof penultimate.lat === 'undefined') return;
- 
+
   // planHash：用來偵測換了航線就重置觸發狀態
   const planHash = `${flightPlan.length}_${penultimate.lat?.toFixed(3)}_${penultimate.lon?.toFixed(3)}`;
   let state = waypointState.get(aircraftId) || { planHash: null, triggered: false };
   if (state.planHash !== planHash) state = { planHash, triggered: false };
- 
+
   // 已經觸發過就跳過
   if (state.triggered) { waypointState.set(aircraftId, state); return; }
- 
+
   // 距離倒數第二航點超過 30 nm 就不處理
   const dist = haversineNm(lat, lon, penultimate.lat, penultimate.lon);
   if (dist > 30) { waypointState.set(aircraftId, state); return; }
- 
+
   // 查找用戶與提醒設定
   const user = await User.findOne({ geofsUserId: String(userId) }).lean();
   if (!user?.discordId) { state.triggered = true; waypointState.set(aircraftId, state); return; }
- 
+
   const pref = await ReminderPreference.findOne({ discordId: user.discordId, enabled: true }).lean();
   if (!pref) { state.triggered = true; waypointState.set(aircraftId, state); return; }
- 
+
   // 航點名稱：優先用 name/id，fallback 座標
   const wpLabel = penultimate.name || penultimate.id ||
     `${penultimate.lat?.toFixed(2)}, ${penultimate.lon?.toFixed(2)}`;
- 
+
   await PendingNotification.create({
-    discordId:           user.discordId,
-    callsign:            callsign || 'N/A',
-    arrival:             arrival  || '',
+    discordId: user.discordId,
+    callsign: callsign || 'N/A',
+    arrival: arrival || '',
     penultimateWaypoint: wpLabel,
-    sent:                false,
+    sent: false,
   });
- 
+
   state.triggered = true;
   waypointState.set(aircraftId, state);
   console.log(`[Reminder] Queued for ${user.discordId} (${callsign}) approaching ${wpLabel}`);
@@ -224,23 +224,23 @@ const FlightPoint = mongoose.model('FlightPoint', flightPointSchema);
 
 // ✅ 新增：已完成飛行存檔
 const flightSessionSchema = new mongoose.Schema({
-  aircraftId:    { type: String, index: true },
-  discordId:     { type: String, index: true, sparse: true },
-  geofsUserId:   { type: String, sparse: true },
-  callsign:      String,
-  flightNo:      String,
-  type:          String,
-  departure:     String,
-  arrival:       String,
-  startTime:     { type: Number, index: true },
-  endTime:       Number,
-  duration:      Number,    // 秒
-  maxAlt:        Number,    // 英尺
-  maxSpeed:      Number,    // 節
-  distanceNm:    Number,    // 海里
-  expiresAt:     { type: Date, index: true },
+  aircraftId: { type: String, index: true },
+  discordId: { type: String, index: true, sparse: true },
+  geofsUserId: { type: String, sparse: true },
+  callsign: String,
+  flightNo: String,
+  type: String,
+  departure: String,
+  arrival: String,
+  startTime: { type: Number, index: true },
+  endTime: Number,
+  duration: Number,    // 秒
+  maxAlt: Number,    // 英尺
+  maxSpeed: Number,    // 節
+  distanceNm: Number,    // 海里
+  expiresAt: { type: Date, index: true },
   trackSnapshot: [{ lat: Number, lon: Number, alt: Number, ts: Number }],
-  status:        { type: String, default: 'completed' }, // 'completed' | 'aborted'
+  status: { type: String, default: 'completed' }, // 'completed' | 'aborted'
   landingQuality: { type: String, default: null }, // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
   flightConfirmed: { type: Boolean, default: false }
 }, { versionKey: false, timestamps: true });
@@ -248,26 +248,26 @@ flightSessionSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
 const FlightSession = mongoose.model('FlightSession', flightSessionSchema);
 
 const flightHistorySchema = new mongoose.Schema({
-  sessionId:     { type: mongoose.Schema.Types.ObjectId, index: true, sparse: true },
-  aircraftId:    { type: String, index: true },
-  discordId:     { type: String, index: true, sparse: true },
-  geofsUserId:   { type: String, index: true, sparse: true },
-  username:      String,
-  displayName:   String,
-  callsign:      { type: String, index: true },
-  flightNo:      String,
-  type:          String,
-  departure:     { type: String, index: true },
-  arrival:       { type: String, index: true },
-  startTime:     { type: Number, index: true },
-  endTime:       Number,
-  takeoffTime:   Number,
-  landingTime:   Number,
-  duration:      Number,
-  maxAlt:        Number,
-  maxSpeed:      Number,
-  distanceNm:    Number,
-  status:        { type: String, default: 'completed', index: true },
+  sessionId: { type: mongoose.Schema.Types.ObjectId, index: true, sparse: true },
+  aircraftId: { type: String, index: true },
+  discordId: { type: String, index: true, sparse: true },
+  geofsUserId: { type: String, index: true, sparse: true },
+  username: String,
+  displayName: String,
+  callsign: { type: String, index: true },
+  flightNo: String,
+  type: String,
+  departure: { type: String, index: true },
+  arrival: { type: String, index: true },
+  startTime: { type: Number, index: true },
+  endTime: Number,
+  takeoffTime: Number,
+  landingTime: Number,
+  duration: Number,
+  maxAlt: Number,
+  maxSpeed: Number,
+  distanceNm: Number,
+  status: { type: String, default: 'completed', index: true },
   landingQuality: { type: String, default: null }, // 'BUTTER' | 'GREAT' | 'ACCEPTABLE' | 'HARD LANDING' | 'CRASH'
   flightConfirmed: { type: Boolean, default: false }
 }, { versionKey: false, timestamps: true });
@@ -286,38 +286,38 @@ const pendingFlightFinalizations = new Map();
 
 // ✅ 新增：Discord 用戶帳號
 const userSchema = new mongoose.Schema({
-  discordId:        { type: String, unique: true, index: true },
-  username:         String,
-  displayName:      String,   // 顯示名稱（Discord global_name 或 username）
-  discriminator:    String,
-  photos:           [String], // Discord avatar URL 陣列
-  geofsUserId:      { type: String, index: true, sparse: true },
-  apiKey:           { type: String, index: true, sparse: true },
-  lastLoginIp:      { type: String, index: true, sparse: true },
-  loginIps:         { type: [String], default: [] },
-  uploadBanned:     { type: Boolean, default: false, index: true },
-  uploadBanReason:  String,
-  uploadBanIps:     { type: [String], default: [] },
-  uploadBannedAt:   Date,
-  uploadBannedBy:   {
+  discordId: { type: String, unique: true, index: true },
+  username: String,
+  displayName: String,   // 顯示名稱（Discord global_name 或 username）
+  discriminator: String,
+  photos: [String], // Discord avatar URL 陣列
+  geofsUserId: { type: String, index: true, sparse: true },
+  apiKey: { type: String, index: true, sparse: true },
+  lastLoginIp: { type: String, index: true, sparse: true },
+  loginIps: { type: [String], default: [] },
+  uploadBanned: { type: Boolean, default: false, index: true },
+  uploadBanReason: String,
+  uploadBanIps: { type: [String], default: [] },
+  uploadBannedAt: Date,
+  uploadBannedBy: {
     discordId: String,
     username: String,
     displayName: String
   },
   // 管理員權限
-  isSuperAdmin:     { type: Boolean, default: false },
-  managedAirlines:  { type: [String], default: [] }, // e.g. ['EVA', 'CAL']
-  geofsUpdatedBy:   {
+  isSuperAdmin: { type: Boolean, default: false },
+  managedAirlines: { type: [String], default: [] }, // e.g. ['EVA', 'CAL']
+  geofsUpdatedBy: {
     discordId: String,
     username: String,
     displayName: String,
     previousGeofsUserId: String,
     at: Date
   },
-  accessToken:      String,
-  refreshToken:     String,
-  linkedAt:         Date,
-  createdAt:        { type: Date, default: Date.now }
+  accessToken: String,
+  refreshToken: String,
+  linkedAt: Date,
+  createdAt: { type: Date, default: Date.now }
 }, { versionKey: false });
 const User = mongoose.model('User', userSchema);
 
@@ -407,36 +407,36 @@ const VISITED_AIRPORTS_MEDALS = [
   }
 ];
 const medalSchema = new mongoose.Schema({
-  medalId:     { type: String, required: true },
-  name:        String,
+  medalId: { type: String, required: true },
+  name: String,
   description: String,
-  iconUrl:     String,
-  tier:        String,
-  metric:      Number,
-  unlockedAt:  { type: Date, default: Date.now },
-  featured:    { type: Boolean, default: false }
+  iconUrl: String,
+  tier: String,
+  metric: Number,
+  unlockedAt: { type: Date, default: Date.now },
+  featured: { type: Boolean, default: false }
 }, { _id: false, versionKey: false });
 
 const medalInventorySchema = new mongoose.Schema({
   discordId: { type: String, required: true, unique: true, index: true },
-  medals:    { type: [medalSchema], default: [] },
+  medals: { type: [medalSchema], default: [] },
   updatedAt: { type: Date, default: Date.now }
 }, { versionKey: false });
 
 const MedalInventory = mongoose.model('MedalInventory', medalInventorySchema);
 
 const adminAuditSchema = new mongoose.Schema({
-  action:      { type: String, index: true },
-  targetType:  { type: String, index: true },
-  targetId:    { type: String, index: true },
+  action: { type: String, index: true },
+  targetType: { type: String, index: true },
+  targetId: { type: String, index: true },
   admin: {
-    discordId:   String,
-    username:    String,
+    discordId: String,
+    username: String,
     displayName: String
   },
-  before:      mongoose.Schema.Types.Mixed,
-  after:       mongoose.Schema.Types.Mixed,
-  createdAt:   { type: Date, default: Date.now, index: true }
+  before: mongoose.Schema.Types.Mixed,
+  after: mongoose.Schema.Types.Mixed,
+  createdAt: { type: Date, default: Date.now, index: true }
 }, { versionKey: false });
 const AdminAudit = mongoose.model('AdminAudit', adminAuditSchema);
 
@@ -469,45 +469,45 @@ function formatUserForClient(user) {
   return {
     authenticated: true,
     user: {
-      discordId:   user.discordId,
+      discordId: user.discordId,
       displayName: user.displayName || user.username,
-      username:    user.username,
-      photos:      user.photos || [],
-      apiKey:      user.apiKey || null,
+      username: user.username,
+      photos: user.photos || [],
+      apiKey: user.apiKey || null,
       geofsUserId: user.geofsUserId || null,
       uploadBanned: Boolean(user.uploadBanned),
       uploadBanReason: user.uploadBanReason || null
     },
     admin: {
-      isSuperAdmin:     user.isSuperAdmin || false,
-      managedAirlines:  user.managedAirlines || []
+      isSuperAdmin: user.isSuperAdmin || false,
+      managedAirlines: user.managedAirlines || []
     }
   };
 }
 const ReminderPreference = mongoose.model('ReminderPreference', new mongoose.Schema({
   discordId: { type: String, unique: true, index: true },
-  enabled:   { type: Boolean, default: true },
+  enabled: { type: Boolean, default: true },
   updatedAt: { type: Date, default: Date.now },
 }, { versionKey: false }));
- 
+
 const PendingNotification = mongoose.model('PendingNotification', new mongoose.Schema({
-  discordId:           String,
-  callsign:            String,
-  arrival:             String,
+  discordId: String,
+  callsign: String,
+  arrival: String,
   penultimateWaypoint: String,
-  sent:                { type: Boolean, default: false, index: true },
-  createdAt:           { type: Date, default: Date.now, expires: '7d' },
+  sent: { type: Boolean, default: false, index: true },
+  createdAt: { type: Date, default: Date.now, expires: '7d' },
 }, { versionKey: false }));
 
 const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schema({
-  discordId:    String,
-  photoId:      String,
-  type:         { type: String, enum: ['approved', 'rejected'] },
-  caption:      String,
-  thumbUrl:     String,
+  discordId: String,
+  photoId: String,
+  type: { type: String, enum: ['approved', 'rejected'] },
+  caption: String,
+  thumbUrl: String,
   rejectReason: String,
-  sent:         { type: Boolean, default: false, index: true },
-  createdAt:    { type: Date, default: Date.now, expires: '7d' },
+  sent: { type: Boolean, default: false, index: true },
+  createdAt: { type: Date, default: Date.now, expires: '7d' },
 }, { versionKey: false }));
 // ============ MongoDB 連線 ============
 mongoose.connect(MONGODB_URI)
@@ -663,25 +663,25 @@ function scheduleFlightFinalization(aircraftId, requestedStatus = 'completed', d
 function buildFlightHistoryDocument(session, user = null) {
   const sessionId = session._id || session.sessionId || null;
   const history = {
-    aircraftId:  session.aircraftId || '',
-    discordId:   session.discordId || user?.discordId || null,
+    aircraftId: session.aircraftId || '',
+    discordId: session.discordId || user?.discordId || null,
     geofsUserId: session.geofsUserId || user?.geofsUserId || null,
-    username:    user?.username || session.username || '',
+    username: user?.username || session.username || '',
     displayName: user?.displayName || session.displayName || '',
-    callsign:    session.callsign || 'UNK',
-    flightNo:    session.flightNo || '',
-    type:        session.type || '',
-    departure:   session.departure || '',
-    arrival:     session.arrival || '',
-    startTime:   session.startTime || null,
-    endTime:     session.endTime || null,
+    callsign: session.callsign || 'UNK',
+    flightNo: session.flightNo || '',
+    type: session.type || '',
+    departure: session.departure || '',
+    arrival: session.arrival || '',
+    startTime: session.startTime || null,
+    endTime: session.endTime || null,
     takeoffTime: session.startTime || null,
     landingTime: session.endTime || null,
-    duration:    session.duration || 0,
-    maxAlt:      sanitizeRecordAltitude(session.maxAlt) ?? 0,
-    maxSpeed:    sanitizeRecordSpeed(session.maxSpeed) ?? 0,
-    distanceNm:  session.distanceNm || 0,
-    status:      session.status || 'completed',
+    duration: session.duration || 0,
+    maxAlt: sanitizeRecordAltitude(session.maxAlt) ?? 0,
+    maxSpeed: sanitizeRecordSpeed(session.maxSpeed) ?? 0,
+    distanceNm: session.distanceNm || 0,
+    status: session.status || 'completed',
     landingQuality: session.landingQuality || null,
     flightConfirmed: Boolean(session.flightConfirmed)
   };
@@ -705,35 +705,35 @@ async function upsertFlightHistoryFromSession(session, user = null) {
 
 async function recalculateTotalFlightTimeMedal(discordId) {
   if (!discordId) return null;
- 
+
   const [stats] = await FlightHistory.aggregate([
     { $match: { discordId } },
     { $group: { _id: '$discordId', totalDuration: { $sum: '$duration' } } }
   ]);
   const totalDuration = Number(stats?.totalDuration || 0);
- 
+
   const existing = await MedalInventory.findOne({ discordId }).lean();
-  const previousById        = new Map((existing?.medals || []).map(m => [m.medalId, m]));
-  const previousFeaturedId  = (existing?.medals || []).find(m => m.featured)?.medalId || null;
+  const previousById = new Map((existing?.medals || []).map(m => [m.medalId, m]));
+  const previousFeaturedId = (existing?.medals || []).find(m => m.featured)?.medalId || null;
   // 精選狀態只在本類別（time-*）內有效
-  const featuredIsHere      = previousFeaturedId?.startsWith('time-') ?? false;
- 
+  const featuredIsHere = previousFeaturedId?.startsWith('time-') ?? false;
+
   const timeMedals = TOTAL_FLIGHT_TIME_MEDALS
     .filter(def => totalDuration >= def.thresholdSeconds)
     .map(def => {
       const prev = previousById.get(def.medalId);
       return {
-        medalId:     def.medalId,
-        name:        def.name,
+        medalId: def.medalId,
+        name: def.name,
         description: def.description,
-        iconUrl:     def.iconUrl,
-        tier:        def.tier,
-        metric:      totalDuration,
-        unlockedAt:  prev?.unlockedAt || new Date(),
-        featured:    featuredIsHere && previousFeaturedId === def.medalId
+        iconUrl: def.iconUrl,
+        tier: def.tier,
+        metric: totalDuration,
+        unlockedAt: prev?.unlockedAt || new Date(),
+        featured: featuredIsHere && previousFeaturedId === def.medalId
       };
     });
- 
+
   // 精選的 time medal 不再達標時（極罕見），自動改精選最高等級
   if (featuredIsHere && !timeMedals.some(m => m.featured)) {
     timeMedals.sort((a, b) => {
@@ -743,11 +743,11 @@ async function recalculateTotalFlightTimeMedal(discordId) {
     });
     if (timeMedals[0]) timeMedals[0].featured = true;
   }
- 
+
   // 保留非 time-* 類別的 medals（如 visited-*），只替換 time-* 部分
-  const otherMedals  = (existing?.medals || []).filter(m => !m.medalId.startsWith('time-'));
+  const otherMedals = (existing?.medals || []).filter(m => !m.medalId.startsWith('time-'));
   const mergedMedals = [...otherMedals, ...timeMedals];
- 
+
   return MedalInventory.findOneAndUpdate(
     { discordId },
     { $set: { medals: mergedMedals, updatedAt: new Date() } },
@@ -756,13 +756,13 @@ async function recalculateTotalFlightTimeMedal(discordId) {
 }
 async function recalculateVisitedAirportsMedal(discordId) {
   if (!discordId) return null;
- 
+
   // 統計所有飛行紀錄中的唯一機場代碼
   const flights = await FlightHistory.find(
     { discordId },
     { departure: 1, arrival: 1, _id: 0 }
   ).lean();
- 
+
   const INVALID_CODES = new Set(['', 'N/A', 'UNK', 'UNKNOWN', '?', '-', 'NONE', 'NULL']);
   const visitedSet = new Set();
   for (const f of flights) {
@@ -775,28 +775,28 @@ async function recalculateVisitedAirportsMedal(discordId) {
     }
   }
   const uniqueAirportCount = visitedSet.size;
- 
+
   const existing = await MedalInventory.findOne({ discordId }).lean();
-  const previousById       = new Map((existing?.medals || []).map(m => [m.medalId, m]));
+  const previousById = new Map((existing?.medals || []).map(m => [m.medalId, m]));
   const previousFeaturedId = (existing?.medals || []).find(m => m.featured)?.medalId || null;
-  const featuredIsHere     = previousFeaturedId?.startsWith('visited-') ?? false;
- 
+  const featuredIsHere = previousFeaturedId?.startsWith('visited-') ?? false;
+
   const visitedMedals = VISITED_AIRPORTS_MEDALS
     .filter(def => uniqueAirportCount >= def.thresholdCount)
     .map(def => {
       const prev = previousById.get(def.medalId);
       return {
-        medalId:     def.medalId,
-        name:        def.name,
+        medalId: def.medalId,
+        name: def.name,
         description: def.description,
-        iconUrl:     def.iconUrl,
-        tier:        def.tier,
-        metric:      uniqueAirportCount,
-        unlockedAt:  prev?.unlockedAt || new Date(),
-        featured:    featuredIsHere && previousFeaturedId === def.medalId
+        iconUrl: def.iconUrl,
+        tier: def.tier,
+        metric: uniqueAirportCount,
+        unlockedAt: prev?.unlockedAt || new Date(),
+        featured: featuredIsHere && previousFeaturedId === def.medalId
       };
     });
- 
+
   if (featuredIsHere && !visitedMedals.some(m => m.featured)) {
     visitedMedals.sort((a, b) => {
       const aDef = VISITED_AIRPORTS_MEDALS.find(d => d.medalId === a.medalId);
@@ -805,18 +805,18 @@ async function recalculateVisitedAirportsMedal(discordId) {
     });
     if (visitedMedals[0]) visitedMedals[0].featured = true;
   }
- 
+
   // 保留非 visited-* 類別的 medals，只替換 visited-* 部分
-  const otherMedals  = (existing?.medals || []).filter(m => !m.medalId.startsWith('visited-'));
+  const otherMedals = (existing?.medals || []).filter(m => !m.medalId.startsWith('visited-'));
   const mergedMedals = [...otherMedals, ...visitedMedals];
- 
+
   return MedalInventory.findOneAndUpdate(
     { discordId },
     { $set: { medals: mergedMedals, updatedAt: new Date() } },
     { new: true, upsert: true }
   ).lean();
 }
- 
+
 // 統一入口：一次重算所有 Medal 類別
 async function recalculateAllMedals(discordId) {
   if (!discordId) return null;
@@ -1157,7 +1157,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
 
     clearPendingFlightFinalization(aircraftId);
     const aircraft = aircrafts.get(aircraftId);
-    const payload  = aircraft?.payload || {};
+    const payload = aircraft?.payload || {};
     const landingQuality = aircraft?.landingQuality || null;
     const finalStatus = inferFlightCompletionStatus(docs, status);
 
@@ -1175,23 +1175,23 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     }
     distanceNm = Math.round(distanceNm);
 
-    const startTime     = docs[0].ts;
-    const endTime       = docs[docs.length - 1].ts;
-    const duration      = Math.round((endTime - startTime) / 1000);
+    const startTime = docs[0].ts;
+    const endTime = docs[docs.length - 1].ts;
+    const duration = Math.round((endTime - startTime) / 1000);
     const trackSnapshot = buildSessionTrackSnapshot(
       docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, ts: d.ts }))
     );
 
     const session = await FlightSession.create({
       aircraftId,
-      discordId:   user?.discordId  || null,
-      geofsUserId: payload.userId   ? String(payload.userId) : null,
-      callsign:    payload.callsign || docs[0].callsign || 'UNK',
-      flightNo:    payload.flightNo || '',
-      type:        payload.type     || docs[0].type     || '',
-      departure:   payload.departure || '',
-      arrival:     payload.arrival   || '',
-      expiresAt:   getFlightSessionExpiryDate(endTime),
+      discordId: user?.discordId || null,
+      geofsUserId: payload.userId ? String(payload.userId) : null,
+      callsign: payload.callsign || docs[0].callsign || 'UNK',
+      flightNo: payload.flightNo || '',
+      type: payload.type || docs[0].type || '',
+      departure: payload.departure || '',
+      arrival: payload.arrival || '',
+      expiresAt: getFlightSessionExpiryDate(endTime),
       startTime, endTime, duration,
       maxAlt: Math.round(maxAlt), maxSpeed: Math.round(maxSpeed), distanceNm,
       trackSnapshot, status: finalStatus,
@@ -1207,10 +1207,10 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
     alertedSquawks.delete(aircraftId);
     waypointState.delete(aircraftId);
     if (user?.discordId) {
-  recalculateAllMedals(user.discordId).catch(e =>
-    console.error('[Medal] background recalc error', e)
-  );
-}
+      recalculateAllMedals(user.discordId).catch(e =>
+        console.error('[Medal] background recalc error', e)
+      );
+    }
 
     // Discord 飛行完成通報（飛行時間 > 2 分鐘才通報）
     if (FLIGHT_WEBHOOK_URL && duration >= 120) {
@@ -1229,14 +1229,14 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
             title: `${finalStatus === 'completed' ? '🛬' : '⚠️'} Flight ${finalStatus === 'completed' ? 'Completed' : 'Aborted'} — ${session.callsign}`,
             color: finalStatus === 'completed' ? 0x00b4d8 : 0x888888,
             fields: [
-              { name: '✈ Aircraft',   value: session.type     || 'Unknown', inline: true },
-              { name: '📡 Callsign',  value: session.callsign || 'N/A',     inline: true },
-              { name: '👤 Pilot',     value: pilot,                          inline: true },
-              { name: '🛫 Departure', value: session.departure || 'N/A',    inline: true },
-              { name: '🛬 Arrival',   value: session.arrival  || 'N/A',     inline: true },
-              { name: '⏱ Duration',  value: durationStr,                   inline: true },
-              { name: '📏 Distance',  value: `${distanceNm} nm`,            inline: true },
-              { name: '🔝 Max Alt',   value: `${Math.round(maxAlt)} ft`,    inline: true },
+              { name: '✈ Aircraft', value: session.type || 'Unknown', inline: true },
+              { name: '📡 Callsign', value: session.callsign || 'N/A', inline: true },
+              { name: '👤 Pilot', value: pilot, inline: true },
+              { name: '🛫 Departure', value: session.departure || 'N/A', inline: true },
+              { name: '🛬 Arrival', value: session.arrival || 'N/A', inline: true },
+              { name: '⏱ Duration', value: durationStr, inline: true },
+              { name: '📏 Distance', value: `${distanceNm} nm`, inline: true },
+              { name: '🔝 Max Alt', value: `${Math.round(maxAlt)} ft`, inline: true },
               { name: '💨 Max Speed', value: `${Math.round(maxSpeed)} kts`, inline: true }
             ],
             footer: { text: `Flight Logger · ${new Date().toISOString()}` }
@@ -1265,8 +1265,8 @@ async function sendSquawkAlert(payload) {
 
   const info = {
     '7700': { emoji: '🆘', label: 'GENERAL EMERGENCY', color: 0xff0000 },
-    '7500': { emoji: '🔫', label: 'HIJACK',            color: 0xff4500 },
-    '7600': { emoji: '📻', label: 'RADIO FAILURE',     color: 0xffa500 }
+    '7500': { emoji: '🔫', label: 'HIJACK', color: 0xff4500 },
+    '7600': { emoji: '📻', label: 'RADIO FAILURE', color: 0xffa500 }
   }[payload.squawk];
 
   fetch(ALERT_WEBHOOK_URL, {
@@ -1280,11 +1280,11 @@ async function sendSquawkAlert(payload) {
         title: `${info.emoji} SQUAWK ${payload.squawk} — ${info.label}`,
         color: info.color,
         fields: [
-          { name: 'Callsign', value: payload.callsign || 'N/A',                                  inline: true },
-          { name: 'Aircraft', value: payload.type     || 'Unknown',                              inline: true },
-          { name: 'Altitude', value: `${Math.round(payload.alt)} ft`,                           inline: true },
-          { name: 'Speed',    value: `${Math.round(payload.speed)} kts`,                        inline: true },
-          { name: 'Position', value: `${payload.lat.toFixed(4)}, ${payload.lon.toFixed(4)}`,    inline: true }
+          { name: 'Callsign', value: payload.callsign || 'N/A', inline: true },
+          { name: 'Aircraft', value: payload.type || 'Unknown', inline: true },
+          { name: 'Altitude', value: `${Math.round(payload.alt)} ft`, inline: true },
+          { name: 'Speed', value: `${Math.round(payload.speed)} kts`, inline: true },
+          { name: 'Position', value: `${payload.lat.toFixed(4)}, ${payload.lon.toFixed(4)}`, inline: true }
         ],
         footer: { text: new Date().toISOString() }
       }]
@@ -1553,8 +1553,10 @@ function sendInChunks(ws, aircraftId, tracks, chunkSize = 200) {
     const chunk = tracks.slice(i * chunkSize, (i + 1) * chunkSize);
     ws.send(JSON.stringify({
       type: 'aircraft_track_history',
-      payload: { aircraftId, tracks: chunk,
-        chunkInfo: { current: i + 1, total: totalChunks, isLast: i === totalChunks - 1 } }
+      payload: {
+        aircraftId, tracks: chunk,
+        chunkInfo: { current: i + 1, total: totalChunks, isLast: i === totalChunks - 1 }
+      }
     }));
   }
   console.log(`[ATC] Sent ${tracks.length} history points (${totalChunks} chunks) for ${aircraftId}`);
@@ -1565,6 +1567,9 @@ server.on('upgrade', (request, socket, head) => {
   const pathname = new URL(request.url, 'http://localhost').pathname;
   if (pathname === '/ws' || pathname === '/') {
     wss.handleUpgrade(request, socket, head, (ws) => wss.emit('connection', ws, request));
+  } else if (pathname.startsWith('/socket.io')) {
+    // 讓 Socket.IO 的處理器接管，不要銷毀
+    return;
   } else {
     socket.destroy();
   }
@@ -1620,7 +1625,7 @@ wss.on('connection', (ws) => {
           geofsMajorMinor: typeof p.geofsMajorMinor === 'string' ? p.geofsMajorMinor.slice(0, 8) : '',
           userId: p.userId || null, flightNo: p.flightNo || '',
           departure: p.departure || '', arrival: p.arrival || '',
-      takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+          takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
           flightConfirmed: Boolean(p.flightConfirmed),
           ts: Date.now(), flightPlan: p.flightPlan || []
         };
@@ -1783,13 +1788,13 @@ app.get('/auth/discord/callback', async (req, res) => {
     const loginIp = getRequestIp(req);
     const update = {
       $set: {
-        discordId:     du.id,
-        username:      du.username,
-        displayName:   du.global_name || du.username,
+        discordId: du.id,
+        username: du.username,
+        displayName: du.global_name || du.username,
         discriminator: du.discriminator || '0',
-        photos:        [avatarUrl],
-        accessToken:   tokenData.access_token,
-        refreshToken:  tokenData.refresh_token || null,
+        photos: [avatarUrl],
+        accessToken: tokenData.access_token,
+        refreshToken: tokenData.refresh_token || null,
         ...(loginIp ? { lastLoginIp: loginIp } : {})
       },
       // 首次登入才產生 API Key
@@ -1988,13 +1993,13 @@ app.post('/api/user/medals/recalculate', authMiddleware, async (req, res) => {
 app.get('/api/flights/history', async (req, res) => {
   try {
     const limit = Math.min(parseInt(req.query.limit) || 20, 100);
-    const page  = Math.max(parseInt(req.query.page)  || 0,  0);
+    const page = Math.max(parseInt(req.query.page) || 0, 0);
     const filter = {};
-    if (req.query.callsign)  filter.callsign  = new RegExp(req.query.callsign, 'i');
+    if (req.query.callsign) filter.callsign = new RegExp(req.query.callsign, 'i');
     if (req.query.discordId) filter.discordId = req.query.discordId;
     if (req.query.geofsUserId) filter.geofsUserId = String(req.query.geofsUserId).trim();
     if (req.query.departure) filter.departure = req.query.departure.toUpperCase();
-    if (req.query.arrival)   filter.arrival   = req.query.arrival.toUpperCase();
+    if (req.query.arrival) filter.arrival = req.query.arrival.toUpperCase();
 
     const [flights, total] = await Promise.all([
       FlightHistory.find(filter).sort({ startTime: -1 }).skip(page * limit).limit(limit).lean(),
@@ -2040,28 +2045,42 @@ app.get('/api/flights/stats/:discordId', async (req, res) => {
   try {
     const stats = await FlightHistory.aggregate([
       { $match: { discordId: req.params.discordId } },
-      { $group: {
-        _id: '$discordId',
-        totalFlights:    { $sum: 1 },
-        totalDistanceNm: { $sum: '$distanceNm' },
-        totalDuration:   { $sum: '$duration' },
-        maxAlt:          { $max: { $cond: [
-          { $and: [
-            { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
-            { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
-          ] },
-          '$maxAlt',
-          0
-        ] } },
-        maxSpeed:        { $max: { $cond: [
-          { $and: [
-            { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
-            { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
-          ] },
-          '$maxSpeed',
-          0
-        ] } }
-      }}
+      {
+        $group: {
+          _id: '$discordId',
+          totalFlights: { $sum: 1 },
+          totalDistanceNm: { $sum: '$distanceNm' },
+          totalDuration: { $sum: '$duration' },
+          maxAlt: {
+            $max: {
+              $cond: [
+                {
+                  $and: [
+                    { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
+                    { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
+                  ]
+                },
+                '$maxAlt',
+                0
+              ]
+            }
+          },
+          maxSpeed: {
+            $max: {
+              $cond: [
+                {
+                  $and: [
+                    { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
+                    { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
+                  ]
+                },
+                '$maxSpeed',
+                0
+              ]
+            }
+          }
+        }
+      }
     ]);
     res.json(stats[0] || { totalFlights: 0, totalDistanceNm: 0, totalDuration: 0 });
   } catch { res.status(500).json({ error: 'server error' }); }
@@ -2381,12 +2400,12 @@ app.patch('/admin/users/:discordId/upload-ban', requireAdmin, async (req, res) =
 // ============ Admin: 直接為未登入過的玩家建立 link ============
 app.post('/admin/users/create-link', requireAdmin, async (req, res) => {
   try {
-    const discordId   = String(req.body.discordId   || '').trim();
+    const discordId = String(req.body.discordId || '').trim();
     const geofsUserId = String(req.body.geofsUserId || '').trim();
 
-    if (!discordId)   return res.status(400).json({ error: 'discordId required' });
+    if (!discordId) return res.status(400).json({ error: 'discordId required' });
     if (!geofsUserId) return res.status(400).json({ error: 'geofsUserId required' });
-    if (!/^\d+$/.test(discordId))   return res.status(400).json({ error: 'discordId must be numbers' });
+    if (!/^\d+$/.test(discordId)) return res.status(400).json({ error: 'discordId must be numbers' });
     if (!/^\d+$/.test(geofsUserId)) return res.status(400).json({ error: 'geofsUserId must be numbers' });
 
     // 檢查 GeoFS ID 是否被別人占用
@@ -2419,11 +2438,11 @@ app.post('/admin/users/create-link', requireAdmin, async (req, res) => {
           }
         },
         $setOnInsert: {
-          username:    discordId,         // 暫用 discordId 當 placeholder
+          username: discordId,         // 暫用 discordId 當 placeholder
           displayName: `User ${discordId}`,
-          photos:      [],
-          apiKey:      generateApiKey(),
-          createdAt:   new Date()
+          photos: [],
+          apiKey: generateApiKey(),
+          createdAt: new Date()
         }
       },
       { upsert: true, new: true }
@@ -2434,7 +2453,7 @@ app.post('/admin/users/create-link', requireAdmin, async (req, res) => {
       targetType: 'user',
       targetId: discordId,
       before: { geofsUserId: before?.geofsUserId || null },
-      after:  { geofsUserId }
+      after: { geofsUserId }
     });
 
     res.json({ ok: true, created: !before, user });
@@ -2627,15 +2646,15 @@ app.post('/api/upload', requirePhotoUploadAccess, upload.single('photo'), async 
 
 // ============ Static Routes ============
 app.use(express.static(path.join(__dirname, 'public')));
-app.get('/',             (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
-app.get('/admin.html',   (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
-app.get('/upload.html',  (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
+app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc.html')));
+app.get('/admin.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
+app.get('/upload.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'upload.html')));
 app.get('/gallery.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'gallery.html')));
-app.get('/photomap.html',(req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
+app.get('/photomap.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'photomap.html')));
 app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
-app.get('/airlines.json',(req, res) => res.sendFile(path.join(__dirname, 'airlines.json')));
-app.get('/history.html',(req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
-app.get('/health',       (req, res) => res.send('ok'));
+app.get('/airlines.json', (req, res) => res.sendFile(path.join(__dirname, 'airlines.json')));
+app.get('/history.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
+app.get('/health', (req, res) => res.send('ok'));
 
 // ============ 定期清理 ============
 
