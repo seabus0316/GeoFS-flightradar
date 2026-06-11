@@ -1488,6 +1488,52 @@ io.on('connection', async (socket) => {
     await sendSquawkAlert(payload);
   });
 
+  socket.on('landing_report', async (p) => {
+    if (!p) return;
+    const VALID_QUALITIES = ['BUTTER', 'GREAT', 'ACCEPTABLE', 'HARD LANDING', 'CRASH'];
+    const quality = VALID_QUALITIES.includes(p.landingQuality) ? p.landingQuality : null;
+    if (!quality) return;
+
+    const aircraftId = socket.aircraftId || null;
+    const payload = aircraftId ? aircrafts.get(aircraftId)?.payload : null;
+    const isConfirmedFlight = Boolean(payload?.flightConfirmed || p.flightConfirmed);
+    if (!isConfirmedFlight) return;
+    console.log(`[Landing] ${p.callsign || 'UNK'} — ${quality} | VS: ${p.verticalSpeed} fpm | GS: ${p.groundSpeed} kts | G: ${p.gForce}g | Roll: ${p.rollAngle}°`);
+
+    if (aircraftId && aircrafts.has(aircraftId)) {
+      const entry = aircrafts.get(aircraftId);
+      entry.landingQuality = quality;
+      aircrafts.set(aircraftId, entry);
+    }
+
+    try {
+      const filter = aircraftId
+        ? { aircraftId }
+        : p.userId
+          ? { geofsUserId: String(p.userId) }
+          : p.callsign
+            ? { callsign: p.callsign }
+            : null;
+
+      if (filter) {
+        await FlightHistory.findOneAndUpdate(
+          { ...filter, landingQuality: null },
+          { $set: { landingQuality: quality, flightConfirmed: true } },
+          { sort: { startTime: -1 } }
+        );
+      }
+    } catch (err) {
+      console.error('[Landing] FlightHistory update error', err);
+    }
+  });
+
+  socket.on('clear_track', async (msg) => {
+    if (msg && msg.aircraftId) {
+      await FlightPoint.deleteMany({ aircraftId: msg.aircraftId });
+      broadcastToATC({ type: 'aircraft_track_clear', payload: { aircraftId: msg.aircraftId } });
+    }
+  });
+
   socket.on('disconnect', async () => {
     ioAtcClients.delete(socket);
     ioPlayerClients.delete(socket);

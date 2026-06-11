@@ -254,7 +254,13 @@ let flightInfo = window.geofsFlightInfo;
   function safeSend(obj) {
     try {
       if (isSocketIO) {
-        if (ws && ws.connected) ws.send(JSON.stringify(obj));
+        if (ws && ws.connected) {
+          if (obj.type === 'position_update' || obj.type === 'landing_report') {
+            ws.emit(obj.type, obj.payload);
+          } else {
+            ws.emit(obj.type, obj);
+          }
+        }
       } else {
         if (ws && ws.readyState === 1) ws.send(JSON.stringify(obj));
       }
