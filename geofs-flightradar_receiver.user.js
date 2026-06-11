@@ -1,7 +1,7 @@
 // ==UserScript==
 // @name         GeoFS-flightradar receiver
 // @namespace    http://tampermonkey.net/
-// @version      1.9.4
+// @version      1.9.5
 // @description  Always loads the latest GeoFS flightradar script from GitHub
 // @author       SeaBus
 // @match        http://*/geofs.php*
@@ -11,8 +11,19 @@
 // ==/UserScript==
 
 (function () {
+    // ========== 用戶設定 ==========
+    // 選項: 'websocket' 或 'socket.io'
+    // 如果遇到 WebSocket 連線問題，改成 'socket.io'
+    const mode = 'websocket';
+    // ==============================
+
     const BASE = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/';
     const scripts = ['userscript.js', 'radarthing.js'];
+
+    // 將設定傳給全域物件，讓 userscript.js 可以訪問
+    window.geofsFlightRadarConfig = {
+        mode: mode
+    };
 
     function loadScript(url) {
         return new Promise((resolve, reject) => {
