@@ -3751,8 +3751,28 @@
       }
 
       const depShort = (data.departure || '').substring(0, 4) || '—';
-      const arrShort = (data.arrival || '').substring(0, 4) || '—';
+      const destinationAirport = data.actualArrival || data.arrival || '';
+      const arrShort = destinationAirport.substring(0, 4) || '—';
       const isEmergency = data.squawk === '7700';
+      const diversionAirport = data.isDiverted && destinationAirport && Array.isArray(airportsData)
+        ? airportsData.find(a =>
+          a.ident === destinationAirport ||
+          (destinationAirport.length === 4 && typeof a.ident === 'string' && a.ident.endsWith(destinationAirport))
+        )
+        : null;
+      const diversionPlace = (diversionAirport?.municipality || diversionAirport?.name || destinationAirport || '').toString().trim();
+      const diversionCode = (diversionAirport?.iata || destinationAirport || arrShort).toString().trim();
+      const diversionLabel = diversionPlace
+        ? `${diversionPlace.toUpperCase()} (${diversionCode.toUpperCase()})`
+        : arrShort;
+      const diversionBannerHtml = data.isDiverted ? `
+        <div style="margin:14px -16px -16px;background:#e5525c;color:#fff;
+                    padding:9px 12px;text-align:center;font-size:13px;font-weight:800;
+                    letter-spacing:0.2px;display:flex;align-items:center;justify-content:center;gap:8px;">
+          <span style="display:inline-flex;align-items:center;justify-content:center;width:17px;height:17px;
+                       border:2px solid rgba(255,255,255,0.9);border-radius:50%;font-size:12px;line-height:1;">!</span>
+          <span>DIVERTING TO - ${escapeHtml(diversionLabel)}</span>
+        </div>` : '';
 
       // 照片輪播 HTML
       const aircraftPhotoMatch = filterPhotosByAircraftFamily(userPhotos, data.type);
@@ -3909,7 +3929,7 @@
           ${escapeHtml(arrShort)}
         </div>
         <div style="font-size:11px;color:#666;margin-top:4px;font-weight:500;">
-          ${escapeHtml(data.arrival || '—')}
+          ${escapeHtml(destinationAirport || '—')}
         </div>
       </div>
     </div>
@@ -3954,6 +3974,7 @@
           }
           return '';
         })()}
+    ${diversionBannerHtml}
   </div>
 
   <!-- ④ Live Stats (dark row) -->

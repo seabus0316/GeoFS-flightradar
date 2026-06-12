@@ -16,12 +16,21 @@
     // ========== 用戶設定 ==========
     // 選項: 'websocket' 或 'socket.io'
     // 如果遇到 WebSocket 連線問題，改成 'socket.io'
-    const mode = 'http';
+    // options: 'http', 'websocket', 'socket.io'
+    const mode = 'websocket';
     // ==============================
 
     const BASE = 'https://raw.githubusercontent.com/seabus0316/GeoFS-flightradar/refs/heads/main/';
     const scripts = [];
-    scripts.push('http.js', 'radarthing.js');
+    if (mode === 'http') {
+        scripts.push('http.js');
+    } else {
+        if (mode === 'socket.io') {
+            scripts.push('socketio.js');
+        }
+        scripts.push('userscript.js');
+    }
+    scripts.push('radarthing.js');
 
     // 將設定傳給全域物件，讓 userscript.js 可以訪問
     window.geofsFlightRadarConfig = {
