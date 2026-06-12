@@ -3144,5 +3144,19 @@
     "iata": "MFX",
     "country": "Uzbekistan",
     "logo": "https://i.postimg.cc/qqrVBXnJ/1630454773733.jpg"
+  },
+    "VRG": {
+    "name": "Varig Brazilian Airlines",
+    "icao": "VRG",
+    "iata": "RG",
+    "country": "Brazil",
+    "logo": "https://ibb.co/39b2grG9"
+  },
+    "ROA": {
+    "name": "Rose Air",
+    "icao": "ROA",
+    "iata": "R8",
+    "country": "South Africa",
+    "logo": "https://user13688.na.imgto.link/public/20260611/chatgpt-image-jun-11-2026-01-04-20-pm.avif"
   }
 }
