@@ -196,6 +196,17 @@ app.use((req, res, next) => {
   );
   next();
 });
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin === 'https://www.geo-fs.com' || origin === 'https://geo-fs.com') {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Vary', 'Origin');
+  }
+  res.setHeader('Access-Control-Allow-Methods', 'GET,POST,PATCH,DELETE,OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  if (req.method === 'OPTIONS') return res.sendStatus(204);
+  next();
+});
 
 // ============ Schemas ============
 
@@ -1389,6 +1400,105 @@ async function logAdminAction(req, { action, targetType, targetId, before = null
   await AdminAudit.create({ action, targetType, targetId, admin, before, after });
 }
 
+async function handlePlayerPositionUpdate(p, context = {}) {
+  const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
+  if (!id) return null;
+  clearPendingFlightFinalization(id);
+  if (context.client) context.client.aircraftId = id;
+
+  const payload = {
+    id, callsign: p.callsign || 'UNK', type: p.type || '',
+    lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
+    altMSL: (typeof p.altMSL !== 'undefined') ? +p.altMSL || 0 : null,
+    heading: (typeof p.heading !== 'undefined') ? +p.heading : 0,
+    speed: (typeof p.speed !== 'undefined') ? +p.speed : 0,
+    speedType: p.speedType === 'ground' ? 'ground' : 'air',
+    speedSource: typeof p.speedSource === 'string' ? p.speedSource.slice(0, 24) : '',
+    speedUnit: p.speedUnit === 'kt' ? 'kt' : '',
+    speedRaw: (typeof p.speedRaw !== 'undefined') ? +p.speedRaw || 0 : null,
+    geofsVersion: typeof p.geofsVersion === 'string' ? p.geofsVersion.slice(0, 32) : '',
+    geofsMajorMinor: typeof p.geofsMajorMinor === 'string' ? p.geofsMajorMinor.slice(0, 8) : '',
+    userId: p.userId || null, flightNo: p.flightNo || '',
+    departure: p.departure || '', arrival: p.arrival || '',
+    takeoffTime: p.takeoffTime || '', squawk: p.squawk || '',
+    flightConfirmed: Boolean(p.flightConfirmed),
+    flightPlan: Array.isArray(p.flightPlan) ? p.flightPlan : [],
+    ts: Date.now()
+  };
+
+  aircrafts.set(id, { payload, lastSeen: Date.now() });
+  await saveFlightPoint({
+    aircraftId: id,
+    callsign: payload.callsign,
+    type: payload.type,
+    userId: payload.userId || null,
+    flightNo: payload.flightNo || '',
+    departure: payload.departure || '',
+    arrival: payload.arrival || '',
+    takeoffTime: payload.takeoffTime || '',
+    squawk: payload.squawk || '',
+    flightConfirmed: Boolean(payload.flightConfirmed),
+    lat: payload.lat,
+    lon: payload.lon,
+    alt: payload.alt,
+    speed: payload.speed,
+    heading: payload.heading,
+    ts: payload.ts
+  });
+  try {
+    await checkWaypointReminder(payload);
+  } catch (err) {
+    console.error(`[Reminder] ${context.source || 'player'} check failed:`, err);
+  }
+  scheduleAdaptiveAircraftUpdate(
+    payload,
+    context.includeTrackPoint ? { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } : null
+  );
+  await sendSquawkAlert(payload);
+  return payload;
+}
+
+async function handleLandingReport(p, context = {}) {
+  if (!p) return false;
+  const VALID_QUALITIES = ['BUTTER', 'GREAT', 'ACCEPTABLE', 'HARD LANDING', 'CRASH'];
+  const quality = VALID_QUALITIES.includes(p.landingQuality) ? p.landingQuality : null;
+  if (!quality) return false;
+
+  const aircraftId = context.aircraftId || p.aircraftId || p.id || null;
+  const payload = aircraftId ? aircrafts.get(aircraftId)?.payload : null;
+  const isConfirmedFlight = Boolean(payload?.flightConfirmed || p.flightConfirmed);
+  if (!isConfirmedFlight) return false;
+  console.log(`[Landing] ${p.callsign || 'UNK'} -> ${quality} | VS: ${p.verticalSpeed} fpm | GS: ${p.groundSpeed} kts | G: ${p.gForce}g | Roll: ${p.rollAngle}deg`);
+
+  if (aircraftId && aircrafts.has(aircraftId)) {
+    const entry = aircrafts.get(aircraftId);
+    entry.landingQuality = quality;
+    aircrafts.set(aircraftId, entry);
+  }
+
+  try {
+    const filter = aircraftId
+      ? { aircraftId }
+      : p.userId
+        ? { geofsUserId: String(p.userId) }
+        : p.callsign
+          ? { callsign: p.callsign }
+          : null;
+
+    if (filter) {
+      await FlightHistory.findOneAndUpdate(
+        { ...filter, landingQuality: null },
+        { $set: { landingQuality: quality, flightConfirmed: true } },
+        { sort: { startTime: -1 } }
+      );
+    }
+  } catch (err) {
+    console.error('[Landing] FlightHistory update error', err);
+  }
+
+  return true;
+}
+
 // ============ Socket.IO ============
 const io = new IOServer(server, {
   cors: {
@@ -2546,6 +2656,46 @@ app.get('/api/photos/user/:userId', async (req, res) => {
 });
 
 // ============ Live Track Routes ============
+app.post('/api/report/position', async (req, res) => {
+  try {
+    const payload = await handlePlayerPositionUpdate(req.body || {}, {
+      source: 'HTTP',
+      includeTrackPoint: true
+    });
+    if (!payload) return res.status(400).json({ ok: false, error: 'aircraft id required' });
+    res.json({ ok: true, aircraftId: payload.id, serverTime: Date.now() });
+  } catch (err) {
+    console.error('[HTTP] position report error', err);
+    res.status(500).json({ ok: false, error: 'server error' });
+  }
+});
+
+app.post('/api/report/landing', async (req, res) => {
+  try {
+    const ok = await handleLandingReport(req.body || {}, {
+      source: 'HTTP',
+      aircraftId: req.body?.aircraftId || req.body?.id || null
+    });
+    if (!ok) return res.status(400).json({ ok: false, error: 'invalid or unconfirmed landing report' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[HTTP] landing report error', err);
+    res.status(500).json({ ok: false, error: 'server error' });
+  }
+});
+
+app.post('/api/report/disconnect', async (req, res) => {
+  try {
+    const aircraftId = String(req.body?.aircraftId || req.body?.id || '').trim();
+    if (!aircraftId) return res.status(400).json({ ok: false, error: 'aircraftId required' });
+    scheduleFlightFinalization(aircraftId, 'completed');
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[HTTP] disconnect report error', err);
+    res.status(500).json({ ok: false, error: 'server error' });
+  }
+});
+
 app.delete('/clear/:aircraftId', async (req, res) => {
   try {
     await FlightPoint.deleteMany({ aircraftId: req.params.aircraftId });
