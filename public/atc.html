@@ -6051,7 +6051,7 @@ function _saveProfileSettings(modalId) {
     async function updateGlobeAircraft(id, data) {
       if (!cesiumViewer || !globeMode) return;
 
-      const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, 0);
+      const position = Cesium.Cartesian3.fromDegrees(data.lon, data.lat, (data.alt || 0) * 0.3048);
       // Keep aircraft on the same visual plane as the globe surface.
       const heading = Cesium.Math.toRadians(data.heading || 0);
       // Cesium billboard rotation is opposite CSS rotate(), so subtract heading
