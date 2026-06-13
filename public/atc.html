@@ -5944,6 +5944,7 @@ function _saveProfileSettings(modalId) {
             if (cesiumViewer.scene.postProcessStages?.fxaa) {
               cesiumViewer.scene.postProcessStages.fxaa.enabled = true;
             }
+            cesiumViewer.scene.screenSpaceCameraController.enableTilt = false;
             resetGlobeCameraHome(0);
 
             // Hide Cesium credit
@@ -6364,7 +6365,7 @@ function _saveProfileSettings(modalId) {
           duration: 1.8,
           offset: new Cesium.HeadingPitchRange(
             0,
-            Cesium.Math.toRadians(-40),
+            Cesium.Math.toRadians(-90),
             4500000
           )
         }).catch(() => { }); // silence if interrupted
