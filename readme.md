@@ -1,6 +1,6 @@
 <div align="center" style="line-height: 1;">
   
-# GeoFS Flightradar
+# Geo Tracker
 Just like the FlightRadar24 in real world
 
 SeaBus(c) 2026. All Rights Reserved.
@@ -9,7 +9,7 @@ SeaBus(c) 2026. All Rights Reserved.
 Install the receiver.user.js and It will load the latest script. The script can send your position info to the atc screen
 press"W" to hide the ui
 
-ATC Screen url: https://geofs-flightradar.duckdns.org/
+ATC Screen url: https://geotracker.mooo.com/
 
 
 # Star History
@@ -32,34 +32,3 @@ ATC Screen url: https://geofs-flightradar.duckdns.org/
 
 # Map view
    <img width="614" height="339" alt="image" src="https://github.com/user-attachments/assets/30766924-7c7f-49b8-907e-8e2c598e1416" />
-
-## Build and Development
-</div>
-
-### For contributors and developers:
-
-**1. Clone the repository**
-
-```bash
-git clone https://github.com/seabus0316/GeoFS-flightradar.git
-
-cd GeoFS-flightradar
-```
-**2. Install dependencies**
-```bash
-npm install
-```
-**3. Run the server**
-```bash
-npm start
-```
-# .env format
-```bash
-DISCORD_ADMIN_IDS=<COMMA_SEPARATED_DISCORD_USER_IDS>
-IMGBB_API_KEY=<IMGBB API KEY>
-MONGODB_URL=<MONGODB ATLAS URL>
-DISCORD_CLIENT_ID=<DISCORD OAUTH CLIENT ID>
-DISCORD_CLIENT_SECRET=<DISCORD OAUTH CLIENT SECRET>
-DISCORD_REDIRECT_URI=<DISCORD OAUTH CALLBACK URL>
-JWT_SECRET=<JWT SIGNING SECRET>
-```
