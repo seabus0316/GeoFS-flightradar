@@ -3190,6 +3190,13 @@
       })() / 100;
 
       const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
+      // 將軌跡最後一個端點對齊到 marker 目前在地圖上的實際位置（含預測動畫偏移），
+      // 避免 marker 動畫插值位置與軌跡末端脫節
+      if (simplified.length > 0 && obj.marker) {
+        const markerLatLng = obj.marker.getLatLng();
+        const last = simplified[simplified.length - 1];
+        simplified[simplified.length - 1] = [markerLatLng.lat, markerLatLng.lng, last[2], last[3]];
+      }
       obj.displayPath = simplified;
 
       for (let i = 1; i < obj.displayPath.length; i++) {
