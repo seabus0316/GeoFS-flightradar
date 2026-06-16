@@ -2258,7 +2258,7 @@
 
     function makeDivIcon(data, isFocused) {
       if (atcMode) return makeAtcBlip(data);
-      const imgW = 32, imgH = 32, labelW = 150, labelH = 60, iconW = imgW + labelW, iconH = Math.max(imgH, labelH);
+      const imgW = 32, imgH = 32;
       const color = getAltitudeColor(data.alt);
       const isEmergency = data.squawk === '7700';
       const labelClass = isEmergency ? 'label emergency' : 'label';
@@ -2269,7 +2269,7 @@
 
       return L.divIcon({
         html: `
-    <div style="display:flex;align-items:center;width:${iconW}px;height:${iconH}px;">
+    <div style="display:flex;align-items:center;width:max-content;height:max-content;">
       <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading || 0}deg);filter:${isFocused ? 'brightness(0) saturate(100%) invert(18%) sepia(99%) saturate(3000%) hue-rotate(350deg) brightness(110%)' : 'brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%)'};" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="--alt-color: ${color};">
         <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
@@ -2281,7 +2281,7 @@
         ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
       </div>
     </div>`,
-        className: 'leaflet-aircraft-icon', iconSize: [iconW, iconH], iconAnchor: [imgW / 2, iconH / 2]
+        className: 'leaflet-aircraft-icon', iconSize: null, iconAnchor: [imgW / 2, imgW / 2]
       });
     }
 
