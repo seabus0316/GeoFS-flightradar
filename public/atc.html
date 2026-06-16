@@ -159,6 +159,34 @@
             <input type="range" id="buttonBlurSlider" min="0" max="30" value="22" step="1"
               style="width:100%;accent-color:#fb7185;cursor:pointer;height:4px;" oninput="applySettings()">
           </div>
+
+          <!-- Aircraft Label Opacity -->
+          <div class="settings-section settings-divider">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+              <span style="font-size:12px;color:#cdd;">
+                <i data-lucide="tag" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+                Label Opacity
+              </span>
+              <span id="labelOpacityVal"
+                style="font-size:12px;color:#38bdf8;font-weight:700;min-width:38px;text-align:right;">100%</span>
+            </div>
+            <input type="range" id="labelOpacitySlider" min="15" max="100" value="100" step="5"
+              style="width:100%;accent-color:#38bdf8;cursor:pointer;height:4px;" oninput="applySettings()">
+          </div>
+
+          <!-- Aircraft Label Blur -->
+          <div class="settings-section">
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
+              <span style="font-size:12px;color:#cdd;">
+                <i data-lucide="droplet" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+                Label Blur
+              </span>
+              <span id="labelBlurVal"
+                style="font-size:12px;color:#f472b6;font-weight:700;min-width:38px;text-align:right;">16px</span>
+            </div>
+            <input type="range" id="labelBlurSlider" min="0" max="30" value="16" step="1"
+              style="width:100%;accent-color:#f472b6;cursor:pointer;height:4px;" oninput="applySettings()">
+          </div>
         </div>
       </div>
 
@@ -358,6 +386,8 @@
     buttonOpacity: 100,
     buttonBlur: 22,
     trailOpacity: 100,
+    labelOpacity: 100,
+    labelBlur: 16,
     followAircraft: false,
     followUpdateAmount: 3,
     showLabels: true,
@@ -490,6 +520,8 @@
     const bo = Number(document.getElementById('buttonOpacitySlider')?.value ?? current.buttonOpacity);
     const bb = Number(document.getElementById('buttonBlurSlider')?.value ?? current.buttonBlur);
     const to = Number(document.getElementById('trailOpacitySlider')?.value ?? current.trailOpacity);
+    const lo = Number(document.getElementById('labelOpacitySlider')?.value ?? current.labelOpacity);
+    const lbVal = Number(document.getElementById('labelBlurSlider')?.value ?? current.labelBlur);
     const fa = document.getElementById('followAircraftToggle')?.checked ?? current.followAircraft;
     const fua = Number(document.getElementById('followUpdateSlider')?.value ?? current.followUpdateAmount);
     const lbl = document.getElementById('labelsToggle')?.checked ?? current.showLabels;
@@ -500,12 +532,16 @@
     const boV = document.getElementById('buttonOpacityVal');
     const bbV = document.getElementById('buttonBlurVal');
     const toV = document.getElementById('trailOpacityVal');
+    const loV = document.getElementById('labelOpacityVal');
+    const lbVVal = document.getElementById('labelBlurVal');
     const fuaV = document.getElementById('followUpdateVal');
     if (poV) poV.textContent = po + '%';
     if (pbV) pbV.textContent = pb + 'px';
     if (boV) boV.textContent = bo + '%';
     if (bbV) bbV.textContent = bb + 'px';
     if (toV) toV.textContent = to + '%';
+    if (loV) loV.textContent = lo + '%';
+    if (lbVVal) lbVVal.textContent = lbVal + 'px';
     if (fuaV) fuaV.textContent = fua + 's';
 
     const track = document.getElementById('labelsTrack');
@@ -526,6 +562,10 @@
     _syncDisplayPanels(po, pb);
     _syncDisplayButtons(bo, bb);
     _syncUnitButtons(current.speedUnit, current.altitudeUnit);
+
+    // Apply label opacity and blur to CSS variables
+    document.documentElement.style.setProperty('--label-opacity', (lo / 100).toFixed(2));
+    document.documentElement.style.setProperty('--label-blur', lbVal + 'px');
 
     // Aircraft labels visibility — use a persistent <style> so dynamically-created markers also obey
     let lblStyle = document.getElementById('_labelVisStyle');
@@ -558,6 +598,8 @@
       buttonOpacity: bo,
       buttonBlur: bb,
       trailOpacity: to,
+      labelOpacity: lo,
+      labelBlur: lbVal,
       followAircraft: fa,
       followUpdateAmount: fua,
       showLabels: lbl,
@@ -576,6 +618,8 @@
     const bol = document.getElementById('buttonOpacitySlider');
     const bbl = document.getElementById('buttonBlurSlider');
     const tl = document.getElementById('trailOpacitySlider');
+    const los = document.getElementById('labelOpacitySlider');
+    const lbs = document.getElementById('labelBlurSlider');
     const fat = document.getElementById('followAircraftToggle');
     const fus = document.getElementById('followUpdateSlider');
     const lb = document.getElementById('labelsToggle');
@@ -585,6 +629,8 @@
     if (bol) bol.value = DS_DEFAULTS.buttonOpacity;
     if (bbl) bbl.value = DS_DEFAULTS.buttonBlur;
     if (tl) tl.value = DS_DEFAULTS.trailOpacity;
+    if (los) los.value = DS_DEFAULTS.labelOpacity;
+    if (lbs) lbs.value = DS_DEFAULTS.labelBlur;
     if (fat) fat.checked = DS_DEFAULTS.followAircraft;
     if (fus) fus.value = DS_DEFAULTS.followUpdateAmount;
     if (lb) lb.checked = DS_DEFAULTS.showLabels;
@@ -601,6 +647,8 @@
     const bol = document.getElementById('buttonOpacitySlider');
     const bbl = document.getElementById('buttonBlurSlider');
     const tl = document.getElementById('trailOpacitySlider');
+    const los = document.getElementById('labelOpacitySlider');
+    const lbs = document.getElementById('labelBlurSlider');
     const fat = document.getElementById('followAircraftToggle');
     const fus = document.getElementById('followUpdateSlider');
     const lb = document.getElementById('labelsToggle');
@@ -610,6 +658,8 @@
     if (bol) bol.value = s.buttonOpacity;
     if (bbl) bbl.value = s.buttonBlur;
     if (tl) tl.value = s.trailOpacity;
+    if (los) los.value = s.labelOpacity;
+    if (lbs) lbs.value = s.labelBlur;
     if (fat) fat.checked = s.followAircraft;
     if (fus) fus.value = s.followUpdateAmount;
     if (lb) lb.checked = s.showLabels;
