@@ -68,14 +68,15 @@
   <button id="globeBtn" class="atc-mode-btn" onclick="toggleGlobeMode()" title="3D Globe Mode">
     <i data-lucide="globe"></i>
   </button>
-  <button id="globeResetBtn" class="atc-mode-btn" onclick="resetGlobeMapView()" title="Reset map view" style="display:none;">
+  <button id="globeResetBtn" class="atc-mode-btn" onclick="resetGlobeMapView()" title="Reset map view"
+    style="display:none;">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
-      <path d="M4 12a8 8 0 0 1 13.66-5.66" fill="none" stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M4 12a8 8 0 0 1 13.66-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round" />
       <path d="M18 3v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
         stroke-linejoin="round" />
-      <path d="M20 12a8 8 0 0 1-13.66 5.66" fill="none" stroke="currentColor" stroke-width="2.2"
-        stroke-linecap="round" stroke-linejoin="round" />
+      <path d="M20 12a8 8 0 0 1-13.66 5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
+        stroke-linejoin="round" />
       <path d="M6 21v-5h5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
         stroke-linejoin="round" />
       <path d="M12 8l3 7-3-1.35L9 15z" fill="currentColor" />
@@ -868,7 +869,7 @@
     (function () {
       // ── 更新清單（由新到舊）──────────────────────────────
       const WN_UPDATES = [
-                {
+        {
           tag: 'new',
           date: '2026-06-07',
           title: 'Divertion button on userscript.js',
@@ -1089,38 +1090,40 @@
         </a>
       </div>
       <!-- 已登入狀態（JS 填入） -->
-<div id="discordProfileView" style="display: none;">
-  <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 0 4px;">
-    <img id="discordAvatar" src="" alt="avatar"
-      style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2; object-fit: cover;">
-    <div>
-      <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
-      <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
-    </div>
-  </div>
+      <div id="discordProfileView" style="display: none;">
+        <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 0 4px;">
+          <img id="discordAvatar" src="" alt="avatar"
+            style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2; object-fit: cover;">
+          <div>
+            <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
+            <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
+          </div>
+        </div>
 
-  <div class="menu-item" onclick="window.location.href='/profile.html?edit=true'" style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom: 14px; cursor:pointer; color:#e0e6ed; border-radius: 6px; transition: background 0.2s;" onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-    <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
-    <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
-  </div>
+        <div class="menu-item" onclick="window.location.href='/profile.html?edit=true'"
+          style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom: 14px; cursor:pointer; color:#e0e6ed; border-radius: 6px; transition: background 0.2s;"
+          onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
+          <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
+          <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
+        </div>
 
-  <div id="discordLinkRow" style="margin-bottom: 14px;">
-    <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;"></div>
-    <div id="discordLinkForm" style="display:flex; gap:6px;">
-      <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID" style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
+        <div id="discordLinkRow" style="margin-bottom: 14px;">
+          <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;"></div>
+          <div id="discordLinkForm" style="display:flex; gap:6px;">
+            <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID" style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
                   border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; outline: none;" />
-      <button onclick="linkGeofsId()" style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
+            <button onclick="linkGeofsId()" style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
                    padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">Link</button>
-    </div>
-  </div>
+          </div>
+        </div>
 
-  <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
+        <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
           text-decoration: none; padding: 7px; border-radius: 6px;
           border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;"
           onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">
-    Logout
-  </a>
-</div>
+          Logout
+        </a>
+      </div>
     </div>
 
     <!-- Photo Map 開關 -->
@@ -1290,9 +1293,12 @@
     <div id="flpBody"></div>
   </div>
 
-  <div id="pilotProfileModal" tabindex="-1" style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;">
-    <div style="position:relative;width:min(560px,calc(100vw - 20px));max-height:90vh;overflow-y:auto;overflow-x:hidden;background:#07101b;border:1px solid rgba(255,255,255,0.10);border-radius:20px;box-shadow:0 28px 90px rgba(0,0,0,0.6);">
-      <button id="pilotProfileClose" type="button" style="all:unset;position:sticky;float:right;top:10px;right:10px;z-index:10;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border-radius:50%;color:#fff;font-size:20px;cursor:pointer;margin:10px 10px 0 0;">×</button>
+  <div id="pilotProfileModal" tabindex="-1"
+    style="display:none;position:fixed;inset:0;z-index:110000;background:rgba(0,0,0,0.72);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);align-items:center;justify-content:center;">
+    <div
+      style="position:relative;width:min(560px,calc(100vw - 20px));max-height:90vh;overflow-y:auto;overflow-x:hidden;background:#07101b;border:1px solid rgba(255,255,255,0.10);border-radius:20px;box-shadow:0 28px 90px rgba(0,0,0,0.6);">
+      <button id="pilotProfileClose" type="button"
+        style="all:unset;position:sticky;float:right;top:10px;right:10px;z-index:10;width:32px;height:32px;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);backdrop-filter:blur(8px);border-radius:50%;color:#fff;font-size:20px;cursor:pointer;margin:10px 10px 0 0;">×</button>
       <div id="pilotProfileContent" style="min-height:200px;color:#e2eef7;line-height:1.55;clear:both;"></div>
     </div>
   </div>
@@ -2305,7 +2311,7 @@
         nextWaypointMarker = null;
       }
     }
-
+    //
     function makeDivIcon(data, isFocused) {
       if (atcMode) return makeAtcBlip(data);
       const imgW = 32, imgH = 32;
@@ -4320,7 +4326,7 @@
       if (map && map.keyboard) map.keyboard.enable();
       // Destroy any profile map instance
       if (window._pilotProfileMap) {
-        try { window._pilotProfileMap.remove(); } catch {}
+        try { window._pilotProfileMap.remove(); } catch { }
         window._pilotProfileMap = null;
       }
     }
@@ -4335,113 +4341,113 @@
     }
 
     // ── Profile: build 12-month rolling bar chart (SVG) ─────────────────────
-// ── Profile: build 365-day contribution heatmap (SVG) ───────────────────
-function _profileHeatmapChart(flights) {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0); // 對齊到今日凌晨 00:00
-  
-  // 計算起點：確保最後一格是今天，並且最左側對齊星期日
-  const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
-  const msPerDay = 24 * 60 * 60 * 1000;
-  // 51週整 + 本週已過天數 = 總顯示天數
-  const totalDays = 51 * 7 + (dayOfWeek + 1);
-  const startDate = new Date(today.getTime() - (totalDays - 1) * msPerDay);
+    // ── Profile: build 365-day contribution heatmap (SVG) ───────────────────
+    function _profileHeatmapChart(flights) {
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // 對齊到今日凌晨 00:00
 
-  // 統計每日飛行次數
-  const dayCounts = new Map();
-  flights.forEach(f => {
-    if (!f.startTime) return;
-    const d = new Date(f.startTime);
-    // 落在近一年內的紀錄
-    if (d >= startDate && d <= new Date(today.getTime() + msPerDay)) {
-      const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
-      dayCounts.set(dateKey, (dayCounts.get(dateKey) || 0) + 1);
-    }
-  });
+      // 計算起點：確保最後一格是今天，並且最左側對齊星期日
+      const dayOfWeek = today.getDay(); // 0 (Sun) to 6 (Sat)
+      const msPerDay = 24 * 60 * 60 * 1000;
+      // 51週整 + 本週已過天數 = 總顯示天數
+      const totalDays = 51 * 7 + (dayOfWeek + 1);
+      const startDate = new Date(today.getTime() - (totalDays - 1) * msPerDay);
 
-  const cellSize = 10;
-  const cellGap = 3;
-  const step = cellSize + cellGap;
-  const numCols = 52;
-  const W = numCols * step + 30; // 寬度包含左側文字空間
-  const H = 7 * step + 20;       // 高度包含上方月份文字
+      // 統計每日飛行次數
+      const dayCounts = new Map();
+      flights.forEach(f => {
+        if (!f.startTime) return;
+        const d = new Date(f.startTime);
+        // 落在近一年內的紀錄
+        if (d >= startDate && d <= new Date(today.getTime() + msPerDay)) {
+          const dateKey = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+          dayCounts.set(dateKey, (dayCounts.get(dateKey) || 0) + 1);
+        }
+      });
 
-  let rectsHtml = '';
-  let monthLabels = [];
-  let lastMonth = -1;
+      const cellSize = 10;
+      const cellGap = 3;
+      const step = cellSize + cellGap;
+      const numCols = 52;
+      const W = numCols * step + 30; // 寬度包含左側文字空間
+      const H = 7 * step + 20;       // 高度包含上方月份文字
 
-  // 星期標籤 (只顯示一、三、五)
-  const dayLabels = `
+      let rectsHtml = '';
+      let monthLabels = [];
+      let lastMonth = -1;
+
+      // 星期標籤 (只顯示一、三、五)
+      const dayLabels = `
     <text x="0" y="${20 + step * 1.75}" fill="#4a6070" font-size="9" font-family="monospace">Mon</text>
     <text x="0" y="${20 + step * 3.75}" fill="#4a6070" font-size="9" font-family="monospace">Wed</text>
     <text x="0" y="${20 + step * 5.75}" fill="#4a6070" font-size="9" font-family="monospace">Fri</text>
   `;
 
-  // 產生每一天的方塊
-  for (let col = 0; col < numCols; col++) {
-    for (let row = 0; row < 7; row++) {
-      const dayOffset = (col * 7) + row;
-      if (dayOffset >= totalDays) continue; // 排除未來的日子
+      // 產生每一天的方塊
+      for (let col = 0; col < numCols; col++) {
+        for (let row = 0; row < 7; row++) {
+          const dayOffset = (col * 7) + row;
+          if (dayOffset >= totalDays) continue; // 排除未來的日子
 
-      const currentDate = new Date(startDate.getTime() + dayOffset * msPerDay);
-      
-      // 繪製月份標籤 (每月初顯示)
-      if (row === 0 && currentDate.getMonth() !== lastMonth && col < 50) {
-        monthLabels.push(`<text x="${28 + col * step}" y="10" fill="#4a6070" font-size="9" font-family="monospace">${currentDate.toLocaleString('en', { month: 'short' })}</text>`);
-        lastMonth = currentDate.getMonth();
-      }
+          const currentDate = new Date(startDate.getTime() + dayOffset * msPerDay);
 
-      const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
-      const count = dayCounts.get(dateKey) || 0;
+          // 繪製月份標籤 (每月初顯示)
+          if (row === 0 && currentDate.getMonth() !== lastMonth && col < 50) {
+            monthLabels.push(`<text x="${28 + col * step}" y="10" fill="#4a6070" font-size="9" font-family="monospace">${currentDate.toLocaleString('en', { month: 'short' })}</text>`);
+            lastMonth = currentDate.getMonth();
+          }
 
-      // 根據次數決定顏色階級 (GitHub 風格)
-      let fill = 'rgba(255,255,255,0.06)';
-      if (count === 1) fill = 'rgba(0, 207, 255, 0.25)';
-      else if (count === 2) fill = 'rgba(0, 207, 255, 0.5)';
-      else if (count === 3) fill = 'rgba(0, 207, 255, 0.75)';
-      else if (count >= 4) fill = '#00cfff';
+          const dateKey = `${currentDate.getFullYear()}-${currentDate.getMonth()}-${currentDate.getDate()}`;
+          const count = dayCounts.get(dateKey) || 0;
 
-      const x = 28 + col * step;
-      const y = 15 + row * step;
-      const formattedDate = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+          // 根據次數決定顏色階級 (GitHub 風格)
+          let fill = 'rgba(255,255,255,0.06)';
+          if (count === 1) fill = 'rgba(0, 207, 255, 0.25)';
+          else if (count === 2) fill = 'rgba(0, 207, 255, 0.5)';
+          else if (count === 3) fill = 'rgba(0, 207, 255, 0.75)';
+          else if (count >= 4) fill = '#00cfff';
 
-      rectsHtml += `
+          const x = 28 + col * step;
+          const y = 15 + row * step;
+          const formattedDate = currentDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+
+          rectsHtml += `
         <rect x="${x}" y="${y}" width="${cellSize}" height="${cellSize}" rx="2" fill="${fill}">
           <title>${count} flights on ${formattedDate}</title>
         </rect>`;
-    }
-  }
+        }
+      }
 
-  // 包裝在支援橫向滾動的 div 中，避免破壞手機版面
-  return `<div style="overflow-x:auto; overflow-y:hidden; padding-bottom:8px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;">
+      // 包裝在支援橫向滾動的 div 中，避免破壞手機版面
+      return `<div style="overflow-x:auto; overflow-y:hidden; padding-bottom:8px; scrollbar-width:thin; scrollbar-color:rgba(255,255,255,0.2) transparent;">
             <svg viewBox="0 0 ${W} ${H}" width="${W}" height="${H}" xmlns="http://www.w3.org/2000/svg" style="min-width:${W}px;">
               ${dayLabels}
               ${monthLabels.join('')}
               ${rectsHtml}
             </svg>
           </div>`;
-}
-// ── Profile Settings Modal ──────────────────────────────────────────────
-// ── Profile Settings Modal ──────────────────────────────────────────────
-function openProfileSettings() {
-  const currentAvatar = localStorage.getItem('cfg_avatar') || '';
-  const currentBanner = localStorage.getItem('cfg_banner') || 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)';
-  const currentAchievement = localStorage.getItem('cfg_featured_achievement') || 'none';
+    }
+    // ── Profile Settings Modal ──────────────────────────────────────────────
+    // ── Profile Settings Modal ──────────────────────────────────────────────
+    function openProfileSettings() {
+      const currentAvatar = localStorage.getItem('cfg_avatar') || '';
+      const currentBanner = localStorage.getItem('cfg_banner') || 'linear-gradient(135deg, #0f2027, #203a43, #2c5364)';
+      const currentAchievement = localStorage.getItem('cfg_featured_achievement') || 'none';
 
-  const modalId = 'modal-profile-settings';
-  let existing = document.getElementById(modalId);
-  if (existing) existing.remove();
+      const modalId = 'modal-profile-settings';
+      let existing = document.getElementById(modalId);
+      if (existing) existing.remove();
 
-  const modal = document.createElement('div');
-  modal.id = modalId;
-  modal.style = `
+      const modal = document.createElement('div');
+      modal.id = modalId;
+      modal.style = `
     position: fixed; top: 0; left: 0; width: 100%; height: 100%;
     background: rgba(5, 10, 20, 0.75); backdrop-filter: blur(8px);
     display: flex; align-items: center; justify-content: center; z-index: 10000;
     font-family: 'Plus Jakarta Sans', sans-serif; color: #e0e6ed;
   `;
 
-  modal.innerHTML = `
+      modal.innerHTML = `
     <div style="background: #0d1622; border: 1px solid rgba(0, 207, 255, 0.2); width: 90%; max-width: 420px; border-radius: 12px; padding: 24px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
         <h3 style="margin:0; font-size:16px; color:#00cfff; letter-spacing:0.05em;">PROFILE SETTINGS</h3>
@@ -4481,35 +4487,35 @@ function openProfileSettings() {
     </div>
   `;
 
-  document.body.appendChild(modal);
-}
+      document.body.appendChild(modal);
+    }
 
-function _saveProfileSettings(modalId) {
-  localStorage.setItem('cfg_avatar', document.getElementById('set-avatar').value.trim());
-  localStorage.setItem('cfg_banner', document.getElementById('set-banner').value);
-  localStorage.setItem('cfg_featured_achievement', document.getElementById('set-achievement').value);
-  
-  document.getElementById(modalId).remove();
-  alert('Profile settings updated successfully!');
-}
+    function _saveProfileSettings(modalId) {
+      localStorage.setItem('cfg_avatar', document.getElementById('set-avatar').value.trim());
+      localStorage.setItem('cfg_banner', document.getElementById('set-banner').value);
+      localStorage.setItem('cfg_featured_achievement', document.getElementById('set-achievement').value);
 
-// ── 內部儲存邏輯 ────────────────────────────────────────────────────────
-function _saveProfileSettings(modalId) {
-  const avatarVal = document.getElementById('set-avatar').value;
-  const bannerVal = document.getElementById('set-banner').value;
-  const achievementVal = document.getElementById('set-achievement').value;
+      document.getElementById(modalId).remove();
+      alert('Profile settings updated successfully!');
+    }
 
-  // 寫入 localStorage 儲存
-  localStorage.setItem('cfg_avatar', avatarVal);
-  localStorage.setItem('cfg_banner', bannerVal);
-  localStorage.setItem('cfg_featured_achievement', achievementVal);
+    // ── 內部儲存邏輯 ────────────────────────────────────────────────────────
+    function _saveProfileSettings(modalId) {
+      const avatarVal = document.getElementById('set-avatar').value;
+      const bannerVal = document.getElementById('set-banner').value;
+      const achievementVal = document.getElementById('set-achievement').value;
 
-  // 關閉視窗
-  document.getElementById(modalId).remove();
+      // 寫入 localStorage 儲存
+      localStorage.setItem('cfg_avatar', avatarVal);
+      localStorage.setItem('cfg_banner', bannerVal);
+      localStorage.setItem('cfg_featured_achievement', achievementVal);
 
-  // 可選：可以加一個客製化的 Toast 提示儲存成功
-  alert('Profile settings updated successfully!');
-}
+      // 關閉視窗
+      document.getElementById(modalId).remove();
+
+      // 可選：可以加一個客製化的 Toast 提示儲存成功
+      alert('Profile settings updated successfully!');
+    }
     // ── Profile: extract unique visited airports from flights ────────────────
     function _profileVisitedAirports(flights) {
       const seen = new Set();
@@ -4528,7 +4534,7 @@ function _saveProfileSettings(modalId) {
       const container = document.getElementById('pilotProfileMapDiv');
       if (!container) return;
       if (window._pilotProfileMap) {
-        try { window._pilotProfileMap.remove(); } catch {}
+        try { window._pilotProfileMap.remove(); } catch { }
         window._pilotProfileMap = null;
       }
       const pmap = L.map(container, {
@@ -4586,7 +4592,7 @@ function _saveProfileSettings(modalId) {
         const res = await fetch('/api/flights/history?' + params);
         const data = await res.json();
         flights = data.flights || [];
-      } catch {}
+      } catch { }
 
       const displayName = user?.displayName || `GeoFS #${userId}`;
       const username = user?.username || '';
@@ -4688,14 +4694,14 @@ function _saveProfileSettings(modalId) {
         <div style="margin:20px 20px 0;">
           <div style="font-size:10px;color:#3a5060;text-transform:uppercase;letter-spacing:0.1em;font-weight:700;margin-bottom:10px;">Achievements</div>
           ${achievements.length > 0
-            ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">
+          ? `<div style="display:flex;flex-wrap:wrap;gap:8px;">
               ${achievements.map(a => `
                 <div title="${escapeHtml(a.desc)}" style="display:flex;align-items:center;gap:7px;background:rgba(255,215,0,0.08);border:1px solid rgba(255,215,0,0.18);border-radius:10px;padding:7px 11px;cursor:default;">
                   <span style="font-size:20px;">${a.icon}</span>
                   <span style="font-size:12px;font-weight:700;color:#f5d77e;">${escapeHtml(a.name)}</span>
                 </div>`).join('')}
               </div>`
-            : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No achievements yet</div>`}
+          : `<div style="font-size:12px;color:#2a3a4a;font-style:italic;">No achievements yet</div>`}
         </div>
 
         <div style="margin:20px 20px 0;">
@@ -6127,7 +6133,7 @@ function _saveProfileSettings(modalId) {
           const now = Date.now();
           if (!updateGlobeAircraft._lastTrackRefresh) updateGlobeAircraft._lastTrackRefresh = {};
           if (!updateGlobeAircraft._lastTrackRefresh[id] ||
-              now - updateGlobeAircraft._lastTrackRefresh[id] > 5000) {
+            now - updateGlobeAircraft._lastTrackRefresh[id] > 5000) {
             updateGlobeAircraft._lastTrackRefresh[id] = now;
             showGlobeTrackAndRoute(id, data, { flyCamera: false });
           }
@@ -6274,7 +6280,7 @@ function _saveProfileSettings(modalId) {
       let plan = data.flightPlan;
       if (typeof plan === 'string') { try { plan = JSON.parse(plan); } catch { plan = null; } }
       if (typeof getShowFlightPlanEnabled === 'function' && getShowFlightPlanEnabled()
-          && plan && Array.isArray(plan) && plan.length > 1) {
+        && plan && Array.isArray(plan) && plan.length > 1) {
         const wpPositions = plan
           .filter(wp => !isNaN(Number(wp.lat)) && !isNaN(Number(wp.lon)))
           .map(wp => Cesium.Cartesian3.fromDegrees(Number(wp.lon), Number(wp.lat), 3000));
