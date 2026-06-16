@@ -68,11 +68,12 @@
 }
 /* Aircraft Label Hover Effect */
 .leaflet-aircraft-icon .aircraft-tag {
-  transition: background-color 0.2s ease, opacity 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
 }
 
 .leaflet-aircraft-icon:hover .aircraft-tag {
-  background-color: rgba(0, 0, 0, 0.8) !important;
+  background: rgba(255, 255, 255, 0.28) !important;
+  border-color: rgba(255, 255, 255, 0.5) !important;
 }
 
 /* Aircraft Panel Modern Styling */
@@ -288,20 +289,39 @@ html,body {
     .label {
       font-family: Inter, "Noto Sans TC", Arial, sans-serif;
       font-size: 12px;
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: rgba(0,0,0,0.8);
-      color: #fff;
-      box-shadow: 0 1px 3px rgba(0,0,0,0.5);
+      padding: 4px 8px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(16px) saturate(150%) brightness(1.05);
+      -webkit-backdrop-filter: blur(16px) saturate(150%) brightness(1.05);
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      color: rgba(255, 255, 255, 0.95);
+      box-shadow: 
+        0 4px 16px rgba(0, 0, 0, 0.2), 
+        0 1px 0 rgba(255, 255, 255, 0.4) inset,
+        0 -1px 0 rgba(255, 255, 255, 0.05) inset;
       white-space: nowrap;
       margin-left: 6px;
+      position: relative;
+      overflow: hidden;
+      transition: background 0.2s ease, border-color 0.2s ease;
+    }
+    .label::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      bottom: 0;
+      width: 4px;
+      background: linear-gradient(to bottom, var(--alt-color, #ffffff), transparent);
     }
     .label.emergency {
-      background: rgba(139, 0, 0, 0.95);
+      background: rgba(239, 68, 68, 0.25);
+      border-color: rgba(239, 68, 68, 0.45);
       animation: pulse 1s ease-in-out infinite;
     }
     @keyframes pulse {
-      0%, 100% { box-shadow: 0 1px 3px rgba(0,0,0,0.5); }
+      0%, 100% { box-shadow: 0 4px 16px rgba(0, 0, 0, 0.2); }
       50% { box-shadow: 0 0 15px rgba(255,0,0,0.8); }
     }
     .legend {
