@@ -2325,9 +2325,9 @@
 
       return L.divIcon({
         html: `
-    <div style="display:flex;align-items:center;width:max-content;height:max-content;">
-      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="transform:rotate(${data.heading || 0}deg);filter:${isFocused ? 'brightness(0) saturate(100%) invert(18%) sepia(99%) saturate(3000%) hue-rotate(350deg) brightness(110%)' : 'brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%)'};" onerror="this.src='/icons/c0.svg'"/>
-      <div class="${labelClass} aircraft-tag" style="--alt-color: ${color};">
+    <div style="display:flex;align-items:flex-start;width:max-content;height:max-content;">
+      <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="flex-shrink:0;transform:rotate(${data.heading || 0}deg);transform-origin:center;display:block;filter:${isFocused ? 'brightness(0) saturate(100%) invert(18%) sepia(99%) saturate(3000%) hue-rotate(350deg) brightness(110%)' : 'brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%)'};" onerror="this.src='/icons/c0.svg'"/>
+      <div class="${labelClass} aircraft-tag" style="--alt-color: ${color};align-self:center;">
         <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
         <div style="font-size:11px;">
           ${escapeHtml(data.type || '??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
@@ -3190,13 +3190,6 @@
       })() / 100;
 
       const simplified = obj.rawPathForDisplay.map(p => [p[0], p[1], p[2], p[3]]);
-      // 將軌跡最後一個端點對齊到 marker 目前在地圖上的實際位置（含預測動畫偏移），
-      // 避免 marker 動畫插值位置與軌跡末端脫節
-      if (simplified.length > 0 && obj.marker) {
-        const markerLatLng = obj.marker.getLatLng();
-        const last = simplified[simplified.length - 1];
-        simplified[simplified.length - 1] = [markerLatLng.lat, markerLatLng.lng, last[2], last[3]];
-      }
       obj.displayPath = simplified;
 
       for (let i = 1; i < obj.displayPath.length; i++) {
