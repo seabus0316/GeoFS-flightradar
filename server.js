@@ -38,8 +38,26 @@ const ALERT_WEBHOOK_URL = process.env.ALERT_WEBHOOK_URL || ''; // 緊急 Squawk 
 // Discord OAuth
 const DISCORD_CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
 const DISCORD_CLIENT_SECRET = process.env.DISCORD_CLIENT_SECRET || '';
-const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || ''; // e.g. https://geofs-flightradar.duckdns.org/auth/discord/callback
+const DISCORD_REDIRECT_URI = process.env.DISCORD_REDIRECT_URI || ''; // fallback，當 host 不在白名單內時使用
 const JWT_SECRET = process.env.JWT_SECRET || 'change_this_secret';
+
+// 雙網域並行：依照使用者實際訪問的網域動態組 redirect_uri，
+// 避免在 A 網域種的 state cookie 被導回 B 網域時讀不到（State mismatch）
+const DISCORD_OAUTH_ALLOWED_HOSTS = new Set(
+  String(process.env.DISCORD_OAUTH_ALLOWED_HOSTS || 'geofs-flightradar.duckdns.org,geotracker.mooo.com')
+    .split(',')
+    .map(h => h.trim())
+    .filter(Boolean)
+);
+
+function getDiscordRedirectUri(req) {
+  const host = req.headers.host;
+  if (host && DISCORD_OAUTH_ALLOWED_HOSTS.has(host)) {
+    return `https://${host}/auth/discord/callback`;
+  }
+  // 非白名單網域（例如直接用 IP 訪問），退回固定值，避免被偽造 Host header 利用
+  return DISCORD_REDIRECT_URI;
+}
 
 // ============ 共用變數 ============
 const aircrafts = new Map();
@@ -1852,11 +1870,12 @@ app.get('/auth/discord', (req, res) => {
   if (!DISCORD_CLIENT_ID) return res.status(500).send('Discord OAuth not configured');
   const state = Math.random().toString(36).slice(2);
   const returnTo = req.query.return_to || '/';
-  res.cookie('discord_oauth_state', state, { httpOnly: true, maxAge: 300_000 });
-  res.cookie('discord_return_to', returnTo, { httpOnly: true, maxAge: 300_000 });
+  const redirectUri = getDiscordRedirectUri(req);
+  res.cookie('discord_oauth_state', state, { httpOnly: true, maxAge: 300_000, sameSite: 'lax', secure: true });
+  res.cookie('discord_return_to', returnTo, { httpOnly: true, maxAge: 300_000, sameSite: 'lax', secure: true });
   const params = new URLSearchParams({
     client_id: DISCORD_CLIENT_ID,
-    redirect_uri: DISCORD_REDIRECT_URI,
+    redirect_uri: redirectUri,
     response_type: 'code',
     scope: 'identify',
     state
@@ -1879,7 +1898,7 @@ app.get('/auth/discord/callback', async (req, res) => {
         client_id: DISCORD_CLIENT_ID,
         client_secret: DISCORD_CLIENT_SECRET,
         grant_type: 'authorization_code',
-        code, redirect_uri: DISCORD_REDIRECT_URI
+        code, redirect_uri: getDiscordRedirectUri(req)
       })
     });
     const tokenData = await tokenRes.json();
@@ -1927,7 +1946,7 @@ app.get('/auth/discord/callback', async (req, res) => {
     res.clearCookie('discord_oauth_state');
     res.clearCookie('discord_return_to');
     const returnTo = req.cookies.discord_return_to || '/';
-    res.cookie('auth_token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000 });
+    res.cookie('auth_token', token, { httpOnly: true, maxAge: 30 * 24 * 60 * 60 * 1000, sameSite: 'lax', secure: true });
     res.redirect(returnTo + (returnTo.includes('?') ? '&' : '?') + 'discord_linked=1');
   } catch (err) {
     console.error('Discord OAuth error', err);
