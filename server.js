@@ -304,6 +304,10 @@ flightHistorySchema.index({ sessionId: 1 }, { unique: true, sparse: true });
 const FlightHistory = mongoose.model('FlightHistory', flightHistorySchema, 'flightHistory');
 
 const DISCONNECT_FINALIZE_GRACE_MS = 90 * 1000;
+const NETWORK_OUTAGE_FINALIZE_GRACE_MS = Math.max(
+  DISCONNECT_FINALIZE_GRACE_MS,
+  Number(process.env.NETWORK_OUTAGE_GRACE_MS || 9 * 60 * 60 * 1000)
+);
 const COMPLETION_GROUND_ALT_FT = 150;
 const COMPLETION_GROUND_SPEED_KTS = 40;
 const COMPLETION_STABLE_POINTS = 3;
@@ -2837,7 +2841,7 @@ setInterval(async () => {
       removed.push(id);
       clearAdaptiveAircraftUpdate(id);
       try {
-        scheduleFlightFinalization(id, 'aborted', 0);
+        scheduleFlightFinalization(id, 'completed', NETWORK_OUTAGE_FINALIZE_GRACE_MS);
       } catch (err) {
         console.error('cleanup error', err);
       }
