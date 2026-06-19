@@ -193,6 +193,7 @@ let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
+  let wasPaused = false;
 
   // --- 著陸偵測變數 ---
   let landingDetected = false;        // 防止同一次落地重複觸發
@@ -237,6 +238,14 @@ let flightInfo = window.geofsFlightInfo;
         const payload = { ...obj.payload, aircraftId: lastAircraftId || obj.payload.callsign || null };
         postJSON('/api/report/landing', payload, { ...options, keepalive: true }).catch((e) => {
           console.warn('[ATC-Reporter] HTTP landing error', e);
+        });
+        return;
+      }
+
+      if (obj.type === 'flight_pause' && obj.payload) {
+        const payload = { ...obj.payload, aircraftId: lastAircraftId || obj.payload.aircraftId || obj.payload.id || obj.payload.callsign || null };
+        postJSON('/api/report/pause', payload, { ...options, keepalive: true }).catch((e) => {
+          console.warn('[ATC-Reporter] HTTP pause error', e);
         });
       }
     } catch (e) {
@@ -385,6 +394,30 @@ let flightInfo = window.geofsFlightInfo;
   }
   function getPlayerCallsign() {
     return geofs?.userRecord?.callsign || 'Unknown';
+  }
+
+  function isGeoFSPaused() {
+    return Boolean(geofs?.isPaused);
+  }
+
+  function reportPauseStateIfNeeded() {
+    const paused = isGeoFSPaused();
+    if (paused && !wasPaused) {
+      safeSend({
+        type: 'flight_pause',
+        payload: {
+          aircraftId: getPlayerCallsign(),
+          id: getPlayerCallsign(),
+          callsign: getPlayerCallsign()
+        }
+      }, { keepalive: true });
+      log('GeoFS paused, hiding aircraft and pausing flight-time tracking');
+    }
+    if (!paused && wasPaused) {
+      log('GeoFS resumed, position reporting will continue');
+    }
+    wasPaused = paused;
+    return paused;
   }
   // --- AGL 計算 ---
   function calculateAGL() {
@@ -557,6 +590,7 @@ function buildPayload(snap) {
 
   // --- 定期傳送 ---
   setInterval(() => {
+    if (reportPauseStateIfNeeded()) return;
     const snap = readSnapshot();
     if (!snap) return;
     const payload = buildPayload(snap);

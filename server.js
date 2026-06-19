@@ -311,6 +311,7 @@ const NETWORK_OUTAGE_FINALIZE_GRACE_MS = Math.max(
 const COMPLETION_GROUND_ALT_FT = 150;
 const COMPLETION_GROUND_SPEED_KTS = 40;
 const COMPLETION_STABLE_POINTS = 3;
+const MAX_ACTIVE_FLIGHT_POINT_GAP_MS = 15 * 1000;
 const RECORD_ALTITUDE_MIN_FT = -1500;
 const RECORD_ALTITUDE_MAX_FT = 100000;
 const RECORD_SPEED_MIN_KTS = 0;
@@ -1201,8 +1202,14 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
 
     // 計算飛行統計
     let distanceNm = 0, maxAlt = 0, maxSpeed = 0;
+    let activeDurationMs = 0;
     for (let i = 1; i < docs.length; i++) {
-      distanceNm += haversineNm(docs[i - 1].lat, docs[i - 1].lon, docs[i].lat, docs[i].lon);
+      const pointGapMs = Number(docs[i].ts || 0) - Number(docs[i - 1].ts || 0);
+      const isActiveSegment = pointGapMs > 0 && pointGapMs <= MAX_ACTIVE_FLIGHT_POINT_GAP_MS;
+      if (isActiveSegment) {
+        activeDurationMs += pointGapMs;
+        distanceNm += haversineNm(docs[i - 1].lat, docs[i - 1].lon, docs[i].lat, docs[i].lon);
+      }
       if (isRecordAltitude(docs[i].alt)) maxAlt = Math.max(maxAlt, Number(docs[i].alt));
       if (isRecordSpeed(docs[i].speed)) maxSpeed = Math.max(maxSpeed, Number(docs[i].speed));
     }
@@ -1210,7 +1217,7 @@ async function finalizeFlightSession(aircraftId, status = 'completed') {
 
     const startTime = docs[0].ts;
     const endTime = docs[docs.length - 1].ts;
-    const duration = Math.round((endTime - startTime) / 1000);
+    const duration = Math.round(activeDurationMs / 1000);
     const trackSnapshot = buildSessionTrackSnapshot(
       docs.map(d => ({ lat: d.lat, lon: d.lon, alt: d.alt || 0, ts: d.ts }))
     );
@@ -1480,6 +1487,16 @@ async function handlePlayerPositionUpdate(p, context = {}) {
   return payload;
 }
 
+function handlePlayerPause(p, context = {}) {
+  const aircraftId = String(p?.aircraftId || p?.id || p?.callsign || context.aircraftId || '').trim();
+  if (!aircraftId) return false;
+  if (context.client) context.client.aircraftId = aircraftId;
+  clearAdaptiveAircraftUpdate(aircraftId);
+  aircrafts.delete(aircraftId);
+  broadcastToATC({ type: 'aircraft_remove', payload: [aircraftId] });
+  return true;
+}
+
 async function handleLandingReport(p, context = {}) {
   if (!p) return false;
   const VALID_QUALITIES = ['BUTTER', 'GREAT', 'ACCEPTABLE', 'HARD LANDING', 'CRASH'];
@@ -1618,6 +1635,10 @@ io.on('connection', async (socket) => {
     }
     scheduleAdaptiveAircraftUpdate(payload);
     await sendSquawkAlert(payload);
+  });
+
+  socket.on('flight_pause', (p) => {
+    handlePlayerPause(p, { source: 'Socket.IO', client: socket, aircraftId: socket.aircraftId });
   });
 
   socket.on('landing_report', async (p) => {
@@ -1830,6 +1851,11 @@ wss.on('connection', (ws) => {
         } catch (err) {
           console.error('[Landing] FlightHistory update error', err);
         }
+        return;
+      }
+
+      if (msg.type === 'flight_pause' && msg.payload) {
+        handlePlayerPause(msg.payload, { source: 'WebSocket', client: ws, aircraftId: ws.aircraftId });
         return;
       }
 
@@ -2703,6 +2729,17 @@ app.post('/api/report/landing', async (req, res) => {
     res.json({ ok: true });
   } catch (err) {
     console.error('[HTTP] landing report error', err);
+    res.status(500).json({ ok: false, error: 'server error' });
+  }
+});
+
+app.post('/api/report/pause', async (req, res) => {
+  try {
+    const ok = handlePlayerPause(req.body || {}, { source: 'HTTP' });
+    if (!ok) return res.status(400).json({ ok: false, error: 'aircraftId required' });
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('[HTTP] pause report error', err);
     res.status(500).json({ ok: false, error: 'server error' });
   }
 });

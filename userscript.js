@@ -192,6 +192,7 @@ let flightInfo = window.geofsFlightInfo;
   let flightUI;
   let wasOnGround = true;
   let takeoffTimeUTC = '';
+  let wasPaused = false;
 
   // --- 著陸偵測變數 ---
   let landingDetected = false;        // 防止同一次落地重複觸發
@@ -255,7 +256,7 @@ let flightInfo = window.geofsFlightInfo;
     try {
       if (isSocketIO) {
         if (ws && ws.connected) {
-          if (obj.type === 'position_update' || obj.type === 'landing_report') {
+          if (obj.type === 'position_update' || obj.type === 'landing_report' || obj.type === 'flight_pause') {
             ws.emit(obj.type, obj.payload);
           } else {
             ws.emit(obj.type, obj);
@@ -399,6 +400,30 @@ let flightInfo = window.geofsFlightInfo;
   }
   function getPlayerCallsign() {
     return geofs?.userRecord?.callsign || 'Unknown';
+  }
+
+  function isGeoFSPaused() {
+    return Boolean(geofs?.isPaused);
+  }
+
+  function reportPauseStateIfNeeded() {
+    const paused = isGeoFSPaused();
+    if (paused && !wasPaused) {
+      safeSend({
+        type: 'flight_pause',
+        payload: {
+          aircraftId: getPlayerCallsign(),
+          id: getPlayerCallsign(),
+          callsign: getPlayerCallsign()
+        }
+      });
+      log('GeoFS paused, hiding aircraft and pausing flight-time tracking');
+    }
+    if (!paused && wasPaused) {
+      log('GeoFS resumed, position reporting will continue');
+    }
+    wasPaused = paused;
+    return paused;
   }
   // --- AGL 計算 ---
   function calculateAGL() {
@@ -576,6 +601,7 @@ function buildPayload(snap) {
     } else {
       if (!ws || ws.readyState !== 1) return;
     }
+    if (reportPauseStateIfNeeded()) return;
     const snap = readSnapshot();
     if (!snap) return;
     const payload = buildPayload(snap);
