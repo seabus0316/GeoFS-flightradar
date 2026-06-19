@@ -403,7 +403,7 @@ let flightInfo = window.geofsFlightInfo;
   }
 
   function isGeoFSPaused() {
-    return Boolean(geofs?.isPaused);
+    return geofs?.isPaused === true;
   }
 
   function reportPauseStateIfNeeded() {
