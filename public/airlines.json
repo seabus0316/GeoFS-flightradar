@@ -3158,5 +3158,40 @@
     "iata": "R8",
     "country": "South Africa",
     "logo": "https://user13688.na.imgto.link/public/20260611/chatgpt-image-jun-11-2026-01-04-20-pm.avif"
+  },
+  "TFA": {
+    "name": "Terraflint air",
+    "icao": "TFA",
+    "iata": "TF",
+    "country": "Taiwan",
+    "logo": "https://i.ibb.co/hJy0VxnN/Gemini-Generated-Image-ewgofaewgofaewgo.png"
+  },
+  "MAI": {
+    "name": "Mauritania Airlines",
+    "icao": "MAI",
+    "iata": "L6",
+    "country": "Mauritania",
+    "logo": "https://images.kiwi.com/airlines/64/L6.png"
+  },
+  "MYW": {
+    "name": "MyWay Airlines",
+    "icao": "MYW",
+    "iata": "MJ",
+    "country": "Georgia",
+    "logo": "https://images.kiwi.com/airlines/64/MJ.png"
+  },
+  "GTS": {
+    "name": "Transair",
+    "icao": "GTS",
+    "iata": "R2",
+    "country": "Senegal",
+    "logo": "https://images.kiwi.com/airlines/64/R2.png"
+  },
+  "SXE": {
+    "name": "Air Sierra Leone",
+    "icao": "SXE",
+    "iata": "XS",
+    "country": "Sierra Leone",
+    "logo": "https://user13688.na.imgto.link/public/20260619/481776286-122126415242607907-5780366619982069210-n.avif"
   }
 }
