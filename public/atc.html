@@ -2387,6 +2387,48 @@
     function crossesTooFar(lat1, lon1, lat2, lon2, maxDistanceKm = 100) {
       return calculateDistance(lat1, lon1, lat2, lon2) > maxDistanceKm;
     }
+
+    function getLatestContinuousTrackSegment(track, currentData, maxDistanceKm = 100) {
+      if (!Array.isArray(track) || track.length === 0) return [];
+
+      const clean = track.filter(t =>
+        Number.isFinite(Number(t?.lat)) &&
+        Number.isFinite(Number(t?.lon))
+      );
+      if (clean.length <= 1) return clean;
+
+      let segmentStart = 0;
+      for (let i = 1; i < clean.length; i++) {
+        if (crossesTooFar(
+          Number(clean[i - 1].lat),
+          Number(clean[i - 1].lon),
+          Number(clean[i].lat),
+          Number(clean[i].lon),
+          maxDistanceKm
+        )) {
+          segmentStart = i;
+        }
+      }
+
+      const latestSegment = clean.slice(segmentStart);
+      const currentLat = Number(currentData?.lat);
+      const currentLon = Number(currentData?.lon);
+      if (!Number.isFinite(currentLat) || !Number.isFinite(currentLon) || latestSegment.length === 0) {
+        return latestSegment;
+      }
+
+      const last = latestSegment[latestSegment.length - 1];
+      if (crossesTooFar(Number(last.lat), Number(last.lon), currentLat, currentLon, maxDistanceKm)) {
+        return [{
+          lat: currentLat,
+          lon: currentLon,
+          alt: currentData.alt || 0,
+          speed: currentData.speed || 0,
+          ts: Date.now()
+        }];
+      }
+      return latestSegment;
+    }
     // 從後端載入歷史軌跡
     async function loadHistoryFromBackend(aircraftId) {
       try {
@@ -3146,7 +3188,8 @@
             // 合併歷史資料（避免重複）
             const existingTimestamps = new Set(obj.rawTrack.map(t => t.ts));
 
-            tracks.forEach(t => {
+            const visibleTracks = getLatestContinuousTrackSegment(tracks, obj.data);
+            visibleTracks.forEach(t => {
               if (!existingTimestamps.has(t.ts)) {
                 obj.rawTrack.push({
                   lat: t.lat,
@@ -3161,6 +3204,8 @@
 
             // 按時間排序
             obj.rawTrack.sort((a, b) => a.ts - b.ts);
+            obj.rawTrack = getLatestContinuousTrackSegment(obj.rawTrack, obj.data);
+            obj.rawPathForDisplay = obj.rawTrack.map(t => [t.lat, t.lon, t.alt || 0, t.speed || 0]);
 
             // 限制總數量
             if (obj.rawTrack.length > 10000) {
@@ -3320,26 +3365,30 @@
           clearAllAircraftTracks();
           const prevFocused = focusedAircraftId;
           focusedAircraftId = id;
+          const currentObj = aircrafts.get(id);
+          const currentData = currentObj?.data || data;
           // Refresh previous and current marker icons
           if (prevFocused && prevFocused !== id && aircrafts.has(prevFocused)) {
             const prev = aircrafts.get(prevFocused);
             if (prev && prev.marker) prev.marker.setIcon(makeDivIcon(prev.data, false));
           }
-          marker.setIcon(makeDivIcon(data, true));
-          map.flyTo([data.lat, data.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
+          marker.setIcon(makeDivIcon(currentData, true));
+          map.flyTo([currentData.lat, currentData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
           showAircraftTrack(id);
-          showAircraftPanel(data, id);
+          showAircraftPanel(currentData, id);
           if (globeMode && typeof showGlobeTrackAndRoute === 'function') {
-            showGlobeTrackAndRoute(id, data, { flyCamera: true });
+            showGlobeTrackAndRoute(id, currentData, { flyCamera: true });
           }
 
           const history = await loadHistoryFromBackend(id);
-          if (history && history.tracks) {
+          if (history && history.tracks && focusedAircraftId === id) {
             const obj = aircrafts.get(id);
             if (obj) {
+              const latestData = obj.data || currentData;
+              const visibleHistory = getLatestContinuousTrackSegment(history.tracks, latestData);
               obj.rawTrack = [];
               obj.rawPathForDisplay = [];
-              history.tracks.forEach(t => {
+              visibleHistory.forEach(t => {
                 obj.rawTrack.push({ lat: t.lat, lon: t.lon, alt: t.alt || 0, speed: t.speed || 0, ts: t.ts });
                 obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
               });
@@ -3412,6 +3461,16 @@
       // 4. 記錄軌跡資料 (邏輯不變)
       if (!obj.paused && trackPoint) {
         if (!obj.rawTrack) obj.rawTrack = [];
+        const prevTrackPoint = obj.rawTrack[obj.rawTrack.length - 1];
+        if (prevTrackPoint && crossesTooFar(
+          Number(prevTrackPoint.lat),
+          Number(prevTrackPoint.lon),
+          Number(data.lat),
+          Number(data.lon)
+        )) {
+          obj.rawTrack = [];
+          obj.rawPathForDisplay = [];
+        }
         obj.rawTrack.push({ lat: data.lat, lon: data.lon, ts: now, alt: data.alt, speed: data.speed });
         if (obj.rawTrack.length > 20000) obj.rawTrack.shift();
 
@@ -4879,9 +4938,11 @@
                 _armOutsidePanelCloseGuard();
                 clearAllAircraftTracks();
                 focusedAircraftId = aircraftId;
-                map.flyTo([dummyData.lat, dummyData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
+                const currentObj = aircrafts.get(aircraftId);
+                const currentData = currentObj?.data || dummyData;
+                map.flyTo([currentData.lat, currentData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
                 showAircraftTrack(aircraftId);
-                showAircraftPanel(dummyData, aircraftId);
+                showAircraftPanel(currentData, aircraftId);
               });
               aircrafts.set(aircraftId, {
                 marker,
@@ -4904,7 +4965,8 @@
             obj.rawTrack = [];
 
             // 添加 history 資料
-            tracks.forEach(t => {
+            const visibleTrackHistory = getLatestContinuousTrackSegment(tracks, obj.data);
+            visibleTrackHistory.forEach(t => {
               obj.rawPathForDisplay.push([t.lat, t.lon, t.alt || 0, t.speed || 0]);
               obj.rawTrack.push({
                 lat: t.lat,
