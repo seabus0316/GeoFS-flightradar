@@ -3193,5 +3193,12 @@
     "iata": "XS",
     "country": "Sierra Leone",
     "logo": "https://user13688.na.imgto.link/public/20260619/481776286-122126415242607907-5780366619982069210-n.avif"
+  },
+    "UIA": {
+    "name": "UNI Air",
+    "icao": "UIA",
+    "iata": "B7",
+    "country": "Taiwan",
+    "logo": "https://media.discordapp.net/attachments/1458047856123314285/1517867571590725752/gAAAABJRU5ErkJggg.png?ex=6a37d7d5&is=6a368655&hm=36931f27d6ee66a99f51cc5be662e902840a77297c5d11fca1d2825ae1fb70fb&=&format=webp&quality=lossless&width=297&height=297"
   }
 }
