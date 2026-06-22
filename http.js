@@ -228,7 +228,12 @@ let flightInfo = window.geofsFlightInfo;
     try {
       if (obj.type === 'position_update' && obj.payload) {
         lastAircraftId = obj.payload.id || obj.payload.callsign || lastAircraftId;
-        postJSON('/api/report/position', obj.payload, options).catch((e) => {
+        postJSON('/api/report/position', obj.payload, options).then(resData => {
+          if (resData && resData.bindReminder && !window.geofsBindNotified) {
+            window.geofsBindNotified = true;
+            showLoginToast();
+          }
+        }).catch((e) => {
           console.warn('[ATC-Reporter] HTTP position error', e);
         });
         return;
@@ -629,6 +634,21 @@ function buildPayload(snap) {
       toast.style.opacity = '0';
       setTimeout(() => toast.remove(), 300);
     }, 2000);
+  }
+
+  function showLoginToast(msg = '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。') {
+    if (document.getElementById('geofs-login-toast')) return;
+    const toast = document.createElement('div');
+    toast.id = 'geofs-login-toast';
+    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #1e3f6e, #151a25);color:#fff;padding:15px;border-radius:10px;font-size:14px;z-index:1000000;box-shadow:0 4px 12px rgba(0,0,0,0.5);border:1.5px solid #4eaaff;display:flex;flex-direction:column;gap:10px;animation:popIn .3s ease;';
+    toast.innerHTML = `
+      <div>${msg}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <a href="https://geofs-flightradar.duckdns.org/auth/discord" target="_blank" style="padding:6px 12px;background:#4eaaff;color:#000;text-decoration:none;border-radius:5px;font-weight:bold;font-size:12px;">前往登入綁定</a>
+        <button style="padding:6px 12px;background:#333;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;" onclick="this.parentElement.parentElement.remove()">關閉</button>
+      </div>
+    `;
+    document.body.appendChild(toast);
   }
 
   // --- UI 注入 ---

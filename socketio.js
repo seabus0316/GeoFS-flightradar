@@ -114,6 +114,21 @@
     }, 2000);
   }
 
+  function showLoginToast(msg = '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。') {
+    if (document.getElementById('geofs-login-toast')) return;
+    const toast = document.createElement('div');
+    toast.id = 'geofs-login-toast';
+    toast.style.cssText = 'position:fixed;top:80px;left:50%;transform:translateX(-50%);background:linear-gradient(135deg, #1e3f6e, #151a25);color:#fff;padding:15px;border-radius:10px;font-size:14px;z-index:1000000;box-shadow:0 4px 12px rgba(0,0,0,0.5);border:1.5px solid #4eaaff;display:flex;flex-direction:column;gap:10px;animation:popIn .3s ease;';
+    toast.innerHTML = `
+      <div>${msg}</div>
+      <div style="display:flex;gap:8px;justify-content:flex-end;">
+        <a href="https://geofs-flightradar.duckdns.org/auth/discord" target="_blank" style="padding:6px 12px;background:#4eaaff;color:#000;text-decoration:none;border-radius:5px;font-weight:bold;font-size:12px;">前往登入綁定</a>
+        <button style="padding:6px 12px;background:#333;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;" onclick="this.parentElement.parentElement.remove()">關閉</button>
+      </div>
+    `;
+    document.body.appendChild(toast);
+  }
+
   // ─────────────────────────────────────────────
   // Flight Info 全域狀態
   // ─────────────────────────────────────────────
@@ -441,6 +456,7 @@
   // 同時暴露 UI 工具，方便外部模組呼叫
   window.GeoFSSocketIO.showModal = showModal;
   window.GeoFSSocketIO.showToast = showToast;
+  window.GeoFSSocketIO.showLoginToast = showLoginToast;
 
   log('Socket.IO module loaded (with Flight Info UI)');
 })();

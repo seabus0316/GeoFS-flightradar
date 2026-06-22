@@ -1591,6 +1591,16 @@ io.on('connection', async (socket) => {
     clearPendingFlightFinalization(id);
     if (socket.role === 'player') socket.aircraftId = id;
 
+    if (p.userId && !socket.userIdBindNotified) {
+      socket.userIdBindNotified = true;
+      try {
+        const user = await User.findOne({ geofsUserId: String(p.userId) }).lean();
+        if (!user || !user.discordId) {
+          socket.emit('bind_reminder', { message: '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。' });
+        }
+      } catch (err) {}
+    }
+
     const payload = {
       id, callsign: p.callsign || 'UNK', type: p.type || '',
       lat: +p.lat || 0, lon: +p.lon || 0, alt: +p.alt || 0,
@@ -1763,6 +1773,16 @@ wss.on('connection', (ws) => {
         if (!id) return;
         clearPendingFlightFinalization(id);
         if (ws.role === 'player') ws.aircraftId = id;
+
+        if (p.userId && !ws.userIdBindNotified) {
+          ws.userIdBindNotified = true;
+          try {
+            const user = await User.findOne({ geofsUserId: String(p.userId) }).lean();
+            if (!user || !user.discordId) {
+              ws.send(JSON.stringify({ type: 'bind_reminder', payload: { message: '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。' } }));
+            }
+          } catch (err) {}
+        }
 
         const payload = {
           id, callsign: p.callsign || 'UNK', type: p.type || '',
@@ -2712,7 +2732,18 @@ app.post('/api/report/position', async (req, res) => {
       includeTrackPoint: true
     });
     if (!payload) return res.status(400).json({ ok: false, error: 'aircraft id required' });
-    res.json({ ok: true, aircraftId: payload.id, serverTime: Date.now() });
+
+    let bindReminder = false;
+    if (req.body.userId) {
+      try {
+        const user = await User.findOne({ geofsUserId: String(req.body.userId) }).lean();
+        if (!user || !user.discordId) {
+          bindReminder = true;
+        }
+      } catch (err) {}
+    }
+
+    res.json({ ok: true, aircraftId: payload.id, serverTime: Date.now(), bindReminder });
   } catch (err) {
     console.error('[HTTP] position report error', err);
     res.status(500).json({ ok: false, error: 'server error' });
