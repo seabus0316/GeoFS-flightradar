@@ -636,7 +636,7 @@ function buildPayload(snap) {
     }, 2000);
   }
 
-  function showLoginToast(msg = '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。') {
+  function showLoginToast(msg = 'Your GeoFS account is not linked to Discord! Please log in to use full features.') {
     if (document.getElementById('geofs-login-toast')) return;
     const toast = document.createElement('div');
     toast.id = 'geofs-login-toast';
@@ -644,8 +644,8 @@ function buildPayload(snap) {
     toast.innerHTML = `
       <div>${msg}</div>
       <div style="display:flex;gap:8px;justify-content:flex-end;">
-        <a href="https://geofs-flightradar.duckdns.org/auth/discord" target="_blank" style="padding:6px 12px;background:#4eaaff;color:#000;text-decoration:none;border-radius:5px;font-weight:bold;font-size:12px;">前往登入綁定</a>
-        <button style="padding:6px 12px;background:#333;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;" onclick="this.parentElement.parentElement.remove()">關閉</button>
+        <a href="https://geofs-flightradar.duckdns.org/auth/discord" target="_blank" style="padding:6px 12px;background:#4eaaff;color:#000;text-decoration:none;border-radius:5px;font-weight:bold;font-size:12px;">Login & Link</a>
+        <button style="padding:6px 12px;background:#333;color:#fff;border:none;border-radius:5px;cursor:pointer;font-size:12px;" onclick="this.parentElement.parentElement.remove()">Close</button>
       </div>
     `;
     document.body.appendChild(toast);

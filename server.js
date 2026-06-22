@@ -1596,7 +1596,7 @@ io.on('connection', async (socket) => {
       try {
         const user = await User.findOne({ geofsUserId: String(p.userId) }).lean();
         if (!user || !user.discordId) {
-          socket.emit('bind_reminder', { message: '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。' });
+          socket.emit('bind_reminder', { message: 'Your GeoFS account is not linked to Discord! Please log in to use full features.' });
         }
       } catch (err) {}
     }
@@ -1779,7 +1779,7 @@ wss.on('connection', (ws) => {
           try {
             const user = await User.findOne({ geofsUserId: String(p.userId) }).lean();
             if (!user || !user.discordId) {
-              ws.send(JSON.stringify({ type: 'bind_reminder', payload: { message: '您的 GeoFS 帳號尚未與 Discord 綁定！請登入以使用完整功能。' } }));
+              ws.send(JSON.stringify({ type: 'bind_reminder', payload: { message: 'Your GeoFS account is not linked to Discord! Please log in to use full features.' } }));
             }
           } catch (err) {}
         }
