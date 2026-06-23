@@ -83,6 +83,7 @@
   { "model": "Robinson R22", "icon": "a7.svg" },
   { "model": "SAAB 340", "icon": "crjx.svg" },
   { "model": "Scaled 339 \"SpaceShipTwo\"", "icon": "f5.svg" },
+  { "model": "Boeing F/A-18F Super Hornet", "icon": "f5.svg" },
   { "model": "Scaled 348 \"WhiteKnightTwo\"", "icon": "f5.svg" },
   { "model": "Sikorsky S-97 Raider", "icon": "c0.svg" },
   { "model": "Sonex-B Kit (Jabiru 3300)", "icon": "cessna.svg" },
