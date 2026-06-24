@@ -426,98 +426,98 @@
     "logo": "https://i.ibb.co/zVmJGHzb/Airsial-logo-1.png",
     "country": "Pakistan"
   },
-    "FJL": {
+  "FJL": {
     "name": "FlyJinnah",
     "icao": "FJL",
     "iata": "9P",
     "logo": "https://images.kiwi.com/airlines/64/FJ.png",
     "country": "Pakistan"
   },
-    "ABQ": {
+  "ABQ": {
     "name": "Airblue",
     "icao": "ABQ",
     "iata": "PA",
     "logo": "https://images.kiwi.com/airlines/64/PA.png",
     "country": "Pakistan"
   },
-    "SBI": {
+  "SBI": {
     "name": "S7 Airlines",
     "icao": "SBI",
     "iata": "S7",
     "logo": "https://images.kiwi.com/airlines/64/S7.png",
     "country": "Russia"
   },
-    "CQH": {
+  "CQH": {
     "name": "Spring Airlines",
     "icao": "CQH",
     "iata": "9C",
     "logo": "https://images.kiwi.com/airlines/64/9C.png",
     "country": "China"
   },
-    "SVR": {
+  "SVR": {
     "name": "Ural airlines",
     "icao": "SVR",
     "iata": "U6",
     "logo": "https://images.kiwi.com/airlines/64/U6.png",
     "country": "Russia"
   },
-    "PBD": {
+  "PBD": {
     "name": "Pobeda",
     "icao": "PBD",
     "iata": "DP",
     "logo": "https://images.kiwi.com/airlines/64/DP.png",
     "country": "Russia"
   },
-    "AZV": {
+  "AZV": {
     "name": "Azur Air",
     "icao": "AZV",
     "iata": "ZF",
     "logo": "https://media.discordapp.net/attachments/1424412356959539221/1480133484193251328/AZUR_air_idcT_eFOWy_1.png?ex=69ae913a&is=69ad3fba&hm=f90cee89a1316af67e9dd4b58c519cc59262b8e1251b10291d781b1a9d3ee046&=&format=webp&quality=lossless&width=1104&height=1104",
     "country": "Russia"
   },
-    "BRU": {
+  "BRU": {
     "name": "Belavia",
     "icao": "BRU",
     "iata": "B2",
     "logo": "https://images.kiwi.com/airlines/64/B2.png",
     "country": "Russia"
   },
-    "UTR": {
+  "UTR": {
     "name": "Utair",
     "icao": "UTR",
     "iata": "UT",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/UT.png"
   },
-    "AUL": {
+  "AUL": {
     "name": "Smartavia",
     "icao": "AUL",
     "iata": "N6",
     "country": "Russia",
     "logo": "https://habrastorage.org/getpro/moikrug/uploads/company/100/008/123/0/logo/medium_83b5009e040969ee7b60362ad7426573.jpeg"
   },
-    "NWS": {
+  "NWS": {
     "name": "Nordwind",
     "icao": "NWS",
     "iata": "N4",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/N4.png"
   },
-    "SDM": {
+  "SDM": {
     "name": "Rossiya",
     "icao": "SDM",
     "iata": "FV",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/FV.png"
   },
-    "AFL": {
+  "AFL": {
     "name": "Aeroflot",
     "icao": "AFL",
     "iata": "SU",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/SU.png"
   },
-    "TYA": {
+  "TYA": {
     "name": "NordStar",
     "icao": "TYA",
     "iata": "Y7",
@@ -531,21 +531,21 @@
     "logo": "https://cdn.discordapp.com/attachments/1442018596598317130/1480545376544100483/BSX_new_logo.webp?ex=69b010d4&is=69aebf54&hm=745644a897a8292a6ec8f0a43b7e4fafa8df6db79b8327876b48c25faf1e6047&",
     "country": "Philippines"
   },
-    "SHU": {
+  "SHU": {
     "name": "Aurora",
     "icao": "SHU",
     "iata": "HZ",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/HZ.png"
   },
-    "LLM": {
+  "LLM": {
     "name": "Yamal airlines",
     "icao": "LLM",
     "iata": "YC",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/YC.png"
   },
-    "SYL": {
+  "SYL": {
     "name": "Yakutia Airlines",
     "icao": "SYL",
     "iata": "R3",
@@ -559,224 +559,224 @@
     "country": "Ukraine",
     "logo": "https://images.kiwi.com/airlines/64/PS.png"
   },
-    "SQP": {
+  "SQP": {
     "name": "SkyUp Airlines",
     "icao": "SQP",
     "iata": "PQ",
     "country": "Ukraine",
     "logo": "https://images.kiwi.com/airlines/64/PQ.png"
   },
-    "UZB": {
+  "UZB": {
     "name": "Uzbekistan Airways",
     "icao": "UZB",
     "iata": "HY",
     "country": "Uzbekistan",
     "logo": "https://images.kiwi.com/airlines/64/HY.png"
   },
-    "KZR": {
+  "KZR": {
     "name": "Air Astana",
     "icao": "KZR",
     "iata": "KC",
     "country": "Kazakhstan",
     "logo": "https://images.kiwi.com/airlines/64/KC.png"
   },
-    "VSV": {
+  "VSV": {
     "name": "SCAT Airlines",
     "icao": "VSV",
     "iata": "DV",
     "country": "Kazakhstan",
     "logo": "https://images.kiwi.com/airlines/64/DV.png"
   },
-    "RLU": {
+  "RLU": {
     "name": "RusLine",
     "icao": "RLU",
     "iata": "7R",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/7R.png"
   },
-    "SSF": {
+  "SSF": {
     "name": "Severstal",
     "icao": "SSF",
     "iata": "D2",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/D2.png"
   },
-    "BTI": {
+  "BTI": {
     "name": "airBaltic",
     "icao": "BTI",
     "iata": "BT",
     "country": "Latvia",
     "logo": "https://images.kiwi.com/airlines/64/BT.png"
   },
-    "RBA": {
+  "RBA": {
     "name": "Royal Burnei Airline",
     "icao": "RBA",
     "iata": "BI",
     "country": "Brunei",
     "logo": "https://images.kiwi.com/airlines/64/BI.png"
   },
-    "CFG": {
+  "CFG": {
     "name": "Condor Airlines",
     "icao": "CFG",
     "iata": "DE",
     "country": "German",
     "logo": "https://images.kiwi.com/airlines/64/DE.png"
   },
-    "IGO": {
+  "IGO": {
     "name": "IndiGo",
     "icao": "IGO",
     "iata": "6E",
     "country": "India",
     "logo": "https://images.kiwi.com/airlines/64/6E.png"
   },
-    "SJX": {
+  "SJX": {
     "name": "Starlux Airlines",
     "icao": "SJX",
     "iata": "JX",
     "country": "Taiwan",
     "logo": "https://images.kiwi.com/airlines/64/JX.png"
   },
-    "TTW": {
+  "TTW": {
     "name": "Tiger air",
     "icao": "TTW",
     "iata": "IT",
     "country": "Singapore",
     "logo": "https://images.kiwi.com/airlines/64/IT.png"
   },
-    "AXB": {
+  "AXB": {
     "name": "Air India Xpress",
     "icao": "AXB",
     "iata": "IX",
     "country": "India",
     "logo": "https://images.kiwi.com/airlines/64/IX.png"
   },
-    "TSO": {
+  "TSO": {
     "name": "Transaero",
     "icao": "TSO",
     "iata": "UN",
     "country": "Russia",
     "logo": "https://logos-world.net/wp-content/uploads/2023/06/Transaero-Airlines-Logo.png"
   },
-    "AIC": {
+  "AIC": {
     "name": "Air india",
     "icao": "AIC",
     "iata": "AI",
     "country": "India",
     "logo": "https://images.kiwi.com/airlines/64/AI.png"
   },
-    "AIQ": {
+  "AIQ": {
     "name": "Airasia Thai",
     "icao": "AIQ",
     "iata": "FD",
     "country": "Thailand",
     "logo": "https://images.kiwi.com/airlines/64/FD.png"
   },
-    "CYZ": {
+  "CYZ": {
     "name": "China Postal Airlines",
     "icao": "CYZ",
     "iata": "CF",
     "country": "China",
     "logo": "https://logo800.cn/uploads/logoxinshang/37/logo800_16491600052243695.png"
   },
-    "CKK": {
+  "CKK": {
     "name": "China Cargo Airlines LTD",
     "icao": "CKK",
     "iata": "CK",
     "country": "China",
     "logo": "https://www.ip138.com/hangkong/images/CK_L.jpg"
   },
-    "CSSS": {
+  "CSSS": {
     "name": "SF Airlines",
     "icao": "CSSS",
     "iata": "O3",
     "country": "China",
     "logo": "https://gd-hbimg.huaban.com/a57db67da6f6f6c6e6de8dde65a44dd504dd1543dbec-v3FnQB_fw658"
   },
-    "TUP": {
+  "TUP": {
     "name": "Aviastar-TU",
     "icao": "TUP",
     "iata": "4B",
     "country": "Russia",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSSh69PtPA1TAVZBc1pJFCOAoOgAH-Imz5OoA&s"
   },
-    "RWZ": {
+  "RWZ": {
     "name": "Red Wings",
     "icao": "RWZ",
     "iata": "WZ",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/WZ.png"
   },
-    "WZZ": {
+  "WZZ": {
     "name": "Wizz Air",
     "icao": "WZZ",
     "iata": "W6",
     "country": "Hungary",
     "logo": "https://images.kiwi.com/airlines/64/W6.png"
   },
-    "DRU": {
+  "DRU": {
     "name": "Alrosa",
     "icao": "DRU",
     "iata": "6R",
     "country": "Russia",
     "logo": "https://images.kiwi.com/airlines/64/6R.png"
   },
-   "WUK": {
+  "WUK": {
     "name": "Wizz Air UK",
     "icao": "WUK",
     "iata": "W9",
     "country": "United Kingdom",
     "logo": "https://images.kiwi.com/airlines/64/W9.png"
   },
-    "WMT": {
+  "WMT": {
     "name": "Wizz Air Malta",
     "icao": "WMT",
     "iata": "W4",
     "country": "Malta",
     "logo": "https://images.kiwi.com/airlines/64/W4.png"
   },
-    "TGZ": {
+  "TGZ": {
     "name": "Georgian Airways",
     "icao": "TGZ",
     "iata": "A9",
     "country": "Georgia",
     "logo": "https://images.kiwi.com/airlines/64/A9.png"
   },
-    "ICE": {
+  "ICE": {
     "name": "Icelandair",
     "icao": "ICE",
     "iata": "FI",
     "country": "Iceland",
     "logo": "https://images.kiwi.com/airlines/64/FI.png"
   },
-    "THY": {
+  "THY": {
     "name": "Turkish Airlines",
     "icao": "THY",
     "iata": "TK",
     "country": "Turkey",
     "logo": "https://images.kiwi.com/airlines/64/TK.png"
   },
-    "HKE": {
+  "HKE": {
     "name": "HK Express",
     "icao": "HKE",
     "iata": "UO",
     "country": "Hong Kong",
     "logo": "https://images.kiwi.com/airlines/64/UO.png"
   },
-    "TGW": {
+  "TGW": {
     "name": "Scoot",
     "icao": "TGW",
     "iata": "TR",
     "country": "Singapore",
     "logo": "https://images.kiwi.com/airlines/64/TR.png"
   },
-    "ETD": {
+  "ETD": {
     "name": "Etihad Airways",
     "icao": "ETD",
     "iata": "EY",
     "country": "United Arab Emirates",
     "logo": "https://images.kiwi.com/airlines/64/EY.png"
   },
-    "AYN": {
+  "AYN": {
     "name": "FlyArystan",
     "icao": "AYN",
     "iata": "FS",
@@ -797,900 +797,900 @@
     "country": "North Korea",
     "logo": "https://images.kiwi.com/airlines/64/JS.png"
   },
-    "STRK": {
+  "STRK": {
     "name": "Stark Airways",
     "icao": "STRK",
     "iata": "STK",
     "country": "France",
     "logo": "https://www.zupimages.net/up/26/12/rvlm.png"
   },
-    "JSP": {
+  "JSP": {
     "name": "Jet Singapore",
     "icao": "JSP",
     "iata": "2J",
     "country": "Singapore",
-    "logo": "https://media.discordapp.net/attachments/1458047856123314285/1487136138182398114/jetSingapore.png?ex=69c8b3b4&is=69c76234&hm=244b0893ccda3c168c1baa2506dcd9a2020b17f4082cd784005a0f5fd67bf505&=&format=webp&quality=lossless&width=1104&height=1104"
+    "logo": "https://i.ibb.co/Ngs1sCw4/image.png"
   },
-    "STW": {
+  "STW": {
     "name": "Southwind Airlines",
     "icao": "STW",
     "iata": "2S",
     "country": "Türkiye",
     "logo": "https://images.kiwi.com/airlines/64/2S.png"
   },
-    "IRA": {
+  "IRA": {
     "name": "Iran Air",
     "icao": "IRA",
     "iata": "IR",
     "country": "Iran",
     "logo": "https://avatars.mds.yandex.net/i?id=687b78281ec6d260d2557c1e57cc2f99_sr-5332183-images-thumbs&n=13"
   },
-    "EDW": {
+  "EDW": {
     "name": "Edelweiss",
     "icao": "EDW",
     "iata": "WK",
     "country": "Switzerland",
     "logo": "https://images.kiwi.com/airlines/64/WK.png"
   },
-    "LOL": {
+  "LOL": {
     "name": "Easy Charter",
     "icao": "LOL",
     "iata": "RD",
     "country": "Georgia",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTNO3_79_2clVShG6SNBd6kyXWrttcVNjFSGg&s"
   },
-    "QAZ": {
+  "QAZ": {
     "name": "VietJetAir Qazaqstan",
     "icao": "QAZ",
     "iata": "IQ",
     "country": "Kazakhstan",
     "logo": "https://images.kiwi.com/airlines/64/IQ.png"
   },
-    "CSC": {
+  "CSC": {
     "name": "Sichuan Airlines",
     "icao": "CSC",
     "iata": "3U",
     "country": "China",
     "logo": "https://icons.veryicon.com/png/o/brands/navigation-logo/sichuan-airlines.png"
   },
-    "KAC": {
+  "KAC": {
     "name": "Kuwait Airways",
     "icao": "KAC",
     "iata": "KU",
     "country": "Kuwait",
     "logo": "https://images.kiwi.com/airlines/64/KU.png"
   },
-    "JZR": {
+  "JZR": {
     "name": "Jazeera Airways",
     "icao": "JZR",
     "iata": "J9",
     "country": "Kuwait",
     "logo": "https://images.kiwi.com/airlines/64/J9.png"
   },
-    "NIS": {
+  "NIS": {
     "name": "La Costeña",
     "icao": "NIS",
     "iata": "LC",
     "country": "Nicaragua",
     "logo": "https://image2url.com/r2/default/images/1775664832472-75f1490b-2bdf-4b40-a2a6-49288548cf09.png"
   },
-    "KXP": {
+  "KXP": {
     "name": "MJets Air",
     "icao": "KXP",
     "iata": "WW",
     "country": "Malaysia",
     "logo": "https://i.ibb.co/cc4V1j2x/image.jpg"
   },
-    "JOY": {
+  "JOY": {
     "name": "Joy Air",
     "icao": "JOY",
     "iata": "JR",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/JR.png"
   },
-    "AUA": {
+  "AUA": {
     "name": "Austrian Airlines",
     "icao": "AUA",
     "iata": "OS",
     "country": "Austria",
     "logo": "https://images.kiwi.com/airlines/64/OS.png"
   },
-    "ACI": {
+  "ACI": {
     "name": "Aircalin",
     "icao": "ACI",
     "iata": "SB",
     "country": "France",
     "logo": "https://images.kiwi.com/airlines/64/SB.png"
   },
-    "KMI": {
+  "KMI": {
     "name": "K-Mile Asia",
     "icao": "KMI",
     "iata": "8K",
     "country": "Thailand",
     "logo": "https://k-mile.co.th/wp-content/uploads/2022/10/k-mile.jpg"
   },
-    "CSZ": {
+  "CSZ": {
     "name": "Shenzhen Airlines",
     "icao": "CSZ",
     "iata": "ZH",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/ZH.png"
   },
-    "CHB": {
+  "CHB": {
     "name": "West Air",
     "icao": "CHB",
     "iata": "PN",
     "country": "China",
     "logo": "https://www.westair.cn/dotCms/webfile//content/hearderbar/logo%20-dark_zh_CN.png?language_id=1"
   },
-    "AMU": {
+  "AMU": {
     "name": "Air Macau",
     "icao": "AMU",
     "iata": "NX",
     "country": "Macau",
     "logo": "https://images.kiwi.com/airlines/64/NX.png"
   },
-    "SEJ": {
+  "SEJ": {
     "name": "Spice Jet",
     "icao": "SEJ",
     "iata": "SG",
     "country": "India",
     "logo": "https://images.kiwi.com/airlines/64/SG.png"
   },
-    "ALK": {
+  "ALK": {
     "name": "Sri Lankan",
     "icao": "ALK",
     "iata": "UL",
     "country": "Sri Lanka",
     "logo": "https://images.kiwi.com/airlines/64/UL.png"
   },
-    "AKJ": {
+  "AKJ": {
     "name": "Akasa Air | GeoFS VA",
     "icao": "AKJ",
     "iata": "QP",
     "country": "India",
     "logo": "https://images.kiwi.com/airlines/64/QP.png"
   },
-    "CNA": {
+  "CNA": {
     "name": "China National Airlines",
     "icao": "CNA",
     "iata": "CW",
     "country": "China"
   },
-    "CRL": {
+  "CRL": {
     "name": "Corsair International",
     "icao": "CRL",
     "iata": "SS",
     "country": "France",
     "logo": "https://images.kiwi.com/airlines/64/SS.png"
   },
-    "KSK": {
+  "KSK": {
     "name": "FlySK",
     "icao": "KSK",
     "iata": "KS",
     "country": "Canada",
     "logo": "https://i.ibb.co/DHzCXgr8/Fly-SK-New-Logo.png"
   },
-    "CHH": {
+  "CHH": {
     "name": "Henan Airlines",
     "icao": "CHH",
     "iata": "HU",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/HU.png"
   },
-    "CQN": {
+  "CQN": {
     "name": "Chongqing Airlines",
     "icao": "CQN",
     "iata": "OQ",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/OQ.png"
   },
-    "LNI": {
+  "LNI": {
     "name": "Lion AIr",
     "icao": "LNI",
     "iata": "JT",
     "country": "Indonesia",
     "logo": "https://images.kiwi.com/airlines/64/JT.png"
   },
-    "RAM": {
+  "RAM": {
     "name": "Royal Air Maroc",
     "icao": "RAM",
     "iata": "AT",
     "country": "Morocco",
     "logo": "https://images.kiwi.com/airlines/64/AT.png"
   },
-    "DQA": {
+  "DQA": {
     "name": "Maldivian",
     "icao": "DQA",
     "iata": "Q2",
     "country": "Maldives",
     "logo": "https://images.kiwi.com/airlines/64/Q2.png"
   },
-    "ASL": {
+  "ASL": {
     "name": "AirSERBIA",
     "icao": "ASL",
     "iata": "JU",
     "country": "Serbia",
     "logo": "https://images.kiwi.com/airlines/64/JU.png"
   },
-    "DLA": {
+  "DLA": {
     "name": "Air Dolomiti",
     "icao": "DLA",
     "iata": "EN",
     "country": "Italy",
     "logo": "https://images.kiwi.com/airlines/64/EN.png"
   },
-    "KEM": {
+  "KEM": {
     "name": "CemAir",
     "icao": "KEM",
     "iata": "5Z",
     "country": "South Africa",
     "logo": "https://images.kiwi.com/airlines/64/5Z.png"
   },
-    "KLU": {
+  "KLU": {
     "name": "Kalitus Airlines",
     "icao": "KLU",
     "iata": "KT",
     "country": "India"
   },
-    "GIA": {
+  "GIA": {
     "name": "Garuda Indonesia",
     "icao": "GIA",
     "iata": "GA",
     "country": "Indonesia",
     "logo": "https://images.kiwi.com/airlines/64/GA.png"
   },
-    "MYM": {
+  "MYM": {
     "name": "MY Air",
     "icao": "MYM",
     "iata": "Z9",
     "country": "Malaysia",
     "logo": "https://images.kiwi.com/airlines/64/Z9.png"
   },
-    "BTK": {
+  "BTK": {
     "name": "Batik Air Indonesia",
     "icao": "BTK",
     "iata": "ID",
     "country": "Indonesia",
     "logo": "https://images.kiwi.com/airlines/64/ID.png"
   },
-    "MXD": {
+  "MXD": {
     "name": "Batik Air Malaysia",
     "icao": "MXD",
     "iata": "OD",
     "country": "Malaysia",
     "logo": "https://images.kiwi.com/airlines/64/OD.png"
   },
-    "GKA": {
+  "GKA": {
     "name": "GlazedKimpabAir",
     "icao": "GKA",
     "iata": "GZ",
     "country": "South Korea",
     "logo": "https://i.ibb.co/X6Kd5t3/Screenshot-2026-04-25-164714.png"
   },
-    "MAU": {
+  "MAU": {
     "name": "Air Mauritius",
     "icao": "MAU",
     "iata": "MK",
     "country": "Mauritius",
     "logo": "https://images.kiwi.com/airlines/64/MK.png"
   },
-    "VIC": {
+  "VIC": {
     "name": "Victorian Airways AG",
     "icao": "VIC",
     "iata": "VC",
     "country": "United Kingdom"
   },
-    "RCR": {
+  "RCR": {
     "name": "ROMCargo Airlines",
     "icao": "RCR",
     "iata": "NJ",
     "country": "Romania",
     "logo": "https://media.licdn.com/dms/image/v2/D4E0BAQEir26bauSqog/company-logo_200_200/company-logo_200_200/0/1727824925610?e=2147483647&v=beta&t=onEWXWSJVQWf2Hs3twVjSnKvi6wpuKc_E7rN0-xVGXc"
   },
-    "ARC": {
+  "ARC": {
     "name": "AeroLavras Conecta",
     "icao": "ARC",
     "iata": "KD",
     "country": "Brazil",
     "logo": "https://ibb.co/MxZ49qsr"
   },
-    "TRA": {
+  "TRA": {
     "name": "Transavia",
     "icao": "TRA",
     "iata": "HV",
     "country": "Netherlands",
     "logo": "https://images.kiwi.com/airlines/64/HV.png"
   },
-    "CLX": {
+  "CLX": {
     "name": "Cargolux",
     "icao": "CLX",
     "iata": "CV",
     "country": "Luxembourg",
     "logo": "https://upload.wikimedia.org/wikipedia/en/6/66/Cargolux_Logo.svg"
   },
-    "ANZ": {
+  "ANZ": {
     "name": "Air New Zealand",
     "icao": "ANZ",
     "iata": "NZ",
     "country": "New Zealand",
     "logo": "https://images.kiwi.com/airlines/64/NZ.png"
   },
-    "FJI": {
+  "FJI": {
     "name": "Fiji Airways",
     "icao": "FJI",
     "iata": "FJ",
     "country": "Fiji",
     "logo": "https://images.kiwi.com/airlines/64/FJ.png"
   },
-    "AJX": {
+  "AJX": {
     "name": "Air Japan",
     "icao": "AJX",
     "iata": "NQ",
     "country": "Japan",
     "logo": "https://images.kiwi.com/airlines/64/NQ.png"
   },
-    "TCX": {
+  "TCX": {
     "name": "Thomas Cook",
     "icao": "TCX",
     "iata": "MT",
     "country": "United Kingdom",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTA84k7Vj6b6_4oadpj1p_GlyCm06oxDE5ypg&s"
   },
-    "HFM": {
+  "HFM": {
     "name": "Hi Fly Malta",
     "icao": "HFM",
     "iata": "3L",
     "country": "Malta",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTIQlB67YK_RCU9N8b9XJrw4TjBgT_WII3uOg&s"
   },
-    "EIN": {
+  "EIN": {
     "name": "Aer Lingus",
     "icao": "EIN",
     "iata": "EI",
     "country": "Ireland",
     "logo": "https://images.kiwi.com/airlines/64/EI.png"
   },
-    "JST": {
+  "JST": {
     "name": "Jetstar Airways",
     "icao": "JST",
     "iata": "JQ",
     "country": "Australia",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQDicoci9R2HPXvNuqx3tqM85GM5L5qm-1Y7A&s"
   },
-    "NOZ": {
+  "NOZ": {
     "name": "Norwegian",
     "icao": "NOZ",
     "iata": "DY",
     "country": "Norway",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRC2nz5ANSfHDnAZnxx-91BDyzOya1vxpD5vg&s"
   },
-    "EXS": {
+  "EXS": {
     "name": "Jet2",
     "icao": "EXS",
     "iata": "LS",
     "country": "United Kingdom",
     "logo": "https://images.kiwi.com/airlines/64/LS.png"
   },
-    "YZR": {
+  "YZR": {
     "name": "Suparna Airlines",
     "icao": "YZR",
     "iata": "Y8",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/Y8.png"
   },
-    "MPH": {
+  "MPH": {
     "name": "Martinair Cargo",
     "icao": "MPH",
     "iata": "MP",
     "country": "Netherlands",
     "logo": "https://images.kiwi.com/airlines/64/MP.png"
   },
-    "EWG": {
+  "EWG": {
     "name": "Eurowings",
     "icao": "EWG",
     "iata": "EW",
     "country": "Germany",
     "logo": "https://images.kiwi.com/airlines/64/EW.png"
   },
-    "SXS": {
+  "SXS": {
     "name": "Sun Express",
     "icao": "SXS",
     "iata": "XQ",
     "country": "Turkey",
     "logo": "https://images.kiwi.com/airlines/64/XQ.png"
   },
-    "PVG": {
+  "PVG": {
     "name": "Privilige Style",
     "icao": "PVG",
     "iata": "P6",
     "country": "Spain",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSArIF5-k_xy9eLpZAFQj5Yo840v0Mv_6gcCA&s"
   },
-    "ROT": {
+  "ROT": {
     "name": "Tarom",
     "icao": "ROT",
     "iata": "RO",
     "country": "Romania",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQKuhMvw_UFulBw4aVHiGDdGx_qYQk7XN5dyA&s"
   },
-    "VKG": {
+  "VKG": {
     "name": "Sunclass Airlines",
     "icao": "VKG",
     "iata": "DK",
     "country": "Danmark",
     "logo": "https://images.kiwi.com/airlines/64/DK.png"
   },
-    "ASA": {
+  "ASA": {
     "name": "Alaska Airlines",
     "icao": "ASA",
     "iata": "AS",
     "country": "United States",
     "logo": "https://images.kiwi.com/airlines/64/AS.png"
   },
-    "SKW": {
+  "SKW": {
     "name": "SkyWest Airlines",
     "icao": "SKW",
     "iata": "OO",
     "country": "United States",
     "logo": "https://images.kiwi.com/airlines/64/OO.png"
   },
-    "GTI": {
+  "GTI": {
     "name": "Atlas Air",
     "icao": "GTI",
     "iata": "5Y",
     "country": "United States",
     "logo": "https://images.kiwi.com/airlines/64/5Y.png"
   },
-    "SCX": {
+  "SCX": {
     "name": "Sun Country Airlines",
     "icao": "SCX",
     "iata": "SY",
     "country": "United States",
     "logo": "https://images.kiwi.com/airlines/64/SY.png"
   },
-    "OCN": {
+  "OCN": {
     "name": "Discover Airlines",
     "icao": "OCN",
     "iata": "4Y",
     "country": "Germany",
     "logo": "https://static.wixstatic.com/media/c62a6b_e370a57b70664578bb2bea12f20c61e7~mv2.png/v1/fill/w_454,h_330,al_c,q_85,usm_0.66_1.00_0.01,enc_avif,quality_auto/c62a6b_e370a57b70664578bb2bea12f20c61e7~mv2.png"
   },
-    "NBT": {
+  "NBT": {
     "name": "Norse",
     "icao": "NBT",
     "iata": "N0",
     "country": "Norway",
     "logo": "https://images.kiwi.com/airlines/64/N0.png"
   },
-    "UBT": {
+  "UBT": {
     "name": "Norse UK",
     "icao": "UBT",
     "iata": "Z0",
     "country": "United Kingdom",
     "logo": "https://images.kiwi.com/airlines/64/Z0.png"
   },
-    "NOS": {
+  "NOS": {
     "name": "Neos Airways",
     "icao": "NOS",
     "iata": "NO",
     "country": "Ireland",
     "logo": "https://images.kiwi.com/airlines/64/NO.png"
   },
-    "TUI": {
+  "TUI": {
     "name": "TUI Fly",
     "icao": "TUI",
     "iata": "X3",
     "country": "Germany",
     "logo": "https://images.kiwi.com/airlines/64/X3.png"
   },
-    "TFL": {
+  "TFL": {
     "name": "TUI Fly Netherlands",
     "icao": "TFL",
     "iata": "OR",
     "country": "Netherlands",
     "logo": "https://images.kiwi.com/airlines/64/OR.png"
   },
-    "TVS": {
+  "TVS": {
     "name": "Smartwings",
     "icao": "TVS",
     "iata": "QS",
     "country": "Czechia",
     "logo": "https://images.kiwi.com/airlines/64/QS.png"
   },
-    "TVF": {
+  "TVF": {
     "name": "Transavia France",
     "icao": "TVF",
     "iata": "TO",
     "country": "France",
     "logo": "https://logosandtypes.com/wp-content/uploads/2020/08/Transavia.png"
   },
-    "KLC": {
+  "KLC": {
     "name": "KLM Cityhopper",
     "icao": "KLC",
     "iata": "WA",
     "country": "Netherlands",
     "logo": "https://images.kiwi.com/airlines/64/WA.png"
   },
-    "IBB": {
+  "IBB": {
     "name": "Binter Canarias",
     "icao": "IBB",
     "iata": "NT",
     "country": "Spain",
     "logo": "https://images.kiwi.com/airlines/64/NT.png"
   },
-    "AEA": {
+  "AEA": {
     "name": "Air Europa",
     "icao": "AEA",
     "iata": "UX",
     "country": "Spain",
     "logo": "https://images.kiwi.com/airlines/64/UX.png"
   },
-    "AZU": {
+  "AZU": {
     "name": "Azul Airlines",
     "icao": "AZU",
     "iata": "AD",
     "country": "Brasil",
     "logo": "https://images.kiwi.com/airlines/64/AD.png"
   },
-    "KQA": {
+  "KQA": {
     "name": "Kenya Airways",
     "icao": "KQA",
     "iata": "KQ",
     "country": "Kenya",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTDBWR8ppyCDFVrAu4MuzGjC1B54wYOwoSIoA&s"
   },
-    "GLO": {
+  "GLO": {
     "name": "GOL Airlines",
     "icao": "GLO",
     "iata": "G3",
     "country": "Brazil",
     "logo": "https://images.kiwi.com/airlines/64/G3.png"
   },
-    "DTA": {
+  "DTA": {
     "name": "TAAG Angola Airlines",
     "icao": "DTA",
     "iata": "DT",
     "country": "Angola",
     "logo": "https://images.kiwi.com/airlines/64/DT.png"
   },
-    "CXA": {
+  "CXA": {
     "name": "Xiamen Air",
     "icao": "CXA",
     "iata": "MF",
     "country": "China",
     "logo": "https://images.kiwi.com/airlines/64/MF.png"
   },
-    "FDX": {
+  "FDX": {
     "name": "FedEX",
     "icao": "FDX",
     "iata": "FX",
     "country": "United States",
     "logo": "https://www.nettl.com/nl/wp-content/uploads/2019/06/fedex-logo.jpg"
   },
-    "UPS": {
+  "UPS": {
     "name": "UPS",
     "icao": "UPS",
     "iata": "5X",
     "country": "United States",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRO_tfM6Ohk3IUWQjgumxilqCZyNfUyHixrdQ&s"
   },
-    "DHK": {
+  "DHK": {
     "name": "DHL",
     "icao": "DHK",
     "iata": "D0",
     "country": "Germany",
     "logo": "https://tigerconcept.nl/wp-content/uploads/2023/10/dhl-logo-vierkant.png"
   },
-    "LOG": {
+  "LOG": {
     "name": "Loganair",
     "icao": "LOG",
     "iata": "LM",
     "country": "United Kingdom",
     "logo": "https://images.kiwi.com/airlines/64/LM.png"
   },
-    "SAA": {
+  "SAA": {
     "name": "South African Airways",
     "icao": "SAA",
     "iata": "SA",
     "country": "South Africa",
     "logo": "https://images.seeklogo.com/logo-png/12/1/south-african-airways-logo-png_seeklogo-129700.png"
   },
-    "FDB": {
+  "FDB": {
     "name": "FlyDubai",
     "icao": "FDB",
     "iata": "FZ",
     "country": "United Arab Emirates",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRqrlsnpKKFYQoa56FiD6Poec8ijoBVzxXDLg&s"
   },
-    "SVA": {
+  "SVA": {
     "name": "Saudia",
     "icao": "SVA",
     "iata": "SV",
     "country": "Saudia Arabia",
     "logo": "https://images.kiwi.com/airlines/64/SV.png"
   },
-    "BNL": {
+  "BNL": {
     "name": "Berniq Airways",
     "icao": "BNL",
     "iata": "NB",
     "country": "Libya",
     "logo": "https://www.ch-aviation.com/images/stockPhotos/7131/9acec8264bad9aea937448bf4fc3abf6122e6fb7.jpg"
   },
-    "KNE": {
+  "KNE": {
     "name": "FlyNas",
     "icao": "KNE",
     "iata": "XY",
     "country": "Saudia Arabia",
     "logo": "https://images.kiwi.com/airlines/64/XY.png"
   },
-    "MBU": {
+  "MBU": {
     "name": "Marabu",
     "icao": "MBU",
     "iata": "DI",
     "country": "Estonia",
     "logo": "https://images.kiwi.com/airlines/64/DI.png"
   },
-    "MSR": {
+  "MSR": {
     "name": "Egyptair",
     "icao": "MSR",
     "iata": "MS",
     "country": "Egypt",
     "logo": "https://images.kiwi.com/airlines/64/MS.png"
   },
-    "HYM": {
+  "HYM": {
     "name": "HiSky",
     "icao": "HYM",
     "iata": "H7",
     "country": "Romania",
     "logo": "https://images.kiwi.com/airlines/64/H7.png"
   },
-    "MSC": {
+  "MSC": {
     "name": "Air Cairo",
     "icao": "MSC",
     "iata": "SM",
     "country": "Egypt",
     "logo": "https://images.kiwi.com/airlines/64/SM.png"
   },
-    "FWI": {
+  "FWI": {
     "name": "Air Caraibes",
     "icao": "FWI",
     "iata": "TX",
     "country": "France",
     "logo": "https://images.kiwi.com/airlines/64/TX.png"
   },
-    "FBU": {
+  "FBU": {
     "name": "Frenchbee",
     "icao": "FBU",
     "iata": "BF",
     "country": "France",
     "logo": "https://images.kiwi.com/airlines/64/BF.png"
   },
-    "LGL": {
+  "LGL": {
     "name": "Luxair",
     "icao": "LGL",
     "iata": "LG",
     "country": "Luxembourg",
     "logo": "https://images.kiwi.com/airlines/64/LG.png"
   },
-    "LMU": {
+  "LMU": {
     "name": "AlMasria Universal Airlines",
     "icao": "LMU",
     "iata": "UJ",
     "country": "Egypt",
     "logo": "https://images.kiwi.com/airlines/64/UJ.png"
   },
-    "DIR": {
+  "DIR": {
     "name": "FLYYO",
     "icao": "DIR",
     "iata": "4D",
     "country": "Israel",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRQ5_ZMrGDM2XL4eEcM1oOVpNxXH3__nX8BAw&s"
   },
-    "DAH": {
+  "DAH": {
     "name": "Air Algerie",
     "icao": "DAH",
     "iata": "AH",
     "country": "Algeria",
     "logo": "https://cdn.worldvectorlogo.com/logos/air-algerie.svg"
   },
-    "CND": {
+  "CND": {
     "name": "Corendon Dutch Airlines",
     "icao": "CND",
     "iata": "CD",
     "country": "Netherlands",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTlENHbh92Sh8Ad75hyOTXp7Y9aZuC8OmAmAiNjqZHw9Q&s"
   },
-    "RYS": {
+  "RYS": {
     "name": "Buzz Air",
     "icao": "RYS",
     "iata": "RR",
     "country": "Poland",
     "logo": "https://images.kiwi.com/airlines/64/RR.png"
   },
-    "LDA": {
+  "LDA": {
     "name": "Lauda Europe",
     "icao": "LDA",
     "iata": "LW",
     "country": "Austria",
     "logo": "https://images.kiwi.com/airlines/64/LW.png"
   },
-    "CFE": {
+  "CFE": {
     "name": "BA Cityflyer",
     "icao": "CFE",
     "iata": "CJ",
     "country": "United Kingdom",
     "logo": "https://assets.jobzmall.com/stores/3577587/images/8256a847-f198-414d-966f-c1616bed6782.png"
   },
-    "VRE": {
+  "VRE": {
     "name": "Air Côte d'Ivoire",
     "icao": "VRE",
     "iata": "HF",
     "country": "Ivory Coast",
     "logo": "https://mir-s3-cdn-cf.behance.net/projects/404/b42bd5165972981.Y3JvcCw5MjAsNzIwLDIwOSww.png"
   },
-    "MMZ": {
+  "MMZ": {
     "name": "EuroAtlantic Airways",
     "icao": "MMZ",
     "iata": "YU",
     "country": "Portugal",
     "logo": "https://images.kiwi.com/airlines/64/YU.png"
   },
-    "WIA": {
+  "WIA": {
     "name": "Winair",
     "icao": "WIA",
     "iata": "WM",
     "country": "Saint Martin",
     "logo": "https://images.kiwi.com/airlines/64/WM.png"
   },
-    "SBU": {
+  "SBU": {
     "name": "St Barth Commuter",
     "icao": "SBU",
     "iata": "PV",
     "country": "France",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQ6hK113durE5dtUyO4co1h7BeDubRfjeSHMw&s"
   },
-    "AJT": {
+  "AJT": {
     "name": "Amerijet International",
     "icao": "AJT",
     "iata": "M6",
     "country": "United States",
     "logo": "https://images.seeklogo.com/logo-png/32/1/amerijet-international-logo-png_seeklogo-326044.png"
   },
-    "CKS": {
+  "CKS": {
     "name": "Kalitta Air",
     "icao": "CKS",
     "iata": "K4",
     "country": "United States",
     "logo": "https://i.pinimg.com/736x/cf/6f/57/cf6f57a15c391c0ce342eb9ace73d309.jpg"
   },
-    "HAL": {
+  "HAL": {
     "name": "Hawaiian Airlines",
     "icao": "HAL",
     "iata": "HA",
     "country": "United States",
     "logo": "https://images.kiwi.com/airlines/64/HA.png"
   },
-    "AAH": {
+  "AAH": {
     "name": "Aloha Air Cargo",
     "icao": "AAH",
     "iata": "KH",
     "country": "United States",
     "logo": "https://hfbf.org/wp-content/uploads/2019/03/aloha-air-cargo-300x300.png"
   },
-    "NCR": {
+  "NCR": {
     "name": "National Airlines",
     "icao": "NCR",
     "iata": "N8",
     "country": "United States",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTeHnYpW7ydD8tpjAabqcuGDjv1AbDdPT20sn9iyEI3Mg&s"
   },
-    "NCA": {
+  "NCA": {
     "name": "Nippon Cargo Airlines",
     "icao": "NCA",
     "iata": "KZ",
     "country": "Japan",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwJ14NjfmjWx8ZlkQNJV--maFNfS9IDSL2Hw&s"
   },
-    "AIH": {
+  "AIH": {
     "name": "AirZeta",
     "icao": "AIH",
     "iata": "KJ",
     "country": "South Korea",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT7qy9BG27jPH4EbSGswABCtthuHdzlwgJFmg&s"
   },
-    "SKU": {
+  "SKU": {
     "name": "SKY Airline",
     "icao": "SKU",
     "iata": "H2",
     "country": "Chille",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcT_Ee_0yCTywTjSbPmEmtw3onEk78wHx-Jqrg&s"
   },
-    "AVA": {
+  "AVA": {
     "name": "Avianca",
     "icao": "AVA",
     "iata": "AV",
     "country": "United States",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTfYHuw4cTk8dIZFYxE0xxw0kawdBe2wvwiVYGIik7OHA&s"
   },
-    "RPB": {
+  "RPB": {
     "name": "Wingo",
     "icao": "RPB",
     "iata": "P5",
     "country": "Panama",
     "logo": "https://images.kiwi.com/airlines/64/P5.png"
   },
-    "LER": {
+  "LER": {
     "name": "Laser Airlines",
     "icao": "LER",
     "iata": "QL",
     "country": "Venezuela",
     "logo": "https://images.kiwi.com/airlines/64/QL.png"
   },
-    "DWI": {
+  "DWI": {
     "name": "Arajet",
     "icao": "DWI",
     "iata": "DM",
     "country": "Domincan Republic",
     "logo": "https://images.kiwi.com/airlines/64/DM.png"
   },
-    "BWA": {
+  "BWA": {
     "name": "Caribbean Airlines",
     "icao": "BWA",
     "iata": "BW",
     "country": "Trinidad And Tobago",
     "logo": "https://s28477.pcdn.co/wp-content/uploads/2020/06/Caribbean_logo.png"
   },
-    "APK": {
+  "APK": {
     "name": "Air Peace",
     "icao": "APK",
     "iata": "P4",
     "country": "Nigeria",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTp0F32_lgju5jhDJGx02vc3bTGDffRxveTRg&s"
   },
-    "BEL": {
+  "BEL": {
     "name": "Brussels Airlines",
     "icao": "BEL",
     "iata": "SN",
     "country": "Belgium",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSUocvjqicrcL5cLJKnbBrVlYi4B9WIzs45Tm3lzkEPCw&s"
   },
-    "TAR": {
+  "TAR": {
     "name": "Tunisair",
     "icao": "TAR",
     "iata": "TU",
     "country": "Tunisia",
     "logo": "https://i.pinimg.com/474x/0d/17/12/0d1712f29b0ac668485449c5b478fc38.jpg"
   },
-    "NGL": {
+  "NGL": {
     "name": "Max Air",
     "icao": "NGL",
     "iata": "VM",
     "country": "Nigeria",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcTGANo4Fs015y9qTA5katg20O4molD4J6tH7w&s"
   },
-    "BOX": {
+  "BOX": {
     "name": "AeroLogic",
     "icao": "BOX",
     "iata": "3S",
     "country": "Germany",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRwpq3sl3lKgKtc78MIAOZOSlxbabG96M_XQ_FYeEeCmA&s"
   },
-    "LZB": {
+  "LZB": {
     "name": "Bulgaria Air",
     "icao": "LZB",
     "iata": "FB",
     "country": "Bulgaria",
     "logo": "https://images.kiwi.com/airlines/64/FB.png"
   },
-    "PGT": {
+  "PGT": {
     "name": "Pegasus",
     "icao": "PGT",
     "iata": "PC",
     "country": "Turkey",
     "logo": "https://images.kiwi.com/airlines/64/PC.png"
   },
-    "TKJ": {
+  "TKJ": {
     "name": "AJet",
     "icao": "TKJ",
     "iata": "VF",
@@ -1823,14 +1823,14 @@
     "country": "Brazil",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcQdrdARJJVPA4KfQUq2xpMcemd3dHUBZkBnKg&s"
   },
-    "WOW": {
+  "WOW": {
     "name": "Wow Air",
     "icao": "WOW",
     "iata": "WW",
     "country": "Iceland",
     "logo": "https://images.kiwi.com/airlines/64/WW.png"
   },
-    "SBGR": {
+  "SBGR": {
     "name": "GOL",
     "icao": "SBGR",
     "iata": "MIA",
@@ -1941,7 +1941,7 @@
     "country": "China",
     "logo": "https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcSghoEGZwAV0_XM5U_XTo-89Cc3syy9fM7cg3ntAcSapg&s"
   },
-    "VJT": {
+  "VJT": {
     "name": "Vistajet",
     "icao": "VJT",
     "iata": "H5",
@@ -1997,7 +1997,7 @@
     "country": "Germany",
     "logo": "https://images.kiwi.com/airlines/64/ZQ.png"
   },
-    "AGL": {
+  "AGL": {
     "name": "Aeguk Air",
     "icao": "AGL",
     "iata": "AE",
@@ -2011,7 +2011,7 @@
     "country": "Australia",
     "logo": "https://media.discordapp.net/attachments/1507493567776690296/1509396863231590552/Screenshot_2026-05-27_at_11.24.10_PM.png?ex=6a19af9f&is=6a185e1f&hm=49735a2e832d2db2b9ba6374a6e335a0d165b37b42e048a0950976eef3381eb8&=&format=webp&quality=lossless&width=1910&height=1648"
   },
-    "KAI": {
+  "KAI": {
     "name": "Kruger International Airways",
     "icao": "KAI",
     "iata": "KI",
@@ -2291,7 +2291,7 @@
     "country": "Kyrgyzstan",
     "logo": "https://img.sanishtech.com/u/e175c9b661436d57cd21b61467978654.png"
   },
-    "LAM": {
+  "LAM": {
     "name": "LAM Mozambique Airline",
     "icao": "LAM",
     "iata": "TM",
@@ -2305,7 +2305,7 @@
     "country": "South Africa",
     "logo": "https://images.kiwi.com/airlines/64/GE.png"
   },
-    "MBB": {
+  "MBB": {
     "name": "Air Manas",
     "icao": "MBB",
     "iata": "ZM",
@@ -2655,7 +2655,7 @@
     "country": "Indonesia",
     "logo": "https://img.sanishtech.com/u/7225b32fe22cd20129213b88f0c528f5.png"
   },
-    "EMC": {
+  "EMC": {
     "name": "247 Aviation",
     "icao": "EMC",
     "iata": "24",
@@ -3005,14 +3005,14 @@
     "country": "Libya",
     "logo": "https://images.kiwi.com/airlines/64/7I.png"
   },
-    "CSB": {
+  "CSB": {
     "name": "21 Air",
     "icao": "CSB",
     "iata": "2I",
     "country": "United States",
     "logo": "https://img.sanishtech.com/u/d7830dac334b87ad93c988d8f8a0563a.png"
   },
-    "ACP": {
+  "ACP": {
     "name": "Astral Aviation",
     "icao": "ACP",
     "iata": "8V",
@@ -3138,21 +3138,21 @@
     "country": "Namibia",
     "logo": "https://images.kiwi.com/airlines/64/WV.png"
   },
-    "C6": {
+  "C6": {
     "name": "My Freighter",
     "icao": "C6",
     "iata": "MFX",
     "country": "Uzbekistan",
     "logo": "https://i.postimg.cc/qqrVBXnJ/1630454773733.jpg"
   },
-    "VRG": {
+  "VRG": {
     "name": "Varig Brazilian Airlines",
     "icao": "VRG",
     "iata": "RG",
     "country": "Brazil",
     "logo": "https://ibb.co/39b2grG9"
   },
-    "ROA": {
+  "ROA": {
     "name": "Rose Air",
     "icao": "ROA",
     "iata": "R8",
@@ -3194,7 +3194,7 @@
     "country": "Sierra Leone",
     "logo": "https://user13688.na.imgto.link/public/20260619/481776286-122126415242607907-5780366619982069210-n.avif"
   },
-    "UIA": {
+  "UIA": {
     "name": "UNI Air",
     "icao": "UIA",
     "iata": "B7",
