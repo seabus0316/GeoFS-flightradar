@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ATC Radar Scope</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        :root {
+            --radar-green: #35f59b;
+            --radar-green-dim: rgba(53, 245, 155, 0.35);
+            --radar-bg: #04110a;
+            --panel-border: #0c2c1e;
+            --emergency: #ff3b3b;
+        }
+
+        * {
+            box-sizing: border-box;
+        }
+
+        html,
+        body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            color: var(--radar-green);
+            font-family: 'Consolas', Menlo, monospace;
+            overflow: hidden;
+        }
+
+        #app {
+            display: flex;
+            width: 100vw;
+            height: 100vh;
+        }
+
+        /* ===== 左側 2/3：進場台 + 塔台 ===== */
+        #leftCol {
+            flex: 2 1 0;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+            border-right: 2px solid var(--panel-border);
+            min-width: 0;
+        }
+
+        #searchBar {
+            flex: 0 0 44px;
+            display: flex;
+            align-items: center;
+            padding: 6px 10px;
+            background: #03130b;
+            border-bottom: 2px solid var(--panel-border);
+            gap: 8px;
+        }
+
+        #searchBar input {
+            flex: 1;
+            background: #000;
+            border: 1px solid var(--radar-green-dim);
+            color: var(--radar-green);
+            font-family: inherit;
+            font-size: 13px;
+            padding: 6px 10px;
+            border-radius: 3px;
+            outline: none;
+        }
+
+        #searchBar input::placeholder {
+            color: rgba(53, 245, 155, 0.45);
+        }
+
+        #searchBar input:focus {
+            border-color: var(--radar-green);
+            box-shadow: 0 0 6px var(--radar-green-dim);
+        }
+
+        #searchStatus {
+            font-size: 11px;
+            color: rgba(53, 245, 155, 0.6);
+            white-space: nowrap;
+        }
+
+        .scopeWrap {
+            position: relative;
+            flex: 1 1 0;
+            min-height: 0;
+            border-bottom: 2px solid var(--panel-border);
+        }
+
+        .scopeWrap:last-child {
+            border-bottom: none;
+        }
+
+        .scopeWrap .map {
+            width: 100%;
+            height: 100%;
+            background: var(--radar-bg);
+        }
+
+        .scopeLabel {
+            position: absolute;
+            top: 6px;
+            left: 8px;
+            z-index: 500;
+            font-size: 11px;
+            letter-spacing: 1px;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid var(--radar-green-dim);
+            padding: 3px 8px;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        .scopeRangeTag {
+            position: absolute;
+            top: 6px;
+            right: 8px;
+            z-index: 500;
+            font-size: 11px;
+            background: rgba(0, 0, 0, 0.55);
+            border: 1px solid var(--radar-green-dim);
+            padding: 3px 8px;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
+        /* ===== 右側 1/3：外部 HTML 嵌入空間 ===== */
+        #rightCol {
+            flex: 1 1 0;
+            position: relative;
+            height: 100%;
+            min-width: 0;
+            background: #000;
+        }
+
+        #embedFrame {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+            background: #0a0a0a;
+        }
+
+        #embedPlaceholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(53, 245, 155, 0.4);
+            font-size: 13px;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        /* 飛機疊加層：蓋在嵌入內容之上，但不擋滑鼠事件 */
+        #overlayScope {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            pointer-events: none;
+            background: transparent;
+        }
+
+        #overlayScope .leaflet-control-container {
+            display: none;
+        }
+
+        .scopeRangeTag.overlayTag {
+            z-index: 60;
+        }
+
+        /* ===== 雷達標靶樣式 ===== */
+        .atc-radar-blip {
+            pointer-events: auto;
+        }
+
+        .atc-target-label {
+            background: rgba(0, 0, 0, 0.6) !important;
+            border: 1px solid var(--radar-green-dim) !important;
+            color: var(--radar-green) !important;
+            font-size: 10px !important;
+            box-shadow: none !important;
+            padding: 2px 5px !important;
+        }
+
+        .atc-target-label::before {
+            display: none !important;
+        }
+
+        .leaflet-container {
+            background: var(--radar-bg) !important;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="app">
+        <div id="leftCol">
+            <div id="searchBar">
+                <input id="airportSearch" type="text" placeholder="Search airport (e.g. RCTP / TPE) to center view"
+                    autocomplete="off" />
+                <span id="searchStatus">Loading airport data...</span>
+            </div>
+            <div class="scopeWrap">
+                <div id="approachMap" class="map"></div>
+                <div class="scopeLabel">APPROACH</div>
+                <div class="scopeRangeTag">RANGE 5NM</div>
+            </div>
+            <div class="scopeWrap">
+                <div id="towerMap" class="map"></div>
+                <div class="scopeLabel">TOWER</div>
+                <div class="scopeRangeTag">RANGE 15NM</div>
+            </div>
+        </div>
+        <div id="rightCol">
+            <iframe id="embedFrame"></iframe>
+            <div id="embedPlaceholder">Space for embedding external HTML<br>(Load via URL query param ?embed=URL, or edit #embedFrame src)</div>
+            <div id="overlayScope"></div>
+            <div class="scopeRangeTag overlayTag">TRAFFIC OVERLAY</div>
+        </div>
+    </div>
+
+    <script>
+        // ============ 基本設定 ============
+        const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
+        const NM_TO_M = 1852;
+        const EARTH_R_M = 6371000;
+
+        // 預設中心（可被搜尋取代），先給一個保底值
+        let centerAirport = { lat: 25.0777, lon: 121.2328, name: 'RCTP / TPE' };
+
+        // ============ Haversine 距離（公里->NM） ============
+        function distanceNm(lat1, lon1, lat2, lon2) {
+            const toRad = d => d * Math.PI / 180;
+            const dLat = toRad(lat2 - lat1);
+            const dLon = toRad(lon2 - lon1);
+            const a = Math.sin(dLat / 2) ** 2 +
+                Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+            const meters = EARTH_R_M * c;
+            return meters / NM_TO_M;
+        }
+
+        function radarProject(lat, lon, brngDeg, distNm) {
+            const d = (distNm * NM_TO_M) / EARTH_R_M;
+            const b = brngDeg * Math.PI / 180;
+            const lat1 = lat * Math.PI / 180, lon1 = lon * Math.PI / 180;
+            const lat2 = Math.asin(Math.sin(lat1) * Math.cos(d) + Math.cos(lat1) * Math.sin(d) * Math.cos(b));
+            const lon2 = lon1 + Math.atan2(Math.sin(b) * Math.sin(d) * Math.cos(lat1), Math.cos(d) - Math.sin(lat1) * Math.sin(lat2));
+            return { lat: lat2 * 180 / Math.PI, lon: lon2 * 180 / Math.PI };
+        }
+
+        // ============ 地圖建立（深色雷達塗層風格） ============
+        const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
+
+        function makeRadarMap(domId, initialZoom) {
+            const map = L.map(domId, {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true
+            }).setView([centerAirport.lat, centerAirport.lon], initialZoom);
+            L.tileLayer(darkTileUrl, { attribution: '© CartoDB' }).addTo(map);
+            return map;
+        }
+
+        function makeOverlayMap(domId) {
+            // 沒有底圖、純透明的雷達疊加圖，用於蓋在嵌入HTML之上顯示飛機
+            const map = L.map(domId, {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false,
+                tap: false
+            }).setView([centerAirport.lat, centerAirport.lon], 10);
+            return map;
+        }
+
+        const approachMap = makeRadarMap('approachMap', 12);
+        const towerMap = makeRadarMap('towerMap', 9);
+        const overlayMap = makeOverlayMap('overlayScope');
+
+        // ============ 雷達靜態層（環 + 輻射線） ============
+        function buildStaticOverlay(map, ringsNm) {
+            const layers = [];
+            const c = map.getCenter();
+            ringsNm.forEach(r => {
+                layers.push(L.circle([c.lat, c.lng], {
+                    radius: r * NM_TO_M,
+                    color: 'rgba(53,245,155,0.35)', weight: 1, dashArray: '4 6', fillOpacity: 0, interactive: false
+                }));
+                const p = radarProject(c.lat, c.lng, 0, r);
+                layers.push(L.marker([p.lat, p.lon], {
+                    icon: L.divIcon({
+                        html: `<div style="color:rgba(103,243,163,0.85);font:600 10px/1.1 monospace;">${r}nm</div>`,
+                        iconSize: [38, 12], iconAnchor: [19, 6], className: ''
+                    }),
+                    interactive: false
+                }));
+            });
+            for (let i = 0; i < 12; i++) {
+                const maxR = ringsNm[ringsNm.length - 1];
+                const end = radarProject(c.lat, c.lng, i * 30, maxR);
+                layers.push(L.polyline([[c.lat, c.lng], [end.lat, end.lon]], {
+                    color: 'rgba(53,245,155,0.14)', weight: 1, dashArray: '2 9', interactive: false
+                }));
+            }
+            return L.layerGroup(layers).addTo(map);
+        }
+
+        let approachStatic = null, towerStatic = null;
+        function rebuildStatics() {
+            if (approachStatic) approachMap.removeLayer(approachStatic);
+            if (towerStatic) towerMap.removeLayer(towerStatic);
+            approachStatic = buildStaticOverlay(approachMap, [1, 3, 5]);
+            towerStatic = buildStaticOverlay(towerMap, [5, 10, 15]);
+        }
+        rebuildStatics();
+
+        // ============ 雷達掃描扇（動態） ============
+        function buildSweep(map, maxRangeNm) {
+            const c = map.getCenter();
+            const sweepAngle = (Date.now() / 26) % 360;
+            const pts = [[c.lat, c.lng]];
+            for (let a = sweepAngle - 12; a <= sweepAngle + 12; a += 2) {
+                const p = radarProject(c.lat, c.lng, (a + 360) % 360, maxRangeNm);
+                pts.push([p.lat, p.lon]);
+            }
+            pts.push([c.lat, c.lng]);
+            return L.polygon(pts, {
+                color: 'rgba(53,245,155,0.45)', weight: 1,
+                fillColor: '#35f59b', fillOpacity: 0.16, interactive: false
+            });
+        }
+
+        let approachSweep = null, towerSweep = null;
+        setInterval(() => {
+            if (approachSweep) approachMap.removeLayer(approachSweep);
+            if (towerSweep) towerMap.removeLayer(towerSweep);
+            approachSweep = buildSweep(approachMap, 5).addTo(approachMap);
+            towerSweep = buildSweep(towerMap, 15).addTo(towerMap);
+        }, 1000);
+
+        // ============ 飛機 Blip 圖示 ============
+        function makeAtcBlip(data) {
+            const squawk = String(data.squawk || '').trim();
+            const isEmergency = ['7700', '7600', '7500'].includes(squawk);
+            const blipSize = isEmergency ? 38 : 30;
+            const blipColor = isEmergency ? '#ff3b3b' : '#35f59b';
+
+            const html = `
+      <div style="width:${blipSize}px;height:${blipSize}px;position:relative;display:flex;align-items:center;justify-content:center;">
+        <div style="position:absolute;width:${Math.round(blipSize * 0.64)}px;height:${Math.round(blipSize * 0.64)}px;
+             border:1.5px solid ${blipColor};border-radius:50%;opacity:0.35;box-shadow:0 0 10px ${blipColor};"></div>
+        <div style="width:${Math.round(blipSize * 0.30)}px;height:${Math.round(blipSize * 0.30)}px;
+             border:2px solid ${blipColor};border-radius:50%;
+             box-shadow:0 0 12px ${blipColor}, inset 0 0 6px ${blipColor};
+             background:radial-gradient(circle, ${blipColor} 0%, rgba(53,245,155,0.26) 40%, transparent 70%);
+             position:relative;z-index:2;"></div>
+      </div>`;
+
+            return L.divIcon({
+                html,
+                className: 'atc-radar-blip',
+                iconSize: [blipSize, blipSize],
+                iconAnchor: [blipSize / 2, blipSize / 2]
+            });
+        }
+
+        function blipTooltip(data) {
+            const squawk = data.squawk === '7700' ? `⚠ SQK 7700` : '';
+            return `
+      <span style="font-weight:700;font-size:11px;">${data.callsign || 'UNK'}</span><br>
+      <span style="font-size:10px;">${data.type || '??'} · ${Math.round(data.alt || 0)}ft · ${Math.round(data.speed || 0)}kt</span>
+      ${squawk ? `<br><span style="color:#ff4444;font-size:10px;">${squawk}</span>` : ''}
+    `;
+        }
+
+        // ============ 飛機資料與三個畫面的標記同步 ============
+        const aircraftData = new Map(); // id -> data
+        const approachMarkers = new Map();
+        const towerMarkers = new Map();
+        const overlayMarkers = new Map();
+
+        function upsertMarker(store, map, id, data) {
+            let m = store.get(id);
+            if (!m) {
+                m = L.marker([data.lat, data.lon], { icon: makeAtcBlip(data) }).addTo(map);
+                m.bindTooltip(blipTooltip(data), {
+                    permanent: true, direction: 'right', offset: [8, 0], className: 'atc-target-label'
+                });
+                store.set(id, m);
+            } else {
+                m.setLatLng([data.lat, data.lon]);
+                m.setIcon(makeAtcBlip(data));
+                m.setTooltipContent(blipTooltip(data));
+            }
+        }
+
+        function removeMarker(store, map, id) {
+            const m = store.get(id);
+            if (m) { map.removeLayer(m); store.delete(id); }
+        }
+
+        function refreshScopes() {
+            aircraftData.forEach((data, id) => {
+                if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
+                const dNm = distanceNm(centerAirport.lat, centerAirport.lon, data.lat, data.lon);
+
+                if (dNm <= 5) upsertMarker(approachMarkers, approachMap, id, data);
+                else removeMarker(approachMarkers, approachMap, id);
+
+                if (dNm <= 15) {
+                    upsertMarker(towerMarkers, towerMap, id, data);
+                    upsertMarker(overlayMarkers, overlayMap, id, data);
+                } else {
+                    removeMarker(towerMarkers, towerMap, id);
+                    removeMarker(overlayMarkers, overlayMap, id);
+                }
+            });
+        }
+
+        function updateAircraft(id, data) {
+            if (!id) return;
+            aircraftData.set(id, data);
+            refreshScopes();
+        }
+
+        function removeAircraft(id) {
+            aircraftData.delete(id);
+            removeMarker(approachMarkers, approachMap, id);
+            removeMarker(towerMarkers, towerMap, id);
+            removeMarker(overlayMarkers, overlayMap, id);
+        }
+
+        // ============ WebSocket 連線（沿用 atc.html 協定） ============
+        let ws, wsShouldReconnect = true;
+        function connectWS() {
+            ws = new WebSocket(WS_URL);
+            ws.addEventListener('open', () => ws.send(JSON.stringify({ type: 'hello', role: 'atc' })));
+            ws.addEventListener('message', ev => {
+                try {
+                    const m = JSON.parse(ev.data);
+                    if (m.type === 'aircraft_update') {
+                        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => updateAircraft(a.id, a));
+                    } else if (m.type === 'aircraft_snapshot') {
+                        m.payload.forEach(a => updateAircraft(a.id, a));
+                    } else if (m.type === 'aircraft_batch_update') {
+                        m.payload.forEach(a => updateAircraft(a.id, a));
+                    } else if (m.type === 'aircraft_remove') {
+                        m.payload.forEach(id => removeAircraft(id));
+                    }
+                } catch (e) {
+                    console.warn('WS message parse error:', e);
+                }
+            });
+            ws.addEventListener('close', () => { if (wsShouldReconnect) setTimeout(connectWS, 2000); });
+            ws.addEventListener('error', () => ws.close());
+        }
+        connectWS();
+
+        // ============ 機場搜尋（與 atc.html 相同資料來源） ============
+        let airportsData = [];
+        async function loadAirports() {
+            const statusEl = document.getElementById('searchStatus');
+            try {
+                const response = await fetch('https://raw.githubusercontent.com/mwgg/Airports/refs/heads/master/airports.json');
+                if (!response.ok) throw new Error('fetch failed');
+                const airports = await response.json();
+                airportsData = Object.entries(airports).map(([icao, data]) => ({
+                    icao,
+                    iata: data.iata,
+                    name: data.name,
+                    lat: data.lat,
+                    lon: data.lon,
+                    city: data.city,
+                    country: data.country
+                }));
+                statusEl.textContent = `Loaded ${airportsData.length} airports`;
+                setTimeout(() => { statusEl.style.opacity = '0'; statusEl.style.transition = 'opacity 1s'; }, 2000);
+            } catch (e) {
+                statusEl.textContent = 'Failed to load airport data';
+                console.error('loadAirports error:', e);
+            }
+        }
+        loadAirports();
+
+        function findAirport(query) {
+            const q = query.trim().toUpperCase();
+            if (!q) return null;
+            return airportsData.find(a => a.icao?.toUpperCase() === q) ||
+                airportsData.find(a => a.iata?.toUpperCase() === q) ||
+                airportsData.find(a => a.name?.toUpperCase().includes(q));
+        }
+
+        function setViewToAirport(apt) {
+            centerAirport = { lat: apt.lat, lon: apt.lon, name: apt.icao || apt.name };
+            approachMap.setView([apt.lat, apt.lon], 12, { animate: true });
+            towerMap.setView([apt.lat, apt.lon], 9, { animate: true });
+            overlayMap.setView([apt.lat, apt.lon], 9, { animate: false });
+            rebuildStatics();
+            refreshScopes();
+        }
+
+        const searchInput = document.getElementById('airportSearch');
+        searchInput.addEventListener('keydown', e => {
+            if (e.key !== 'Enter') return;
+            const apt = findAirport(searchInput.value);
+            const statusEl = document.getElementById('searchStatus');
+            if (apt) {
+                setViewToAirport(apt);
+                statusEl.style.opacity = '1';
+                statusEl.textContent = `✓ Set view: ${apt.icao || apt.name}`;
+            } else {
+                statusEl.style.opacity = '1';
+                statusEl.textContent = `Airport not found: ${searchInput.value}`;
+            }
+        });
+
+        // 地圖移動/縮放時重建靜態雷達層（手動拖拉雷達畫面時）
+        approachMap.on('moveend zoomend', () => { if (approachStatic) approachMap.removeLayer(approachStatic); approachStatic = buildStaticOverlay(approachMap, [1, 3, 5]); });
+        towerMap.on('moveend zoomend', () => { if (towerStatic) towerMap.removeLayer(towerStatic); towerStatic = buildStaticOverlay(towerMap, [5, 10, 15]); });
+
+        // ============ 外部 HTML 嵌入 ============
+        // 透過網址參數 ?embed=<url> 設定 iframe 來源；亦可直接修改下方 src。
+        (function setupEmbed() {
+            const params = new URLSearchParams(location.search);
+            const embedUrl = params.get('embed');
+            const frame = document.getElementById('embedFrame');
+            const placeholder = document.getElementById('embedPlaceholder');
+            if (embedUrl) {
+                frame.src = embedUrl;
+                placeholder.style.display = 'none';
+            }
+        })();
+    </script>
+</body>
+
+</html>

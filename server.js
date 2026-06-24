@@ -1598,7 +1598,7 @@ io.on('connection', async (socket) => {
         if (!user || !user.discordId) {
           socket.emit('bind_reminder', { message: 'Your GeoFS account is not linked to Discord! Please log in to use full features.' });
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     const payload = {
@@ -1781,7 +1781,7 @@ wss.on('connection', (ws) => {
             if (!user || !user.discordId) {
               ws.send(JSON.stringify({ type: 'bind_reminder', payload: { message: 'Your GeoFS account is not linked to Discord! Please log in to use full features.' } }));
             }
-          } catch (err) {}
+          } catch (err) { }
         }
 
         const payload = {
@@ -2740,7 +2740,7 @@ app.post('/api/report/position', async (req, res) => {
         if (!user || !user.discordId) {
           bindReminder = true;
         }
-      } catch (err) {}
+      } catch (err) { }
     }
 
     res.json({ ok: true, aircraftId: payload.id, serverTime: Date.now(), bindReminder });
@@ -2895,6 +2895,7 @@ app.get('/photomap.html', (req, res) => res.sendFile(path.join(__dirname, 'publi
 app.get('/airline.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'airline.html')));
 app.get('/airlines.json', (req, res) => res.sendFile(path.join(__dirname, 'airlines.json')));
 app.get('/history.html', (req, res) => res.sendFile(path.join(__dirname, 'public', 'history.html')));
+app.get('/atc', (req, res) => res.sendFile(path.join(__dirname, 'public', 'atc', 'index.html')));
 app.get('/health', (req, res) => res.send('ok'));
 
 // ============ 定期清理 ============
