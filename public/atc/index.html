@@ -200,6 +200,31 @@
         .leaflet-container {
             background: var(--radar-bg) !important;
         }
+
+        .recenter-btn {
+            position: absolute;
+            bottom: 15px;
+            right: 10px;
+            z-index: 500;
+            background: rgba(0, 0, 0, 0.65);
+            border: 1px solid var(--radar-green-dim);
+            color: var(--radar-green);
+            width: 28px;
+            height: 28px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            outline: none;
+            transition: all 0.2s;
+        }
+
+        .recenter-btn:hover {
+            background: rgba(53, 245, 155, 0.2);
+            border-color: var(--radar-green);
+        }
     </style>
 </head>
 
@@ -215,11 +240,13 @@
                 <div id="approachMap" class="map"></div>
                 <div class="scopeLabel">APPROACH</div>
                 <div class="scopeRangeTag">RANGE 5NM</div>
+                <button class="recenter-btn" onclick="recenterMap(approachMap, 12)" title="Recenter to Airport">⌖</button>
             </div>
             <div class="scopeWrap">
                 <div id="towerMap" class="map"></div>
                 <div class="scopeLabel">TOWER</div>
                 <div class="scopeRangeTag">RANGE 15NM</div>
+                <button class="recenter-btn" onclick="recenterMap(towerMap, 9)" title="Recenter to Airport">⌖</button>
             </div>
         </div>
         <div id="rightCol">
@@ -529,6 +556,12 @@
                 statusEl.textContent = `Airport not found: ${searchInput.value}`;
             }
         });
+
+        function recenterMap(map, zoomLevel) {
+            if (centerAirport && centerAirport.lat && centerAirport.lon) {
+                map.setView([centerAirport.lat, centerAirport.lon], zoomLevel, { animate: true });
+            }
+        }
 
         // 地圖移動/縮放時重建靜態雷達層（手動拖拉雷達畫面時）
         approachMap.on('moveend zoomend', () => { if (approachStatic) approachMap.removeLayer(approachStatic); approachStatic = buildStaticOverlay(approachMap, [1, 3, 5]); });
