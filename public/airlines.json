@@ -3200,5 +3200,117 @@
     "iata": "B7",
     "country": "Taiwan",
     "logo": "https://media.discordapp.net/attachments/1458047856123314285/1517867571590725752/gAAAABJRU5ErkJggg.png?ex=6a37d7d5&is=6a368655&hm=36931f27d6ee66a99f51cc5be662e902840a77297c5d11fca1d2825ae1fb70fb&=&format=webp&quality=lossless&width=297&height=297"
+  },
+    "QLK": {
+    "name": "QantasLink",
+    "icao": "QLK",
+    "iata": "QLK",
+    "country": "Australia",
+    "logo": "https://busy-amethyst-srhk21e4.edgeone.dev/download%20(2).png"
+  },
+  "LAA": {
+    "name": "Libyan Airlines",
+    "icao": "LAA",
+    "iata": "LN",
+    "country": "Libya",
+    "logo": "https://images.kiwi.com/airlines/64/LN.png"
+  },
+  "DTH": {
+    "name": "Tassili Airlines",
+    "icao": "DTH",
+    "iata": "SF",
+    "country": "Algeria",
+    "logo": "https://images.kiwi.com/airlines/64/SF.png"
+  },
+  "ABT": {
+    "name": "Amazone Airlines",
+    "icao": "ABT",
+    "iata": "PL",
+    "country": "Benin",
+    "logo": "https://silent-brown-7tbsnsq0.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.18.29.png"
+  },
+  "LAZ": {
+    "name": "Liz Aviation",
+    "icao": "LAZ",
+    "iata": "L0",
+    "country": "Burkina Faso",
+    "logo": "https://foolish-green-th6qqgle.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.47.11.png"
+  },
+  "COG": {
+    "name": "Congo Airways",
+    "icao": "COG",
+    "iata": "8Z",
+    "country": "Democratic Republic of the Congo",
+    "logo": "https://images.kiwi.com/airlines/64/8Z.png"
+  },
+  "SRV": {
+    "name": "Serve Air Cargo",
+    "icao": "SRV",
+    "iata": "S2",
+    "country": "Democratic Republic of the Congo",
+    "logo": "https://supreme-harlequin-rxprewti.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2012.14.09.png"
+  },
+  "EQR": {
+    "name": "ECAir",
+    "icao": "EQR",
+    "iata": "EJ",
+    "country": "Republic of the Congo",
+    "logo": "https://exceptional-blush-ltg9mw6s.edgeone.dev/EQR.png"
+  },
+  "CEB": {
+    "name": "Cebu Pacific",
+    "icao": "CEB",
+    "iata": "5J",
+    "country": "Philippines",
+    "logo": "https://images.kiwi.com/airlines/64/5J.png"
+  },
+  "DJB": {
+    "name": "Air Djibouti",
+    "icao": "DJB",
+    "iata": "DJ",
+    "country": "Djibouti",
+    "logo": "https://images.kiwi.com/airlines/64/DJ.png"
+  },
+  "RBG": {
+    "name": "Air Arabia Egypt",
+    "icao": "RBG",
+    "iata": "E5",
+    "country": "Egypt",
+    "logo": "https://images.kiwi.com/airlines/64/E5.png"
+  },
+  "AMV": {
+    "name": "AMC Airlines",
+    "icao": "AMV",
+    "iata": "YJ",
+    "country": "Egypt",
+    "logo": "https://super-olive-dscv3iie.edgeone.dev/Untitled%20-%2025%20June%202026%20at%2016.16.59.png"
+  },
+  "NMA": {
+    "name": "Nesma Airlines",
+    "icao": "NMA",
+    "iata": "NE",
+    "country": "Egypt",
+    "logo": "https://images.kiwi.com/airlines/64/NE.png"
+  },
+  "NIA": {
+    "name": "Nile Air",
+    "icao": "NIA",
+    "iata": "NP",
+    "country": "Egypt",
+    "logo": "https://images.kiwi.com/airlines/64/NP.png"
+  },
+  "PER": {
+    "name": "Petroleum Air Services",
+    "icao": "PER",
+    "iata": "UF",
+    "country": "Egypt",
+    "logo": "https://giant-salmon-pxgudwsk.edgeone.dev/Untitled%20-%2025%20June%202026%20at%2016.46.30.png"
+  },
+  "RSX": {
+    "name": "Red Sea Airlines",
+    "icao": "RSX",
+    "iata": "4S",
+    "country": "Egypt",
+    "logo": "https://images.kiwi.com/airlines/64/4S.png"
   }
 }
