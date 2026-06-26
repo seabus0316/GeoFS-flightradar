@@ -416,30 +416,24 @@
     `;
         }
 
-        // ============ 飛機資料與三個畫面的標記同步 ============
-        const aircraftData = new Map(); // id -> data
-        const approachMarkers = new Map();
-        const towerMarkers = new Map();
-        const overlayMarkers = new Map();
+        // ============ 飛機資料與三個畫面的標記同步（邏輯移植自 atc.html） ============
+        // atc.html 是「來什麼資料就直接顯示」，不做任何距離過濾，
+        // 這裡保留三個畫面（approach/tower/overlay），但比照 atc.html 的方式：
+        // 只要收到資料就直接 upsert 到對應畫面，不再用 5NM/15NM 距離把 marker 濾掉。
+        const aircrafts = new Map(); // id -> { data, approachMarker, towerMarker, overlayMarker }
 
-        function upsertMarker(store, map, id, data) {
-            let m = store.get(id);
-            if (!m) {
-                m = L.marker([data.lat, data.lon], { icon: makeAtcBlip(data) }).addTo(map);
+        function upsertMarkerOn(map, existingMarker, data) {
+            if (!existingMarker) {
+                const m = L.marker([data.lat, data.lon], { icon: makeAtcBlip(data) }).addTo(map);
                 m.bindTooltip(blipTooltip(data), {
                     permanent: true, direction: 'right', offset: [8, 0], className: 'atc-target-label'
                 });
-                store.set(id, m);
-            } else {
-                m.setLatLng([data.lat, data.lon]);
-                m.setIcon(makeAtcBlip(data));
-                m.setTooltipContent(blipTooltip(data));
+                return m;
             }
-        }
-
-        function removeMarker(store, map, id) {
-            const m = store.get(id);
-            if (m) { map.removeLayer(m); store.delete(id); }
+            existingMarker.setLatLng([data.lat, data.lon]);
+            existingMarker.setIcon(makeAtcBlip(data));
+            existingMarker.setTooltipContent(blipTooltip(data));
+            return existingMarker;
         }
 
         function normalizeAircraft(raw) {
@@ -461,39 +455,36 @@
             return data?.id || data?._id || data?.aircraftId || data?.callsign || data?.flightNo || null;
         }
 
-        function refreshScopes() {
-            aircraftData.forEach((data, id) => {
-                const dNm = distanceNm(centerAirport.lat, centerAirport.lon, data.lat, data.lon);
-
-                if (dNm <= 5) upsertMarker(approachMarkers, approachMap, id, data);
-                else removeMarker(approachMarkers, approachMap, id);
-
-                if (dNm <= 15) {
-                    upsertMarker(towerMarkers, towerMap, id, data);
-                    upsertMarker(overlayMarkers, overlayMap, id, data);
-                } else {
-                    removeMarker(towerMarkers, towerMap, id);
-                    removeMarker(overlayMarkers, overlayMap, id);
-                }
-            });
-        }
-
+        // 與 atc.html 的 updateAircraft(id, data) 同樣風格：id 優先用伺服器給的 a.id
         function updateAircraft(id, data) {
             const normalized = normalizeAircraft(data);
             const aircraftId = id || getAircraftId(normalized);
             if (!aircraftId || !normalized) return;
-            aircraftData.set(aircraftId, normalized);
-            refreshScopes();
+
+            let obj = aircrafts.get(aircraftId);
+            if (!obj) {
+                obj = { data: normalized, approachMarker: null, towerMarker: null, overlayMarker: null };
+                aircrafts.set(aircraftId, obj);
+            } else {
+                obj.data = normalized;
+            }
+
+            // 直接同步到三個畫面，不做距離過濾（比照 atc.html：來資料就顯示）
+            obj.approachMarker = upsertMarkerOn(approachMap, obj.approachMarker, normalized);
+            obj.towerMarker = upsertMarkerOn(towerMap, obj.towerMarker, normalized);
+            obj.overlayMarker = upsertMarkerOn(overlayMap, obj.overlayMarker, normalized);
         }
 
         function removeAircraft(id) {
-            aircraftData.delete(id);
-            removeMarker(approachMarkers, approachMap, id);
-            removeMarker(towerMarkers, towerMap, id);
-            removeMarker(overlayMarkers, overlayMap, id);
+            const obj = aircrafts.get(id);
+            if (!obj) return;
+            if (obj.approachMarker) approachMap.removeLayer(obj.approachMarker);
+            if (obj.towerMarker) towerMap.removeLayer(obj.towerMarker);
+            if (obj.overlayMarker) overlayMap.removeLayer(obj.overlayMarker);
+            aircrafts.delete(id);
         }
 
-        // ============ WebSocket 連線（沿用 atc.html 協定） ============
+        // ============ WebSocket 連線（與 atc.html 完全相同的協定/分派邏輯） ============
         let ws, wsShouldReconnect = true;
         function connectWS() {
             ws = new WebSocket(WS_URL);
@@ -502,11 +493,11 @@
                 try {
                     const m = JSON.parse(ev.data);
                     if (m.type === 'aircraft_update') {
-                        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => updateAircraft(getAircraftId(a), a));
+                        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => updateAircraft(a.id, a));
                     } else if (m.type === 'aircraft_snapshot') {
-                        m.payload.forEach(a => updateAircraft(getAircraftId(a), a));
+                        m.payload.forEach(a => updateAircraft(a.id, a));
                     } else if (m.type === 'aircraft_batch_update') {
-                        m.payload.forEach(a => updateAircraft(getAircraftId(a), a));
+                        m.payload.forEach(a => updateAircraft(a.id, a));
                     } else if (m.type === 'aircraft_remove') {
                         m.payload.forEach(id => removeAircraft(id));
                     }
@@ -559,7 +550,6 @@
             towerMap.setView([apt.lat, apt.lon], 9, { animate: true });
             overlayMap.setView([apt.lat, apt.lon], 9, { animate: false });
             rebuildStatics();
-            refreshScopes();
         }
 
         const searchInput = document.getElementById('airportSearch');
