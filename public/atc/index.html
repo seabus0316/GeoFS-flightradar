@@ -442,9 +442,27 @@
             if (m) { map.removeLayer(m); store.delete(id); }
         }
 
+        function normalizeAircraft(raw) {
+            if (!raw || typeof raw !== 'object') return null;
+            const lat = Number(raw.lat ?? raw.latitude);
+            const lon = Number(raw.lon ?? raw.lng ?? raw.longitude);
+            if (!Number.isFinite(lat) || !Number.isFinite(lon)) return null;
+            return {
+                ...raw,
+                lat,
+                lon,
+                alt: Number(raw.alt ?? raw.altitude ?? 0) || 0,
+                speed: Number(raw.speed ?? raw.groundSpeed ?? 0) || 0,
+                heading: Number(raw.heading ?? raw.hdg ?? 0) || 0
+            };
+        }
+
+        function getAircraftId(data) {
+            return data?.id || data?._id || data?.aircraftId || data?.callsign || data?.flightNo || null;
+        }
+
         function refreshScopes() {
             aircraftData.forEach((data, id) => {
-                if (!Number.isFinite(data.lat) || !Number.isFinite(data.lon)) return;
                 const dNm = distanceNm(centerAirport.lat, centerAirport.lon, data.lat, data.lon);
 
                 if (dNm <= 5) upsertMarker(approachMarkers, approachMap, id, data);
@@ -461,8 +479,10 @@
         }
 
         function updateAircraft(id, data) {
-            if (!id) return;
-            aircraftData.set(id, data);
+            const normalized = normalizeAircraft(data);
+            const aircraftId = id || getAircraftId(normalized);
+            if (!aircraftId || !normalized) return;
+            aircraftData.set(aircraftId, normalized);
             refreshScopes();
         }
 
@@ -482,11 +502,11 @@
                 try {
                     const m = JSON.parse(ev.data);
                     if (m.type === 'aircraft_update') {
-                        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => updateAircraft(a.id, a));
+                        (Array.isArray(m.payload) ? m.payload : [m.payload]).forEach(a => updateAircraft(getAircraftId(a), a));
                     } else if (m.type === 'aircraft_snapshot') {
-                        m.payload.forEach(a => updateAircraft(a.id, a));
+                        m.payload.forEach(a => updateAircraft(getAircraftId(a), a));
                     } else if (m.type === 'aircraft_batch_update') {
-                        m.payload.forEach(a => updateAircraft(a.id, a));
+                        m.payload.forEach(a => updateAircraft(getAircraftId(a), a));
                     } else if (m.type === 'aircraft_remove') {
                         m.payload.forEach(id => removeAircraft(id));
                     }
