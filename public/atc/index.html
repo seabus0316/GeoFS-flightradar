@@ -160,25 +160,6 @@
             pointer-events: none;
         }
 
-        /* 飛機疊加層：蓋在嵌入內容之上，但不擋滑鼠事件 */
-        #overlayScope {
-            position: absolute;
-            inset: 0;
-            width: 100%;
-            height: 100%;
-            z-index: 50;
-            pointer-events: none;
-            background: transparent;
-        }
-
-        #overlayScope .leaflet-control-container {
-            display: none;
-        }
-
-        .scopeRangeTag.overlayTag {
-            z-index: 60;
-        }
-
         /* ===== 雷達標靶樣式 ===== */
         .atc-radar-blip {
             pointer-events: auto;
@@ -239,21 +220,18 @@
             <div class="scopeWrap">
                 <div id="approachMap" class="map"></div>
                 <div class="scopeLabel">TOWER</div>
-                <div class="scopeRangeTag">RANGE 5NM</div>
                 <button class="recenter-btn" onclick="recenterMap(approachMap, 12)" title="Recenter to Airport">⌖</button>
             </div>
             <div class="scopeWrap">
                 <div id="towerMap" class="map"></div>
                 <div class="scopeLabel">APPROACH</div>
-                <div class="scopeRangeTag">RANGE 15NM</div>
                 <button class="recenter-btn" onclick="recenterMap(towerMap, 9)" title="Recenter to Airport">⌖</button>
             </div>
         </div>
         <div id="rightCol">
             <iframe id="embedFrame"></iframe>
             <div id="embedPlaceholder">Space for embedding external HTML<br>(Load via URL query param ?embed=URL, or edit #embedFrame src)</div>
-            <div id="overlayScope"></div>
-            <div class="scopeRangeTag overlayTag">TRAFFIC OVERLAY</div>
+
         </div>
     </div>
 
@@ -300,25 +278,8 @@
             return map;
         }
 
-        function makeOverlayMap(domId) {
-            // 沒有底圖、純透明的雷達疊加圖，用於蓋在嵌入HTML之上顯示飛機
-            const map = L.map(domId, {
-                zoomControl: false,
-                attributionControl: false,
-                preferCanvas: true,
-                dragging: false,
-                scrollWheelZoom: false,
-                doubleClickZoom: false,
-                boxZoom: false,
-                keyboard: false,
-                tap: false
-            }).setView([centerAirport.lat, centerAirport.lon], 10);
-            return map;
-        }
-
         const approachMap = makeRadarMap('approachMap', 12);
         const towerMap = makeRadarMap('towerMap', 9);
-        const overlayMap = makeOverlayMap('overlayScope');
 
         // ============ 雷達靜態層（環 + 輻射線） ============
         function buildStaticOverlay(map, ringsNm) {
@@ -418,9 +379,8 @@
 
         // ============ 飛機資料與三個畫面的標記同步（邏輯移植自 atc.html） ============
         // atc.html 是「來什麼資料就直接顯示」，不做任何距離過濾，
-        // 這裡保留三個畫面（approach/tower/overlay），但比照 atc.html 的方式：
-        // 只要收到資料就直接 upsert 到對應畫面，不再用 5NM/15NM 距離把 marker 濾掉。
-        const aircrafts = new Map(); // id -> { data, approachMarker, towerMarker, overlayMarker }
+        // 只要收到資料就直接 upsert 到對應畫面，不做距離過濾。
+        const aircrafts = new Map(); // id -> { data, approachMarker, towerMarker }
 
         function upsertMarkerOn(map, existingMarker, data) {
             if (!existingMarker) {
@@ -463,16 +423,15 @@
 
             let obj = aircrafts.get(aircraftId);
             if (!obj) {
-                obj = { data: normalized, approachMarker: null, towerMarker: null, overlayMarker: null };
+                obj = { data: normalized, approachMarker: null, towerMarker: null };
                 aircrafts.set(aircraftId, obj);
             } else {
                 obj.data = normalized;
             }
 
-            // 直接同步到三個畫面，不做距離過濾（比照 atc.html：來資料就顯示）
+            // 直接同步到兩個畫面，不做距離過濾（比照 atc.html：來資料就顯示）
             obj.approachMarker = upsertMarkerOn(approachMap, obj.approachMarker, normalized);
             obj.towerMarker = upsertMarkerOn(towerMap, obj.towerMarker, normalized);
-            obj.overlayMarker = upsertMarkerOn(overlayMap, obj.overlayMarker, normalized);
         }
 
         function removeAircraft(id) {
@@ -480,7 +439,6 @@
             if (!obj) return;
             if (obj.approachMarker) approachMap.removeLayer(obj.approachMarker);
             if (obj.towerMarker) towerMap.removeLayer(obj.towerMarker);
-            if (obj.overlayMarker) overlayMap.removeLayer(obj.overlayMarker);
             aircrafts.delete(id);
         }
 
@@ -548,7 +506,6 @@
             centerAirport = { lat: apt.lat, lon: apt.lon, name: apt.icao || apt.name };
             approachMap.setView([apt.lat, apt.lon], 12, { animate: true });
             towerMap.setView([apt.lat, apt.lon], 9, { animate: true });
-            overlayMap.setView([apt.lat, apt.lon], 9, { animate: false });
             rebuildStatics();
         }
 
