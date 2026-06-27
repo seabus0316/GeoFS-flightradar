@@ -38,7 +38,7 @@
             height: 100vh;
         }
 
-        /* ===== 撌血 2/3嚗脣??+ 憛 ===== */
+        /* ===== 左側 2/3：進場台 + 塔台 ===== */
         #leftCol {
             flex: 2 1 0;
             display: flex;
@@ -129,7 +129,7 @@
             pointer-events: none;
         }
 
-        /* ===== ?喳 1/3嚗???HTML 撋蝛粹? ===== */
+        /* ===== 右側 1/3：外部 HTML 嵌入空間 ===== */
         #rightCol {
             flex: 1 1 0;
             position: relative;
@@ -147,7 +147,39 @@
             background: #0a0a0a;
         }
 
-        /* ===== ?琿?璅璅?? ===== */
+        #embedPlaceholder {
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: rgba(53, 245, 155, 0.4);
+            font-size: 13px;
+            text-align: center;
+            padding: 20px;
+            pointer-events: none;
+        }
+
+        /* 飛機疊加層：蓋在嵌入內容之上，但不擋滑鼠事件 */
+        #overlayScope {
+            position: absolute;
+            inset: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 50;
+            pointer-events: none;
+            background: transparent;
+        }
+
+        #overlayScope .leaflet-control-container {
+            display: none;
+        }
+
+        .scopeRangeTag.overlayTag {
+            z-index: 60;
+        }
+
+        /* ===== 雷達標靶樣式 ===== */
         .atc-radar-blip {
             pointer-events: auto;
         }
@@ -218,21 +250,23 @@
             </div>
         </div>
         <div id="rightCol">
-            <iframe id="embedFrame" src="https://geotracker-atc-chat.vercel.app/"
-                title="GeoTracker ATC Chat"></iframe>
+            <iframe id="embedFrame"></iframe>
+            <div id="embedPlaceholder">Space for embedding external HTML<br>(Load via URL query param ?embed=URL, or edit #embedFrame src)</div>
+            <div id="overlayScope"></div>
+            <div class="scopeRangeTag overlayTag">TRAFFIC OVERLAY</div>
         </div>
     </div>
 
     <script>
-        // ============ ?箸閮剖? ============
+        // ============ 基本設定 ============
         const WS_URL = (location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws';
         const NM_TO_M = 1852;
         const EARTH_R_M = 6371000;
 
-        // ?身銝剖?嚗鋡急?撠?隞??嚗?蝯虫???摨?
+        // 預設中心（可被搜尋取代），先給一個保底值
         let centerAirport = { lat: 25.0777, lon: 121.2328, name: 'RCTP / TPE' };
 
-        // ============ Haversine 頝嚗??>NM嚗?============
+        // ============ Haversine 距離（公里->NM） ============
         function distanceNm(lat1, lon1, lat2, lon2) {
             const toRad = d => d * Math.PI / 180;
             const dLat = toRad(lat2 - lat1);
@@ -253,7 +287,7 @@
             return { lat: lat2 * 180 / Math.PI, lon: lon2 * 180 / Math.PI };
         }
 
-        // ============ ?啣?撱箇?嚗楛?脤??撅日◢?潘? ============
+        // ============ 地圖建立（深色雷達塗層風格） ============
         const darkTileUrl = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 
         function makeRadarMap(domId, initialZoom) {
@@ -262,14 +296,31 @@
                 attributionControl: false,
                 preferCanvas: true
             }).setView([centerAirport.lat, centerAirport.lon], initialZoom);
-            L.tileLayer(darkTileUrl, { attribution: '穢 CartoDB' }).addTo(map);
+            L.tileLayer(darkTileUrl, { attribution: '© CartoDB' }).addTo(map);
+            return map;
+        }
+
+        function makeOverlayMap(domId) {
+            // 沒有底圖、純透明的雷達疊加圖，用於蓋在嵌入HTML之上顯示飛機
+            const map = L.map(domId, {
+                zoomControl: false,
+                attributionControl: false,
+                preferCanvas: true,
+                dragging: false,
+                scrollWheelZoom: false,
+                doubleClickZoom: false,
+                boxZoom: false,
+                keyboard: false,
+                tap: false
+            }).setView([centerAirport.lat, centerAirport.lon], 10);
             return map;
         }
 
         const approachMap = makeRadarMap('approachMap', 12);
         const towerMap = makeRadarMap('towerMap', 9);
+        const overlayMap = makeOverlayMap('overlayScope');
 
-        // ============ ?琿???撅歹???+ 頛餃?蝺? ============
+        // ============ 雷達靜態層（環 + 輻射線） ============
         function buildStaticOverlay(map, ringsNm) {
             const layers = [];
             const c = map.getCenter();
@@ -306,7 +357,7 @@
         }
         rebuildStatics();
 
-        // ============ ?琿???????嚗?============
+        // ============ 雷達掃描扇（動態） ============
         function buildSweep(map, maxRangeNm) {
             const c = map.getCenter();
             const sweepAngle = (Date.now() / 26) % 360;
@@ -330,7 +381,7 @@
             towerSweep = buildSweep(towerMap, 15).addTo(towerMap);
         }, 1000);
 
-        // ============ 憌? Blip ?內 ============
+        // ============ 飛機 Blip 圖示 ============
         function makeAtcBlip(data) {
             const squawk = String(data.squawk || '').trim();
             const isEmergency = ['7700', '7600', '7500'].includes(squawk);
@@ -357,19 +408,19 @@
         }
 
         function blipTooltip(data) {
-            const squawk = data.squawk === '7700' ? `??SQK 7700` : '';
+            const squawk = data.squawk === '7700' ? `⚠ SQK 7700` : '';
             return `
       <span style="font-weight:700;font-size:11px;">${data.callsign || 'UNK'}</span><br>
-      <span style="font-size:10px;">${data.type || '??'} 繚 ${Math.round(data.alt || 0)}ft 繚 ${Math.round(data.speed || 0)}kt</span>
+      <span style="font-size:10px;">${data.type || '??'} · ${Math.round(data.alt || 0)}ft · ${Math.round(data.speed || 0)}kt</span>
       ${squawk ? `<br><span style="color:#ff4444;font-size:10px;">${squawk}</span>` : ''}
     `;
         }
 
-        // ============ 憌?鞈?????Ｙ?璅??郊嚗?頛舐宏璊 atc.html嚗?============
-        // atc.html ?胯?隞暻潸??停?湔憿舐內??銝?隞颱?頝?蕪嚗?
-        // ?ㄐ靽?銝?ｇ?approach/tower/overlay嚗?雿???atc.html ?撘?
-        // ?芾??嗅鞈?撠梁??upsert ?啣???ｇ?銝???5NM/15NM 頝??marker 瞈暹???
-        const aircrafts = new Map(); // id -> { data, approachMarker, towerMarker }
+        // ============ 飛機資料與三個畫面的標記同步（邏輯移植自 atc.html） ============
+        // atc.html 是「來什麼資料就直接顯示」，不做任何距離過濾，
+        // 這裡保留三個畫面（approach/tower/overlay），但比照 atc.html 的方式：
+        // 只要收到資料就直接 upsert 到對應畫面，不再用 5NM/15NM 距離把 marker 濾掉。
+        const aircrafts = new Map(); // id -> { data, approachMarker, towerMarker, overlayMarker }
 
         function upsertMarkerOn(map, existingMarker, data) {
             if (!existingMarker) {
@@ -404,7 +455,7 @@
             return data?.id || data?._id || data?.aircraftId || data?.callsign || data?.flightNo || null;
         }
 
-        // ??atc.html ??updateAircraft(id, data) ?見憸冽嚗d ?芸??其撩?蝯衣? a.id
+        // 與 atc.html 的 updateAircraft(id, data) 同樣風格：id 優先用伺服器給的 a.id
         function updateAircraft(id, data) {
             const normalized = normalizeAircraft(data);
             const aircraftId = id || getAircraftId(normalized);
@@ -412,15 +463,16 @@
 
             let obj = aircrafts.get(aircraftId);
             if (!obj) {
-                obj = { data: normalized, approachMarker: null, towerMarker: null };
+                obj = { data: normalized, approachMarker: null, towerMarker: null, overlayMarker: null };
                 aircrafts.set(aircraftId, obj);
             } else {
                 obj.data = normalized;
             }
 
-            // ?湔?郊?唬???ｇ?銝?頝?蕪嚗???atc.html嚗?鞈?撠梢＊蝷綽?
+            // 直接同步到三個畫面，不做距離過濾（比照 atc.html：來資料就顯示）
             obj.approachMarker = upsertMarkerOn(approachMap, obj.approachMarker, normalized);
             obj.towerMarker = upsertMarkerOn(towerMap, obj.towerMarker, normalized);
+            obj.overlayMarker = upsertMarkerOn(overlayMap, obj.overlayMarker, normalized);
         }
 
         function removeAircraft(id) {
@@ -428,10 +480,11 @@
             if (!obj) return;
             if (obj.approachMarker) approachMap.removeLayer(obj.approachMarker);
             if (obj.towerMarker) towerMap.removeLayer(obj.towerMarker);
+            if (obj.overlayMarker) overlayMap.removeLayer(obj.overlayMarker);
             aircrafts.delete(id);
         }
 
-        // ============ WebSocket ???嚗? atc.html 摰?詨???摰??晷?摩嚗?============
+        // ============ WebSocket 連線（與 atc.html 完全相同的協定/分派邏輯） ============
         let ws, wsShouldReconnect = true;
         function connectWS() {
             ws = new WebSocket(WS_URL);
@@ -457,7 +510,7 @@
         }
         connectWS();
 
-        // ============ 璈??嚗? atc.html ?詨?鞈?靘?嚗?============
+        // ============ 機場搜尋（與 atc.html 相同資料來源） ============
         let airportsData = [];
         async function loadAirports() {
             const statusEl = document.getElementById('searchStatus');
@@ -495,6 +548,7 @@
             centerAirport = { lat: apt.lat, lon: apt.lon, name: apt.icao || apt.name };
             approachMap.setView([apt.lat, apt.lon], 12, { animate: true });
             towerMap.setView([apt.lat, apt.lon], 9, { animate: true });
+            overlayMap.setView([apt.lat, apt.lon], 9, { animate: false });
             rebuildStatics();
         }
 
@@ -506,7 +560,7 @@
             if (apt) {
                 setViewToAirport(apt);
                 statusEl.style.opacity = '1';
-                statusEl.textContent = `??Set view: ${apt.icao || apt.name}`;
+                statusEl.textContent = `✓ Set view: ${apt.icao || apt.name}`;
             } else {
                 statusEl.style.opacity = '1';
                 statusEl.textContent = `Airport not found: ${searchInput.value}`;
@@ -519,12 +573,22 @@
             }
         }
 
-        // ?啣?蝘餃?/蝮格??撱粹???惜嚗??????Ｘ?嚗?
+        // 地圖移動/縮放時重建靜態雷達層（手動拖拉雷達畫面時）
         approachMap.on('moveend zoomend', () => { if (approachStatic) approachMap.removeLayer(approachStatic); approachStatic = buildStaticOverlay(approachMap, [1, 3, 5]); });
         towerMap.on('moveend zoomend', () => { if (towerStatic) towerMap.removeLayer(towerStatic); towerStatic = buildStaticOverlay(towerMap, [5, 10, 15]); });
 
-        // ============ 憭 HTML 撋 ============
-        // ??蝬脣?? ?embed=<url> 閮剖? iframe 靘?嚗漲?舐?乩耨?嫣???src??
+        // ============ 外部 HTML 嵌入 ============
+        // 透過網址參數 ?embed=<url> 設定 iframe 來源；亦可直接修改下方 src。
+        (function setupEmbed() {
+            const params = new URLSearchParams(location.search);
+            const embedUrl = params.get('embed');
+            const frame = document.getElementById('embedFrame');
+            const placeholder = document.getElementById('embedPlaceholder');
+            if (embedUrl) {
+                frame.src = embedUrl;
+                placeholder.style.display = 'none';
+            }
+        })();
     </script>
 </body>
 
