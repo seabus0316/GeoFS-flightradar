@@ -209,7 +209,7 @@ app.use((req, res, next) => {
       "font-src 'self' data: https:",
       "connect-src 'self' https: wss: ws:",
       "worker-src 'self' blob:",
-      "child-src 'self' blob:"
+      "child-src 'self' blob: https://geotracker-atc-chat.vercel.app"
     ].join('; ')
   );
   next();
