@@ -3136,14 +3136,14 @@
     "icao": "FLN",
     "iata": "WV",
     "country": "Namibia",
-    "logo": "https://images.kiwi.com/airlines/64/WV.png"
+    "logo": " https://latin-red-ddv2zcft.edgeone.dev/395495839_653817613563638_8026848346913386232_n.jpg"
   },
   "C6": {
     "name": "My Freighter",
     "icao": "C6",
     "iata": "MFX",
     "country": "Uzbekistan",
-    "logo": "https://i.postimg.cc/qqrVBXnJ/1630454773733.jpg"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/1630454773733.jpg"
   },
   "VRG": {
     "name": "Varig Brazilian Airlines",
@@ -3192,7 +3192,7 @@
     "icao": "SXE",
     "iata": "XS",
     "country": "Sierra Leone",
-    "logo": "https://user13688.na.imgto.link/public/20260619/481776286-122126415242607907-5780366619982069210-n.avif"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/481776286-122126415242607907-5780366619982069210-n.avif"
   },
   "UIA": {
     "name": "UNI Air",
@@ -3206,7 +3206,7 @@
     "icao": "QLK",
     "iata": "QLK",
     "country": "Australia",
-    "logo": "https://busy-amethyst-srhk21e4.edgeone.dev/download%20(2).png"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/download%20(2).png"
   },
   "LAA": {
     "name": "Libyan Airlines",
@@ -3227,14 +3227,14 @@
     "icao": "ABT",
     "iata": "PL",
     "country": "Benin",
-    "logo": "https://silent-brown-7tbsnsq0.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.18.29.png"
+    "logo": " https://innovative-gold-dwfxhzyg.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.18.29.png"
   },
   "LAZ": {
     "name": "Liz Aviation",
     "icao": "LAZ",
     "iata": "L0",
     "country": "Burkina Faso",
-    "logo": "https://foolish-green-th6qqgle.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.47.11.png"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2010.47.11.png"
   },
   "COG": {
     "name": "Congo Airways",
@@ -3248,14 +3248,14 @@
     "icao": "SRV",
     "iata": "S2",
     "country": "Democratic Republic of the Congo",
-    "logo": "https://supreme-harlequin-rxprewti.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2012.14.09.png"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/Untitled%20-%2024%20June%202026%20at%2012.14.09.png"
   },
   "EQR": {
     "name": "ECAir",
     "icao": "EQR",
     "iata": "EJ",
     "country": "Republic of the Congo",
-    "logo": "https://exceptional-blush-ltg9mw6s.edgeone.dev/EQR.png"
+    "logo": "https://latin-red-ddv2zcft.edgeone.dev/EQR.png"
   },
   "CEB": {
     "name": "Cebu Pacific",
@@ -3312,5 +3312,131 @@
     "iata": "4S",
     "country": "Egypt",
     "logo": "https://images.kiwi.com/airlines/64/4S.png"
+  },
+    "CEL": {
+    "name": "CEIBA Intercontinental",
+    "icao": "CEL",
+    "iata": "C2",
+    "country": "Equatorial Guinea",
+    "logo": "https://images.kiwi.com/airlines/64/C2.png"
+  },
+  "DIG": {
+    "name": "PassionAir",
+    "icao": "DIG",
+    "iata": "OP",
+    "country": "Ghana",
+    "logo": "https://images.kiwi.com/airlines/64/OP.png"
+  },
+  "XLK": {
+    "name": "Safarilink Aviation",
+    "icao": "XLK",
+    "iata": "F2",
+    "country": "Kenya",
+    "logo": "https://images.kiwi.com/airlines/64/F2.png"
+  },
+  "SEW": {
+    "name": "Skyward Express",
+    "icao": "SEW",
+    "iata": "OW",
+    "country": "Kenya",
+    "logo": "https://images.kiwi.com/airlines/64/OW.png"
+  },
+  "BRQ": {
+    "name": "Buraq Air",
+    "icao": "BRQ",
+    "iata": "UZ",
+    "country": "Libya",
+    "logo": "https://images.kiwi.com/airlines/64/UZ.png"
+  },
+  "CWN": {
+    "name": "Crown Airlines",
+    "icao": "CWN",
+    "iata": "FQ",
+    "country": "Libya",
+    "logo": "https://brilliant-black-ecgqhorh.edgeone.dev/images%20(1).jpg"
+  },
+  "OYA": {
+    "name": "Fly OYA",
+    "icao": "OYA",
+    "iata": "YI",
+    "country": "Libya",
+    "logo": "https://useless-fuchsia-h47gmkqg.edgeone.dev/Untitled%20-%2026%20June%202026%20at%2010.35.18.png"
+  },
+  "GMS": {
+    "name": "Ghadames Air",
+    "icao": "GMS",
+    "iata": "NJS",
+    "country": "Libya",
+    "logo": "https://colorful-rose-f2pbim4i.edgeone.dev/Untitled%20-%2026%20June%202026%20at%2010.35.18%20(1).png"
+  },
+  "GAK": {
+    "name": "Global Air Transport",
+    "icao": "GAK",
+    "iata": "5S",
+    "country": "Libya",
+    "logo": "https://widespread-silver-va2xgxgf.edgeone.dev/global-air-transport_eb721e_opk.jpg"
+  },
+  "MNS": {
+    "name": "Medsky Airways",
+    "icao": "MNS",
+    "iata": "BM",
+    "country": "Libya",
+    "logo": "https://running-amber-alwocpzx.edgeone.dev/Untitled%20-%2026%20June%202026%20at%2010.35.18.png"
+  },
+  "HHN": {
+    "name": "Hahn Air",
+    "icao": "HHN",
+    "iata": "HR",
+    "country": "Germany",
+    "logo": "https://images.kiwi.com/airlines/64/HR.png"
+  },
+  "FML": {
+    "name": "Sky Mali",
+    "icao": "FML",
+    "iata": "ML",
+    "country": "Mali",
+    "logo": "https://classic-green-mcfav20g.edgeone.dev/Untitled%20-%2026%20June%202026%20at%2010.35.18.png"
+  },
+  "MAC": {
+    "name": "Air Arabia Maroc",
+    "icao": "MAC",
+    "iata": "3O",
+    "country": "Morocco",
+    "logo": "https://images.kiwi.com/airlines/64/3O.png"
+  },
+  "BVT": {
+    "name": "Berjaya Air",
+    "icao": "BVT",
+    "iata": "J8",
+    "country": "Malaysia",
+    "logo": "https://i.ibb.co/VprBHkKM/image.png"
+  },
+  "TOK": {
+    "name": "PNG Air",
+    "icao": "TOK",
+    "iata": "CG",
+    "country": "Papua New Guinea",
+    "logo": "https://images.kiwi.com/airlines/64/CG.png"
+  },
+  "DAV": {
+    "name": "Dornier Aviation Nigeria",
+    "icao": "DAV",
+    "iata": "DO",
+    "country": "Nigeria",
+    "logo": "https://controversial-scarlet-gonml1jh.edgeone.dev/Dornier.png"
+  },
+  "GWG": {
+    "name": "Green Africa Airways",
+    "icao": "GWG",
+    "iata": "Q9",
+    "country": "Nigeria",
+    "logo": "https://spare-apricot-v01g3det.edgeone.dev/Green%20Africa%20Airways.png"
+  },
+  "IAN": {
+    "name": "Ibom Air",
+    "icao": "IAN",
+    "iata": "QI",
+    "country": "Nigeria",
+    "logo": "https://images.kiwi.com/airlines/64/QI.png"
   }
 }
