@@ -581,7 +581,7 @@
         // 透過網址參數 ?embed=<url> 設定 iframe 來源；亦可直接修改下方 src。
         (function setupEmbed() {
             const params = new URLSearchParams(location.search);
-            const embedUrl = params.get('embed');
+            const embedUrl = params.get('embed') || 'https://geotracker-atc-chat.vercel.app/';
             const frame = document.getElementById('embedFrame');
             const placeholder = document.getElementById('embedPlaceholder');
             if (embedUrl) {
