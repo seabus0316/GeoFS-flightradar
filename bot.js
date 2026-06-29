@@ -294,7 +294,7 @@ const client = new Client({
 });
 
 const activities = [
-  { name: 'GeoFS-Flightradar', type: ActivityType.Watching },
+  { name: 'Geo-Tracker', type: ActivityType.Watching },
   { name: 'all flights', type: ActivityType.Watching },
   { name: '/stats', type: ActivityType.Listening },
   { name: 'GeoFS pilots', type: ActivityType.Watching },
@@ -302,7 +302,11 @@ const activities = [
   { name: 'Never Gonna Give You Up', type: ActivityType.Listening },
   { name: 'SeaBus\'s unfunny jokes :(', type: ActivityType.Listening },
   { name: 'Geo-FS', type: ActivityType.Playing },
-  { name: '67🫲🧒🫱', type: ActivityType.Playing }
+  { name: '67🫲🧒🫱', type: ActivityType.Playing },
+  { name: 'Bruh does JTHWEB really think this dumb geofs flightradar 26 could become better than mine?'},
+  { name: 'Facts about SeaBus: He\'s a poor 16-yeard-old Asian student lives in Taiwan. '},
+  { name: 'Facts about SeaBus: He\'s a right fielder in his baseball team, his number is 69'},
+  { name: 'Daaaaaaaaaa Yankees lose ~ ~ ~'},
 ];
 
 function setRandomActivity() {
