@@ -722,7 +722,7 @@ input:checked + .slider:before {
 
 #flightListPanel {
   position: fixed;
-  top: 74px;
+  top: 130px;
   left: 76px;
   width: 320px;
   max-height: calc(100vh - 90px);
@@ -757,7 +757,7 @@ input:checked + .slider:before {
 
 /* Open button — sits next to search box */
 #flightListOpenBtn {
-  position: fixed; top: 20px; left: 16px; z-index: 9001;
+  position: fixed; top: 76px; left: 16px; z-index: 9001;
   background: rgba(13,20,32,0.88);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px; color: #ffd500; font-size: 16px;
@@ -1168,7 +1168,7 @@ input:checked + .slider:before {
   /* ── What's New Panel — matches existing wx/tile/settings panels ── */
   #whatsNewPanel {
     position: fixed;
-    top: 72px;
+    top: 128px;
     right: 20px;
     z-index: 10000;
     width: 330px;
@@ -1287,4 +1287,68 @@ input:checked + .slider:before {
   }
   *, *::before, *::after {
   font-family: 'Plus Jakarta Sans', 'Inter', sans-serif !important;
+}
+
+/* ═══════════════════════════════════════
+   Site Header — Brand bar (logo + title)
+   Reuses the same dark glass language as
+   #flightListPanel / #whatsNewPanel.
+═══════════════════════════════════════ */
+.site-header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 56px;
+  z-index: 9500;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 18px;
+  background: rgba(13, 20, 32, 0.92);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border-bottom: 1px solid rgba(255,255,255,0.07);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+}
+
+/* Logo box — same pattern as .fl-logo / airline logo box:
+   white rounded tile so any icon colour reads cleanly. */
+.site-header-logo {
+  width: 36px; height: 36px;
+  border-radius: 9px;
+  background: #fff;
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255,255,255,0.1);
+}
+.site-header-logo img {
+  width: 26px; height: 26px;
+  object-fit: contain;
+}
+
+.site-header-brand {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+.site-header-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e8edf2;
+  letter-spacing: -0.2px;
+  white-space: nowrap;
+}
+.site-header-subtitle {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: #5a7080;
+  white-space: nowrap;
+}
+
+@media (max-width: 639px) {
+  .site-header { height: 52px; padding: 0 12px; gap: 10px; }
+  .site-header-logo { width: 32px; height: 32px; }
+  .site-header-subtitle { display: none; }
 }

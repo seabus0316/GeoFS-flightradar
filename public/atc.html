@@ -835,6 +835,19 @@
 </script>
 
 <body>
+  <!-- ═══════════════════════════════════════
+       Site Header — logo + brand
+  ═══════════════════════════════════════ -->
+  <div class="site-header">
+    <div class="site-header-logo">
+      <img src="geo-tracker-logo.png" alt="Geo Tracker logo">
+    </div>
+    <div class="site-header-brand">
+      <span class="site-header-title">Geo Tracker</span>
+      <span class="site-header-subtitle">ATC</span>
+    </div>
+  </div>
+
   <!-- ❌ 刪除 -->
   <button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
   <div id="photoSidebar">
@@ -847,7 +860,7 @@
 
 
   <!-- Megaphone button — placed in the same fixed container as map control bar -->
-  <div style="position:fixed;top:20px;right:20px;z-index:10001;display:flex;align-items:center;gap:8px;">
+  <div style="position:fixed;top:76px;right:20px;z-index:10001;display:flex;align-items:center;gap:8px;">
     <a href="/about/" id="helpBtn" class="atc-mode-btn" title="Help &amp; FAQ"
       style="text-decoration:none;font-size:18px;font-weight:700;line-height:1;">?</a>
     <button id="whatsNewBtn" onclick="toggleWhatsNew()" title="What's New">
@@ -1604,7 +1617,7 @@
   </script>
 
   <!-- Search Box -->
-  <div id="searchBox" style="position: fixed; top: 20px; left: 72px; z-index: 9999; width: 260px;">
+  <div id="searchBox" style="position: fixed; top: 76px; left: 72px; z-index: 9999; width: 260px;">
     <div style="position: relative;">
       <input type="text" id="searchInput" placeholder="🔍 Search flight or airport..." style="width: 100%; padding: 12px 45px 12px 16px; font-size: 14px; border: none; border-radius: 8px; 
                   background: rgba(255, 255, 255, 0.95); box-shadow: 0 2px 12px rgba(0,0,0,0.2); 
