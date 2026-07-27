@@ -19,7 +19,7 @@
 <div id="customMapBar">
 
   <!-- 縮放按鈕 -->
-  <div style="display:flex;flex-direction:column;gap:4px;">
+  <div style="position:fixed; bottom:20px; right:20px; display:flex; flex-direction:column; gap:4px; z-index:10000;">
     <button onclick="map.zoomIn()" class="map-control-btn">＋</button>
     <button onclick="map.zoomOut()" class="map-control-btn">－</button>
   </div>
@@ -826,6 +826,11 @@
        Site Header — logo + brand
   ═══════════════════════════════════════ -->
   <div class="site-header">
+    <button id="menuToggle" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; z-index: 10000; margin-right: 8px;">
+      <div style="width: 20px; height: 2px; background: #fff;"></div>
+      <div style="width: 20px; height: 2px; background: #fff;"></div>
+      <div style="width: 20px; height: 2px; background: #fff;"></div>
+    </button>
     <div class="site-header-logo">
       <img src="geo-tracker-logo.png" alt="Geo Tracker logo">
     </div>
@@ -835,12 +840,7 @@
     </div>
   </div>
 
-  <!-- ❌ 刪除 -->
-  <button id="photoToggle" onclick="togglePhotoSidebar()">📷</button>
-  <div id="photoSidebar">
-    <h3 style="color:#58a6ff;margin-top:0;">JetPhotos Gallery</h3>
-    <div id="photoPanel"></div>
-  </div>
+
   <!-- ═══════════════════════════════════════════════
      What's New 大聲公按鈕 + 面板
 ═══════════════════════════════════════════════ -->
@@ -1061,15 +1061,7 @@
     })();
   </script>
 
-  <!-- 新增：漢堡選單按鈕 -->
-  <button id="menuToggle" style="position: fixed; top: 8px; right: 20px; z-index: 10000; 
-        background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
-        border: 1px solid rgba(255,255,255,0.6); border-radius: 10px; 
-        padding: 12px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.8) inset;">
-    <div style="width: 24px; height: 2px; background: #333; margin: 5px 0;"></div>
-    <div style="width: 24px; height: 2px; background: #333; margin: 5px 0;"></div>
-    <div style="width: 24px; height: 2px; background: #333; margin: 5px 0;"></div>
-  </button>
+
 
   <!-- 新增：側邊選單 -->
   <div id="sideMenu" style="position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; 
@@ -1179,19 +1171,26 @@
         <span style="font-size: 14px;">ATC Panel</span>
       </a>
 
-      <a href="/upload.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
-       padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 12px;
-       transition: background 0.3s;">
-        <span style="font-size: 22px;">📸</span>
-        <span style="font-size: 14px;">Upload Jet Photos</span>
-      </a>
-
-      <a href="/gallery.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
-       padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-top: 12px;
-       transition: background 0.3s;">
-        <span style="font-size: 22px;">🖼️</span>
-        <span style="font-size: 14px;">Visit Our Gallery</span>
-      </a>
+      <!-- Jet Photos 摺疊選單 -->
+      <details style="margin-top: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
+        <summary style="color: #fff; cursor: pointer; font-size: 14px; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between;">
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <span style="font-size: 20px;">📷</span>
+            <span>Jet Photos</span>
+          </div>
+          <span style="font-size: 12px; color: rgba(255,255,255,0.5);">▼</span>
+        </summary>
+        <div style="padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
+          <a href="/upload.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
+            <span style="font-size: 16px;">📸</span>
+            <span style="font-size: 13px;">Upload Jet Photos</span>
+          </a>
+          <a href="/gallery.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
+            <span style="font-size: 16px;">🖼️</span>
+            <span style="font-size: 13px;">Visit Our Gallery</span>
+          </a>
+        </div>
+      </details>
 
       <a href="/history.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
        padding: 12px; background: rgba(0,255,133,0.08); border-radius: 8px; margin-top: 12px;

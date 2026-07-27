@@ -405,7 +405,7 @@ html,body {
 #metarToggle {
   position: fixed;
   left: 0;
-  top: 60%;
+  top: 80%;
   transform: translateY(-50%);
   background: rgba(255, 255, 255, 0.18);
   backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
@@ -434,7 +434,7 @@ html,body {
 .metar-widget {
   position: fixed;
   left: -280px;
-  top: 50%;
+  top: 80%;
   transform: translateY(-50%);
   width: 260px;
   background: rgba(0, 0, 0, 0.9);
