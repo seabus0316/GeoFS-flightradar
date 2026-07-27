@@ -16,8 +16,7 @@
 <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
 <script src="aircraft-icons.js"></script>
 <!-- 右下角自訂地圖控制列 -->
-<div id="customMapBar"
-  style="position:fixed;bottom:20px;right:20px;display:flex;flex-direction:row;align-items:flex-end;gap:8px;z-index:10000;transition:right 0.3s cubic-bezier(.4,0,.2,1);">
+<div id="customMapBar">
 
   <!-- 縮放按鈕 -->
   <div style="display:flex;flex-direction:column;gap:4px;">
@@ -28,8 +27,8 @@
   <!-- 天氣按鈕 -->
   <div style="position:relative;">
     <button id="wxBtn" onclick="togglePanel('wxPanel',this)" class="map-control-btn">☁</button>
-    <div id="wxPanel"
-      style="display:none;position:absolute;bottom:54px;right:0;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
+    <div id="wxPanel" class="rail-dropdown"
+      style="display:none;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
       <div
         style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 8px;border-bottom:1px solid #333;margin-bottom:4px;">
         Weather (WX)</div>
@@ -45,8 +44,8 @@
   <div style="position:relative;">
     <button id="tileBtn" onclick="togglePanel('tilePanel',this)" class="map-control-btn"><i
         data-lucide="layers"></i></button>
-    <div id="tilePanel"
-      style="display:none;position:absolute;bottom:54px;right:0;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
+    <div id="tilePanel" class="rail-dropdown"
+      style="display:none;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
       <div
         style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;padding:2px 8px 8px;border-bottom:1px solid #333;margin-bottom:4px;">
         Map Tiles</div>
@@ -88,7 +87,7 @@
     <button id="settingsBtn" onclick="togglePanel('settingsPanel',this)" class="atc-mode-btn" title="Display Settings">
       <i data-lucide="settings-2"></i>
     </button>
-    <div id="settingsPanel" style="display:none;position:absolute;bottom:54px;right:0;
+    <div id="settingsPanel" class="rail-dropdown" style="display:none;
        background:rgba(10,15,25,0.6);backdrop-filter:blur(20px) saturate(180%);
        -webkit-backdrop-filter:blur(20px) saturate(180%);
        border:1px solid rgba(255,255,255,0.12);border-radius:14px;
@@ -669,17 +668,14 @@
   })();
 
   // ── Responsive resize handler ────────────────────────────
+  // NOTE: layout shifting for #utcTime when the aircraft panel is open is
+  // handled declaratively via the `body.aircraft-panel-open` CSS class
+  // (see styles.css) instead of writing inline styles from multiple places.
   window.addEventListener('resize', () => {
     const p = document.getElementById('aircraftPanel');
-    const bar = document.getElementById('customMapBar');
-    const utc = document.getElementById('utcTime');
     const mobile = window.innerWidth < 640;
-    if (!p) {
-      // Panel not open — just reset bar/utc position
-      if (bar) bar.style.right = '20px';
-      if (utc) utc.style.right = '20px';
-      return;
-    }
+    document.body.classList.toggle('aircraft-panel-open', !!p && !mobile);
+    if (!p) return;
     if (mobile) {
       // Convert to bottom sheet
       Object.assign(p.style, {
@@ -689,8 +685,6 @@
         boxShadow: '0 -4px 32px rgba(0,0,0,0.3)',
         transform: 'translateY(0)'
       });
-      if (bar) bar.style.right = '20px';
-      if (utc) utc.style.right = '20px';
     } else {
       // Convert to desktop sidebar
       Object.assign(p.style, {
@@ -700,8 +694,6 @@
         boxShadow: '0 8px 40px rgba(0,0,0,0.25)',
         transform: ''
       });
-      if (bar) bar.style.right = '396px';
-      if (utc) utc.style.right = '396px';
     }
   });
 
@@ -719,12 +711,7 @@
       }
       focusedAircraftId = null;
       clearFlightPlanMarkers();
-      if (window.innerWidth >= 640) {
-        const bar = document.getElementById('customMapBar');
-        const utc = document.getElementById('utcTime');
-        if (bar) bar.style.right = '20px';
-        if (utc) utc.style.right = '20px';
-      }
+      document.body.classList.remove('aircraft-panel-open');
     };
     if (p && mobile) {
       p.style.transform = 'translateY(100%)';
@@ -1075,7 +1062,7 @@
   </script>
 
   <!-- 新增：漢堡選單按鈕 -->
-  <button id="menuToggle" style="position: fixed; top: 100px; left: 20px; z-index: 10000; 
+  <button id="menuToggle" style="position: fixed; top: 8px; right: 20px; z-index: 10000; 
         background: rgba(255, 255, 255, 0.55); backdrop-filter: blur(20px) saturate(160%); -webkit-backdrop-filter: blur(20px) saturate(160%);
         border: 1px solid rgba(255,255,255,0.6); border-radius: 10px; 
         padding: 12px; cursor: pointer; box-shadow: 0 4px 20px rgba(0,0,0,0.2), 0 1px 0 rgba(255,255,255,0.8) inset;">
@@ -3882,14 +3869,9 @@
       }
       p.dataset.aircraftId = String(id);
 
-      // Shift right-side UI — desktop only
-      const panelShift = '396px';
-      const bar = document.getElementById('customMapBar');
-      const utc = document.getElementById('utcTime');
-      if (!isMobile) {
-        if (bar) bar.style.right = panelShift;
-        if (utc) utc.style.right = panelShift;
-      }
+      // Shift right-side UI (e.g. #utcTime) via CSS class — desktop only.
+      // See `body.aircraft-panel-open` rules in styles.css.
+      if (!isMobile) document.body.classList.add('aircraft-panel-open');
 
       const depShort = (data.departure || '').substring(0, 4) || '—';
       const destinationAirport = data.actualArrival || data.arrival || '';

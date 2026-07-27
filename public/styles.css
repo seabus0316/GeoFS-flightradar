@@ -1352,3 +1352,59 @@ input:checked + .slider:before {
   .site-header-logo { width: 32px; height: 32px; }
   .site-header-subtitle { display: none; }
 }
+
+/* ═══════════════════════════════════════
+   Nav Rail — #customMapBar repurposed
+   Desktop: vertical dock, left side, below header.
+   Mobile: reverts to its original horizontal
+   bottom-right cluster (unchanged behaviour).
+═══════════════════════════════════════ */
+#customMapBar {
+  position: fixed;
+  top: 76px;
+  left: 16px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10000;
+}
+
+@media (max-width: 639px) {
+  #customMapBar {
+    top: auto;
+    left: auto;
+    bottom: 20px;
+    right: 20px;
+    flex-direction: row;
+    align-items: flex-end;
+  }
+}
+
+/* Dropdowns (wx / tile / settings) anchor relative to their own button.
+   Desktop rail: open to the right. Mobile cluster: open upward
+   (matches the panel's original behaviour before the rail existed). */
+.rail-dropdown {
+  position: absolute;
+  bottom: 54px;
+  right: 0;
+}
+@media (min-width: 640px) {
+  .rail-dropdown {
+    bottom: auto;
+    top: 0;
+    left: 54px;
+    right: auto;
+  }
+}
+
+/* #utcTime shifts left to clear the docked aircraft panel — driven by a
+   single state class instead of inline styles set from several places. */
+#utcTime {
+  transition: right 0.3s cubic-bezier(.4,0,.2,1);
+}
+@media (min-width: 640px) {
+  body.aircraft-panel-open #utcTime {
+    right: 396px;
+  }
+}
