@@ -99,40 +99,27 @@ async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
   const cacheKey = `${iconUrl}|${colorHex}`;
   if (_iconDataUrlCache.has(cacheKey)) return _iconDataUrlCache.get(cacheKey);
 
-  try {
-    let svgText = _iconSvgTextCache.get(iconUrl);
-    if (!svgText) {
-      const response = await fetch(iconUrl);
-      if (!response.ok) throw new Error(`Failed to load icon: ${iconUrl}`);
-      svgText = await response.text();
-      _iconSvgTextCache.set(iconUrl, svgText);
-    }
-
-    let coloredSvg = svgText
-      .replace(/fill="(?!none)[^"]*"/gi, `fill="${colorHex}"`)
-      .replace(/fill:\s*(?!none)[^;"]+/gi, `fill:${colorHex}`)
-      .replace(/#000000/gi, colorHex)
-      .replace(/#000\b/gi, colorHex)
-      .replace(/\bblack\b/gi, colorHex);
-
-    if (!/fill="/i.test(coloredSvg) && !/fill:/i.test(coloredSvg)) {
-      coloredSvg = coloredSvg.replace(/<svg\b([^>]*)>/i, `<svg$1 fill="${colorHex}">`);
-    }
-
-    coloredSvg = coloredSvg.replace(
-      /<svg\b([^>]*)>/i,
-      '<svg$1 shape-rendering="geometricPrecision" text-rendering="geometricPrecision">'
-    );
-
-    // Rasterise at 4× resolution so Cesium billboards are sharp on HiDPI screens
-    const RASTER_SIZE = 192; // extra raster headroom keeps 3D billboards sharp
-    const dataUrl = await _svgToHighResPng(coloredSvg, RASTER_SIZE);
-    _iconDataUrlCache.set(cacheKey, dataUrl);
-    return dataUrl;
-  } catch (error) {
-    console.warn('[AircraftIcons] Failed to colorize icon, falling back to base icon', iconUrl, error);
-    return getIconUrl('');
+  let svgText = _iconSvgTextCache.get(iconUrl);
+  if (!svgText) {
+    const response = await fetch(iconUrl);
+    svgText = await response.text();
+    _iconSvgTextCache.set(iconUrl, svgText);
   }
+
+  let coloredSvg = svgText
+    .replace(/fill="(?!none)[^"]*"/gi, `fill="${colorHex}"`)
+    .replace(/fill:\s*(?!none)[^;"]+/gi, `fill:${colorHex}`)
+    .replace(/#000000/gi, colorHex)
+    .replace(/#000\b/gi, colorHex)
+    .replace(/\bblack\b/gi, colorHex);
+
+  if (!/fill="/i.test(coloredSvg) && !/fill:/i.test(coloredSvg)) {
+    coloredSvg = coloredSvg.replace(/<svg\b([^>]*)>/i, `<svg$1 fill="${colorHex}">`);
+  }
+
+  const dataUrl = `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(coloredSvg)}`;
+  _iconDataUrlCache.set(cacheKey, dataUrl);
+  return dataUrl;
 }
 
 /**
