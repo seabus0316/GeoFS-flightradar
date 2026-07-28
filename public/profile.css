@@ -5,30 +5,30 @@
 
 /* ── Design Tokens ── */
 :root {
-  --pf-bg:          #080d12;
-  --pf-bg-subtle:   #0c1520;
-  --pf-panel:       rgba(10, 18, 28, 0.88);
-  --pf-glass:       rgba(14, 22, 34, 0.65);
-  --pf-glass-border:rgba(255, 255, 255, 0.08);
-  --pf-border:      rgba(0, 207, 255, 0.12);
-  --pf-accent:      #00cfff;
+  --pf-bg: #080d12;
+  --pf-bg-subtle: #0c1520;
+  --pf-panel: rgba(10, 18, 28, 0.88);
+  --pf-glass: rgba(14, 22, 34, 0.65);
+  --pf-glass-border: rgba(255, 255, 255, 0.08);
+  --pf-border: rgba(0, 207, 255, 0.12);
+  --pf-accent: #00cfff;
   --pf-accent-glow: rgba(0, 207, 255, 0.25);
-  --pf-green:       #00ff85;
-  --pf-green-glow:  rgba(0, 255, 133, 0.3);
-  --pf-gold:        #ffd500;
-  --pf-purple:      #a78bfa;
-  --pf-red:         #f87171;
-  --pf-orange:      #fb923c;
-  --pf-text:        #e2eef7;
-  --pf-text-muted:  rgba(180, 210, 230, 0.5);
-  --pf-text-dim:    rgba(140, 170, 200, 0.35);
-  --pf-font:        'Plus Jakarta Sans', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --pf-mono:        'Share Tech Mono', 'JetBrains Mono', monospace;
-  --pf-radius:      14px;
-  --pf-radius-sm:   10px;
-  --pf-radius-xs:   6px;
-  --pf-shadow:      0 8px 32px rgba(0, 0, 0, 0.55);
-  --pf-transition:  all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  --pf-green: #00ff85;
+  --pf-green-glow: rgba(0, 255, 133, 0.3);
+  --pf-gold: #ffd500;
+  --pf-purple: #a78bfa;
+  --pf-red: #f87171;
+  --pf-orange: #fb923c;
+  --pf-text: #e2eef7;
+  --pf-text-muted: rgba(180, 210, 230, 0.5);
+  --pf-text-dim: rgba(140, 170, 200, 0.35);
+  --pf-font: 'Plus Jakarta Sans', 'Rajdhani', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --pf-mono: 'Share Tech Mono', 'JetBrains Mono', monospace;
+  --pf-radius: 14px;
+  --pf-radius-sm: 10px;
+  --pf-radius-xs: 6px;
+  --pf-shadow: 0 8px 32px rgba(0, 0, 0, 0.55);
+  --pf-transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 body.profile-page.theme-discord {
@@ -77,7 +77,13 @@ body.profile-page.theme-emerald {
 }
 
 /* ── Reset & Base ── */
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
 
 html {
   height: 100%;
@@ -117,9 +123,18 @@ body.profile-page::after {
 }
 
 /* ── Scrollbar ── */
-body.profile-page::-webkit-scrollbar { width: 6px; }
-body.profile-page::-webkit-scrollbar-track { background: transparent; }
-body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2); border-radius: 3px; }
+body.profile-page::-webkit-scrollbar {
+  width: 6px;
+}
+
+body.profile-page::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+body.profile-page::-webkit-scrollbar-thumb {
+  background: rgba(0, 207, 255, 0.2);
+  border-radius: 3px;
+}
 
 /* ── Navigation Bar ── */
 .profile-nav {
@@ -137,6 +152,27 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   height: 56px;
 }
 
+/* Brand logo — same white rounded-tile pattern used site-wide
+   (nav rail / flight-list logos) so any icon colour reads cleanly. */
+.profile-nav-logo {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.profile-nav-logo img {
+  width: 24px;
+  height: 24px;
+  object-fit: contain;
+}
+
 .profile-nav-back {
   display: flex;
   align-items: center;
@@ -149,7 +185,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   transition: opacity 0.2s;
 }
 
-.profile-nav-back:hover { opacity: 0.7; }
+.profile-nav-back:hover {
+  opacity: 0.7;
+}
 
 .profile-nav-title {
   font-size: 16px;
@@ -159,9 +197,13 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   color: var(--pf-text);
 }
 
-.profile-nav-title span { color: var(--pf-accent); }
+.profile-nav-title span {
+  color: var(--pf-accent);
+}
 
-.profile-nav-sep { flex: 1; }
+.profile-nav-sep {
+  flex: 1;
+}
 
 .profile-nav-action {
   background: rgba(0, 207, 255, 0.08);
@@ -329,7 +371,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .profile-loading-text {
@@ -398,9 +442,20 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 @keyframes aurora-shift {
-  0% { opacity: 0.6; transform: scale(1) translateY(0); }
-  50% { opacity: 1; transform: scale(1.05) translateY(-5px); }
-  100% { opacity: 0.7; transform: scale(1) translateY(3px); }
+  0% {
+    opacity: 0.6;
+    transform: scale(1) translateY(0);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.05) translateY(-5px);
+  }
+
+  100% {
+    opacity: 0.7;
+    transform: scale(1) translateY(3px);
+  }
 }
 
 /* Scanline overlay */
@@ -409,13 +464,11 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   position: absolute;
   inset: 0;
   background:
-    repeating-linear-gradient(
-      0deg,
+    repeating-linear-gradient(0deg,
       transparent,
       transparent 2px,
       rgba(0, 207, 255, 0.015) 2px,
-      rgba(0, 207, 255, 0.015) 4px
-    );
+      rgba(0, 207, 255, 0.015) 4px);
   pointer-events: none;
 }
 
@@ -493,8 +546,15 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 @keyframes status-pulse {
-  0%, 100% { box-shadow: 0 0 10px rgba(34, 197, 94, 0.4); }
-  50% { box-shadow: 0 0 18px rgba(34, 197, 94, 0.8); }
+
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(34, 197, 94, 0.4);
+  }
+
+  50% {
+    box-shadow: 0 0 18px rgba(34, 197, 94, 0.8);
+  }
 }
 
 /* Status tooltip */
@@ -540,8 +600,13 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   display: inline-block;
 }
 
-.profile-status-tooltip-title .dot.online { background: #22c55e; }
-.profile-status-tooltip-title .dot.offline { background: #6b7280; }
+.profile-status-tooltip-title .dot.online {
+  background: #22c55e;
+}
+
+.profile-status-tooltip-title .dot.offline {
+  background: #6b7280;
+}
 
 .profile-status-tooltip-row {
   display: flex;
@@ -550,8 +615,14 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   font-size: 11px;
 }
 
-.profile-status-tooltip-row .label { color: var(--pf-text-muted); }
-.profile-status-tooltip-row .value { color: var(--pf-accent); font-family: var(--pf-mono); }
+.profile-status-tooltip-row .label {
+  color: var(--pf-text-muted);
+}
+
+.profile-status-tooltip-row .value {
+  color: var(--pf-accent);
+  font-family: var(--pf-mono);
+}
 
 /* Name / Info */
 .profile-identity {
@@ -578,7 +649,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   font-weight: 500;
 }
 
-.profile-username .at { color: var(--pf-accent); }
+.profile-username .at {
+  color: var(--pf-accent);
+}
 
 .profile-featured-medal {
   display: inline-flex;
@@ -650,7 +723,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   transition: opacity 0.2s;
 }
 
-.profile-section-more:hover { opacity: 0.7; }
+.profile-section-more:hover {
+  opacity: 0.7;
+}
 
 .profile-achievements {
   display: flex;
@@ -705,7 +780,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   transition: opacity 0.15s;
 }
 
-.achievement-badge:hover .achievement-badge-tooltip { opacity: 1; }
+.achievement-badge:hover .achievement-badge-tooltip {
+  opacity: 1;
+}
 
 .profile-medal-grid {
   display: grid;
@@ -873,11 +950,25 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 /* Stat card accent variants */
-.profile-stat-card[data-accent="green"]  .profile-stat-value { color: var(--pf-green); }
-.profile-stat-card[data-accent="gold"]   .profile-stat-value { color: var(--pf-gold); }
-.profile-stat-card[data-accent="purple"] .profile-stat-value { color: var(--pf-purple); }
-.profile-stat-card[data-accent="orange"] .profile-stat-value { color: var(--pf-orange); }
-.profile-stat-card[data-accent="red"]    .profile-stat-value { color: var(--pf-red); }
+.profile-stat-card[data-accent="green"] .profile-stat-value {
+  color: var(--pf-green);
+}
+
+.profile-stat-card[data-accent="gold"] .profile-stat-value {
+  color: var(--pf-gold);
+}
+
+.profile-stat-card[data-accent="purple"] .profile-stat-value {
+  color: var(--pf-purple);
+}
+
+.profile-stat-card[data-accent="orange"] .profile-stat-value {
+  color: var(--pf-orange);
+}
+
+.profile-stat-card[data-accent="red"] .profile-stat-value {
+  color: var(--pf-red);
+}
 
 /* ═══════════════════════
    HEATMAP (GitHub-style)
@@ -962,9 +1053,18 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   padding: 4px 0;
 }
 
-.profile-heatmap-canvas-wrap::-webkit-scrollbar { height: 4px; }
-.profile-heatmap-canvas-wrap::-webkit-scrollbar-track { background: transparent; }
-.profile-heatmap-canvas-wrap::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2); border-radius: 2px; }
+.profile-heatmap-canvas-wrap::-webkit-scrollbar {
+  height: 4px;
+}
+
+.profile-heatmap-canvas-wrap::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.profile-heatmap-canvas-wrap::-webkit-scrollbar-thumb {
+  background: rgba(0, 207, 255, 0.2);
+  border-radius: 2px;
+}
 
 #profileHeatmapCanvas {
   display: block;
@@ -1004,7 +1104,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
-.profile-heatmap-tooltip.visible { opacity: 1; }
+.profile-heatmap-tooltip.visible {
+  opacity: 1;
+}
 
 .profile-heatmap-tooltip strong {
   color: var(--pf-accent);
@@ -1125,9 +1227,19 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   flex: 1;
 }
 
-.profile-flight-route .airport { font-weight: 700; }
-.profile-flight-route .arrow { color: var(--pf-text-dim); font-size: 11px; }
-.profile-flight-route .missing { color: var(--pf-text-dim); font-style: italic; }
+.profile-flight-route .airport {
+  font-weight: 700;
+}
+
+.profile-flight-route .arrow {
+  color: var(--pf-text-dim);
+  font-size: 11px;
+}
+
+.profile-flight-route .missing {
+  color: var(--pf-text-dim);
+  font-style: italic;
+}
 
 .profile-flight-meta {
   display: flex;
@@ -1170,11 +1282,30 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
   letter-spacing: 0.3px;
 }
 
-.landing-badge.butter     { background: rgba(255, 213, 0, 0.15); color: var(--pf-gold); }
-.landing-badge.great      { background: rgba(0, 255, 133, 0.12); color: var(--pf-green); }
-.landing-badge.acceptable { background: rgba(0, 207, 255, 0.12); color: var(--pf-accent); }
-.landing-badge.hard       { background: rgba(251, 146, 60, 0.12); color: var(--pf-orange); }
-.landing-badge.crash      { background: rgba(248, 113, 113, 0.12); color: var(--pf-red); }
+.landing-badge.butter {
+  background: rgba(255, 213, 0, 0.15);
+  color: var(--pf-gold);
+}
+
+.landing-badge.great {
+  background: rgba(0, 255, 133, 0.12);
+  color: var(--pf-green);
+}
+
+.landing-badge.acceptable {
+  background: rgba(0, 207, 255, 0.12);
+  color: var(--pf-accent);
+}
+
+.landing-badge.hard {
+  background: rgba(251, 146, 60, 0.12);
+  color: var(--pf-orange);
+}
+
+.landing-badge.crash {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--pf-red);
+}
 
 /* ═══════════════════════
    LANDING QUALITY CHART
@@ -1221,21 +1352,56 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
    ANIMATIONS
    ═══════════════════════ */
 @keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(16px); }
-  to { opacity: 1; transform: translateY(0); }
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
-.profile-section { animation: fade-in-up 0.5s ease both; }
-.profile-section:nth-child(1) { animation-delay: 0.05s; }
-.profile-section:nth-child(2) { animation-delay: 0.1s; }
-.profile-section:nth-child(3) { animation-delay: 0.15s; }
-.profile-section:nth-child(4) { animation-delay: 0.2s; }
-.profile-section:nth-child(5) { animation-delay: 0.25s; }
-.profile-section:nth-child(6) { animation-delay: 0.3s; }
-.profile-section:nth-child(7) { animation-delay: 0.35s; }
+.profile-section {
+  animation: fade-in-up 0.5s ease both;
+}
 
-.profile-header { animation: fade-in-up 0.4s ease both; }
-.profile-banner { animation: fade-in-up 0.3s ease both; }
+.profile-section:nth-child(1) {
+  animation-delay: 0.05s;
+}
+
+.profile-section:nth-child(2) {
+  animation-delay: 0.1s;
+}
+
+.profile-section:nth-child(3) {
+  animation-delay: 0.15s;
+}
+
+.profile-section:nth-child(4) {
+  animation-delay: 0.2s;
+}
+
+.profile-section:nth-child(5) {
+  animation-delay: 0.25s;
+}
+
+.profile-section:nth-child(6) {
+  animation-delay: 0.3s;
+}
+
+.profile-section:nth-child(7) {
+  animation-delay: 0.35s;
+}
+
+.profile-header {
+  animation: fade-in-up 0.4s ease both;
+}
+
+.profile-banner {
+  animation: fade-in-up 0.3s ease both;
+}
 
 /* Number count-up animation helper */
 [data-animate-number] {
@@ -1246,7 +1412,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
    RESPONSIVE
    ═══════════════════════ */
 @media (max-width: 768px) {
-  .profile-banner { height: 160px; }
+  .profile-banner {
+    height: 160px;
+  }
 
   .profile-header {
     flex-direction: column;
@@ -1255,17 +1423,26 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
     gap: 12px;
   }
 
-  .profile-avatar { width: 96px; height: 96px; }
+  .profile-avatar {
+    width: 96px;
+    height: 96px;
+  }
 
-  .profile-display-name { font-size: 22px; }
+  .profile-display-name {
+    font-size: 22px;
+  }
 
   .profile-stats-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 
-  .profile-stat-value { font-size: 20px; }
+  .profile-stat-value {
+    font-size: 20px;
+  }
 
-  #profileWorldMap { height: 240px; }
+  #profileWorldMap {
+    height: 240px;
+  }
 
   .profile-flight-card {
     flex-direction: column;
@@ -1273,7 +1450,9 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
     gap: 8px;
   }
 
-  .profile-flight-meta { flex-wrap: wrap; }
+  .profile-flight-meta {
+    flex-wrap: wrap;
+  }
 
   .profile-status-tooltip {
     right: -40px;
@@ -1282,21 +1461,49 @@ body.profile-page::-webkit-scrollbar-thumb { background: rgba(0, 207, 255, 0.2);
 }
 
 @media (max-width: 480px) {
-  .profile-container { padding: 0 12px 40px; }
+  .profile-container {
+    padding: 0 12px 40px;
+  }
+
+  .profile-nav {
+    padding: 0 14px;
+    gap: 10px;
+  }
+
+  .profile-nav-logo {
+    display: none;
+  }
 
   .profile-stats-grid {
     grid-template-columns: 1fr 1fr;
     gap: 8px;
   }
 
-  .profile-stat-card { padding: 14px 12px; }
-  .profile-stat-value { font-size: 18px; }
+  .profile-stat-card {
+    padding: 14px 12px;
+  }
 
-  .profile-banner { height: 130px; margin-bottom: -36px; }
-  .profile-avatar { width: 80px; height: 80px; }
-  .profile-display-name { font-size: 20px; }
+  .profile-stat-value {
+    font-size: 18px;
+  }
 
-  .profile-heatmap-wrap { padding: 14px; }
+  .profile-banner {
+    height: 130px;
+    margin-bottom: -36px;
+  }
+
+  .profile-avatar {
+    width: 80px;
+    height: 80px;
+  }
+
+  .profile-display-name {
+    font-size: 20px;
+  }
+
+  .profile-heatmap-wrap {
+    padding: 14px;
+  }
 
   .profile-map-stats {
     flex-direction: column;

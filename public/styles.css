@@ -757,7 +757,7 @@ input:checked + .slider:before {
 
 /* Open button — sits next to search box */
 #flightListOpenBtn {
-  position: fixed; top: 76px; left: 16px; z-index: 9001;
+  position: fixed; top: 128px; left: 72px; z-index: 9001;
   background: rgba(13,20,32,0.88);
   border: 1px solid rgba(255,255,255,0.12);
   border-radius: 10px; color: #ffd500; font-size: 16px;
