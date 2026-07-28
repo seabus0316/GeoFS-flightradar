@@ -87,11 +87,12 @@ AircraftIconDB.load();
 // 2. 建構 icon URL
 // ─────────────────────────────────────────────────────────────
 const ICONS_BASE_PATH = '/icons/';
+const ICONS_VERSION = 'v2'; // 每次你修正過壞掉的圖示，就把這個數字/字串改掉
 const _iconSvgTextCache = new Map();
 const _iconDataUrlCache = new Map();
 
 function getIconUrl(aircraftType) {
-  return ICONS_BASE_PATH + AircraftIconDB.resolve(aircraftType);
+  return ICONS_BASE_PATH + AircraftIconDB.resolve(aircraftType) + '?' + ICONS_VERSION;
 }
 
 async function getColoredIconDataUrl(aircraftType, colorHex = '#ffd500') {
