@@ -725,6 +725,10 @@ function buildFlightHistoryDocument(session, user = null) {
 
 async function upsertFlightHistoryFromSession(session, user = null) {
   const history = buildFlightHistoryDocument(session, user);
+  if (!history.departure && !history.arrival) {
+    return null;
+  }
+  
   if (!history.sessionId) {
     return FlightHistory.create(history);
   }
