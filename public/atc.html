@@ -5033,7 +5033,8 @@
           longitude_deg: data.lon,
           municipality: data.city,
           iso_country: data.country,
-          iata: data.iata
+          iata: data.iata,
+          tz: data.tz
         }));
 
         console.log('✅ Loaded', airportsData.length, 'airports');
@@ -5144,6 +5145,40 @@
       minute.setAttribute("transform", `rotate(${m * 6} 20 20)`);
     }
 
+    function buildClockFaceMarkup(id, isDay) {
+      const faceFill = isDay ? "#f5f5f0" : "#1a1f2e";
+      const tickColor = isDay ? "#222" : "#ddd";
+      const pointerColor = isDay ? "black" : "white";
+
+      // 12/3/6/9 主刻度 + 其餘 8 個小刻度，純 SVG 畫，沒有外部圖片依賴
+      let ticks = "";
+      for (let i = 0; i < 12; i++) {
+        const angle = i * 30;
+        const isMain = i % 3 === 0;
+        const r1 = isMain ? 13 : 15;
+        const r2 = 17;
+        const rad = (angle - 90) * Math.PI / 180;
+        const x1 = 20 + r1 * Math.cos(rad);
+        const y1 = 20 + r1 * Math.sin(rad);
+        const x2 = 20 + r2 * Math.cos(rad);
+        const y2 = 20 + r2 * Math.sin(rad);
+        ticks += `<line x1="${x1.toFixed(2)}" y1="${y1.toFixed(2)}" x2="${x2.toFixed(2)}" y2="${y2.toFixed(2)}" stroke="${tickColor}" stroke-width="${isMain ? 1.4 : 0.8}"/>`;
+      }
+
+      return `
+    <defs>
+      <g id="clockHands-${id}">
+        <line id="${id}-hour" x1="20" y1="20" x2="20" y2="11" stroke="${pointerColor}" stroke-width="2" stroke-linecap="round"/>
+        <line id="${id}-minute" x1="20" y1="20" x2="20" y2="7" stroke="${pointerColor}" stroke-width="1" stroke-linecap="round"/>
+      </g>
+    </defs>
+    <circle cx="20" cy="20" r="18" fill="${faceFill}" stroke="${tickColor}" stroke-width="1"/>
+    ${ticks}
+    <circle cx="20" cy="20" r="1.6" fill="${pointerColor}"/>
+    <use href="#clockHands-${id}"/>
+  `;
+    }
+
     function createClockSVG(id, label, timeZone) {
       const container = document.createElement("div");
       container.style.textAlign = "center";
@@ -5162,24 +5197,8 @@
       } catch { }
 
       const isDay = hourNow >= 6 && hourNow < 18;
-      const clockFaceURL = isDay
-        ? "https://clock-day.short.gy/0Fxzwe"
-        : "https://clock-day.short.gy/2ZpDoNight";
-      const pointerColor = isDay ? "black" : "white";
 
-      svg.innerHTML = `
-    <defs>
-      <clipPath id="clockClip-${id}">
-        <circle cx="20" cy="20" r="18"/>
-      </clipPath>
-      <g id="clockHands-${id}">
-        <line id="${id}-hour" x1="20" y1="20" x2="20" y2="11" stroke="${pointerColor}" stroke-width="2"/>
-        <line id="${id}-minute" x1="20" y1="20" x2="20" y2="7" stroke="${pointerColor}" stroke-width="1"/>
-      </g>
-    </defs>
-    <image href="${clockFaceURL}" x="0" y="0" width="40" height="40" clip-path="url(#clockClip-${id})"/>
-    <use href="#clockHands-${id}"/>
-  `;
+      svg.innerHTML = buildClockFaceMarkup(id, isDay);
 
       container.appendChild(svg);
       return container;
@@ -5268,6 +5287,26 @@
 
     function getAirportLocalClockInfo(icao) {
       const airport = findAirportByIcao(icao);
+      const code = String(icao || '').toUpperCase();
+
+      // 優先使用機場資料庫提供的真實 IANA 時區 (例如 "Asia/Taipei")
+      // 這樣才能正確反映日光節約時間、國家統一時區(例如中國全境 UTC+8)等情況,
+      // 而不是單純用經度 / 15 去估算(estimate 在很多地方會差 1 小時以上)。
+      if (airport?.tz) {
+        try {
+          // 驗證這個時區字串是否為瀏覽器可辨識的合法 IANA 時區
+          new Intl.DateTimeFormat("en-US", { timeZone: airport.tz });
+          return {
+            label: `${code} LT`,
+            timeZone: airport.tz,
+            utcOffsetMinutes: null
+          };
+        } catch (e) {
+          // tz 字串無效,繼續往下 fallback
+        }
+      }
+
+      // Fallback: 找不到真實時區資料時,才用經度粗略估算 UTC 偏移
       const lon = Number(airport?.longitude_deg);
       if (!Number.isFinite(lon)) {
         return {
@@ -5280,14 +5319,23 @@
       const offsetHours = Math.max(-12, Math.min(14, Math.round(lon / 15)));
       const sign = offsetHours >= 0 ? '+' : '-';
       return {
-        label: `${String(icao || '').toUpperCase()} LT`,
+        label: `${code} LT`,
         timeZone: null,
         utcOffsetMinutes: offsetHours * 60,
-        offsetLabel: `UTC${sign}${String(Math.abs(offsetHours)).padStart(2, '0')}`
+        offsetLabel: `UTC${sign}${String(Math.abs(offsetHours)).padStart(2, '0')} (est.)`
       };
     }
 
+    let metarClockIntervalIds = [];
+    function clearMetarClockIntervals() {
+      metarClockIntervalIds.forEach(id => clearInterval(id));
+      metarClockIntervalIds = [];
+    }
+
     function showMetarWidget(metar, icao) {
+      // 先清掉舊時鐘的 interval,避免每次重開/搜尋都疊加新的計時器
+      clearMetarClockIntervals();
+
       let widget = document.getElementById('metarWidget');
       let toggleBtn = document.getElementById('metarToggle');
 
@@ -5390,7 +5438,8 @@
         const clockFaceURL = isDay ? "https://clock-day.short.gy/0Fxzwe" : "https://clock-day.short.gy/2ZpDoNight";
         const pointerColor = isDay ? "black" : "white";
 
-        const uniqueId = `clock-${label}-${Date.now()}`;
+        const safeIdPart = String(label || 'clock').replace(/[^a-zA-Z0-9_-]/g, '');
+        const uniqueId = `clock-${safeIdPart}-${Date.now()}-${Math.floor(Math.random() * 1e6)}`;
         svg.innerHTML = `
       <defs>
         <clipPath id="clockClip-${uniqueId}">
@@ -5431,7 +5480,8 @@
         }
 
         updateClock();
-        setInterval(updateClock, 1000);
+        const intervalId = setInterval(updateClock, 1000);
+        metarClockIntervalIds.push(intervalId);
 
         return container;
       }
