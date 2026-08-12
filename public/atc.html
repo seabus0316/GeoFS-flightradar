@@ -826,7 +826,8 @@
        Site Header — logo + brand
   ═══════════════════════════════════════ -->
   <div class="site-header">
-    <button id="menuToggle" style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; z-index: 10000; margin-right: 8px;">
+    <button id="menuToggle"
+      style="background: transparent; border: none; padding: 4px; cursor: pointer; display: flex; flex-direction: column; gap: 4px; z-index: 10000; margin-right: 8px;">
       <div style="width: 20px; height: 2px; background: #fff;"></div>
       <div style="width: 20px; height: 2px; background: #fff;"></div>
       <div style="width: 20px; height: 2px; background: #fff;"></div>
@@ -840,12 +841,14 @@
     </div>
 
     <!-- Account Display (Hidden by default) -->
-    <a href="/profile.html" id="topAccountDisplay" style="display:none; margin-left: auto; color: #fff; text-decoration: none; align-items: center; gap: 10px; cursor: pointer;">
+    <a href="/profile.html" id="topAccountDisplay"
+      style="display:none; margin-left: auto; color: #fff; text-decoration: none; align-items: center; gap: 10px; cursor: pointer;">
       <div style="display: flex; flex-direction: column; align-items: flex-end;">
         <span id="topAccountName" style="font-size: 14px; font-weight: 700; color: #fff; white-space: nowrap;"></span>
         <span id="topAccountSub" style="font-size: 11px; color: #aaa; white-space: nowrap;"></span>
       </div>
-      <img id="topAccountAvatar" src="" style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #5865F2; object-fit: cover;">
+      <img id="topAccountAvatar" src=""
+        style="width: 32px; height: 32px; border-radius: 50%; border: 1px solid #5865F2; object-fit: cover;">
     </a>
   </div>
 
@@ -1182,7 +1185,8 @@
 
       <!-- Jet Photos 摺疊選單 -->
       <details style="margin-top: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
-        <summary style="color: #fff; cursor: pointer; font-size: 14px; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between;">
+        <summary
+          style="color: #fff; cursor: pointer; font-size: 14px; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between;">
           <div style="display: flex; align-items: center; gap: 12px;">
             <span style="font-size: 20px;">📷</span>
             <span>Jet Photos</span>
@@ -1190,11 +1194,13 @@
           <span style="font-size: 12px; color: rgba(255,255,255,0.5);">▼</span>
         </summary>
         <div style="padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-          <a href="/upload.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
+          <a href="/upload.html"
+            style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
             <span style="font-size: 16px;">📸</span>
             <span style="font-size: 13px;">Upload Jet Photos</span>
           </a>
-          <a href="/gallery.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
+          <a href="/gallery.html"
+            style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
             <span style="font-size: 16px;">🖼️</span>
             <span style="font-size: 13px;">Visit Our Gallery</span>
           </a>
@@ -1473,6 +1479,7 @@
       if (flCurrentTab === "live") {
         if (typeof aircrafts !== "undefined") {
           for (const [id, obj] of aircrafts.entries()) {
+            if (obj.idleHidden) continue; // 閒置隱藏中，不列入即時清單
             if (!_flFirstSeen.has(id)) _flFirstSeen.set(id, Date.now());
             items.push({ ...obj.data, _id: id });
           }
@@ -2318,6 +2325,7 @@
     const canvasRenderer = L.canvas();
 
     const aircrafts = new Map();
+    const IDLE_HIDE_MS = 60 * 1000; // 同一位置閒置超過此時間就先從雷達隱藏
     const PLANE_IMG = "https://i.ibb.co/6cNhyMMj/1.png";
     const NEXT_WAYPOINT_IMG = "https://i.ibb.co/4ZTy2Gds/watpoint.png";
     let focusedAircraftId = null;
@@ -3427,6 +3435,8 @@
           lastSeen: now,
           data: data,
           paused: false,
+          pausedSince: null,
+          idleHidden: false,
           lastPacketTs: now // 用於計算動畫時間
         });
       }
@@ -3445,8 +3455,25 @@
         prevData.alt === data.alt;
 
       obj.paused = isPaused;
+
+      // 閒置偵測：同一位置持續超過 IDLE_HIDE_MS 則先從雷達上隱藏（不移除，資料/航跡仍保留）
+      if (isPaused) {
+        if (!obj.pausedSince) obj.pausedSince = now;
+      } else {
+        obj.pausedSince = null;
+      }
+      const wasIdleHidden = obj.idleHidden;
+      obj.idleHidden = !!(obj.pausedSince && (now - obj.pausedSince > IDLE_HIDE_MS));
+
       const el = obj.marker.getElement();
-      if (el) el.style.opacity = isPaused ? "0.5" : "1";
+      if (el) {
+        el.style.opacity = isPaused ? "0.5" : "1";
+        el.style.display = obj.idleHidden ? "none" : "";
+      }
+      if (obj.idleHidden !== wasIdleHidden && typeof removeGlobeAircraft === 'function') {
+        // 閒置隱藏/取消隱藏時同步處理地球儀上的飛機顯示
+        if (obj.idleHidden) removeGlobeAircraft(id);
+      }
 
       // 更新儲存的資料
       obj.data = data;
@@ -3546,7 +3573,7 @@
         updateNextWaypointMarker(data); // 抽出更新 Waypoint 的邏輯
       }
 
-      if (typeof updateGlobeAircraft === 'function') {
+      if (!obj.idleHidden && typeof updateGlobeAircraft === 'function') {
         updateGlobeAircraft(id, data);
       }
     }
@@ -5967,10 +5994,10 @@
         // --- Populate top right account display ---
         const topAccountDisplay = document.getElementById("topAccountDisplay");
         if (topAccountDisplay) {
-            document.getElementById("topAccountAvatar").src = avatar.src;
-            document.getElementById("topAccountName").textContent = displayName.textContent;
-            document.getElementById("topAccountSub").textContent = `@${u.user.username}` + (u.user.geofsUserId ? ` | ID: ${u.user.geofsUserId}` : "");
-            topAccountDisplay.style.display = "flex";
+          document.getElementById("topAccountAvatar").src = avatar.src;
+          document.getElementById("topAccountName").textContent = displayName.textContent;
+          document.getElementById("topAccountSub").textContent = `@${u.user.username}` + (u.user.geofsUserId ? ` | ID: ${u.user.geofsUserId}` : "");
+          topAccountDisplay.style.display = "flex";
         }
       }
 
