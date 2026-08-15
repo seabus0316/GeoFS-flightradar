@@ -1,3 +1,13 @@
+:root {
+  /* 統一的「霧面深色玻璃」變數，取代原本偏白、廉價感的 liquid glass */
+  --glass-bg: rgba(14, 20, 30, 0.46);
+  --glass-bg-hover: rgba(20, 28, 40, 0.62);
+  --glass-bg-active: rgba(26, 34, 46, 0.7);
+  --glass-border: rgba(255, 255, 255, 0.10);
+  --glass-border-hover: rgba(255, 255, 255, 0.18);
+  --glass-blur: 34px;
+  --glass-saturate: 140%;
+}
 @keyframes rotate-waypoint {
   from {
     transform: rotate(0deg);
@@ -72,8 +82,8 @@
 }
 
 .leaflet-aircraft-icon:hover .aircraft-tag {
-  background: rgba(255, 255, 255, 0.28) !important;
-  border-color: rgba(255, 255, 255, 0.5) !important;
+  background: rgba(22, 30, 42, 0.58) !important;
+  border-color: rgba(255, 255, 255, 0.2) !important;
 }
 
 /* Aircraft Panel Modern Styling */
@@ -98,41 +108,33 @@
   position: fixed;
   left: 10px;
   top: 100px;
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  color: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--glass-border);
   padding: 10px 15px;
   cursor: pointer;
   z-index: 99996;
   border-radius: 10px;
   font-size: 14px;
   font-weight: bold;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255,255,255,0.7) inset;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   transition: all 0.2s ease;
   position: relative;
 }
 
-#photoMapToggle::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 8%; right: 8%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
-}
-
 #photoMapToggle:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 0 6px 32px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255,255,255,0.85) inset;
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 6px 26px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
 
 #photoMapToggle.active {
-  background: rgba(255, 255, 255, 0.32);
-  border-color: rgba(255, 255, 255, 0.7);
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255,255,255,0.7) inset;
+  background: var(--glass-bg-active);
+  border-color: var(--glass-border-hover);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
 }
     /* 側邊照片面板 */
 #photoSidebar {
@@ -158,25 +160,25 @@
   right: 0;
   top: 50%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  color: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--glass-border);
   border-right: none;
   padding: 20px 10px;
   cursor: pointer;
   z-index: 99998;
   border-radius: 10px 0 0 10px;
   font-size: 18px;
-  box-shadow: -4px 0 24px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255,255,255,0.7) inset;
+  box-shadow: -4px 0 20px rgba(0, 0, 0, 0.35);
   transition: all 0.2s ease;
 }
 
 #photoToggle:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: -4px 0 32px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255,255,255,0.85) inset;
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: -4px 0 26px rgba(0, 0, 0, 0.4);
 }
 
 .photo-item {
@@ -288,19 +290,16 @@ html,body {
     html,body,#map { height:100%; margin:0; padding:0; }
     .label {
       font-family: Inter, "Noto Sans TC", Arial, sans-serif;
-      font-size: 12px;
-      padding: 4px 8px;
-      border-radius: 8px;
-      background: rgba(255, 255, 255, 0.15);
-      backdrop-filter: blur(var(--label-blur, 16px)) saturate(150%) brightness(1.05);
-      -webkit-backdrop-filter: blur(var(--label-blur, 16px)) saturate(150%) brightness(1.05);
-      border: 1px solid rgba(255, 255, 255, 0.25);
-      color: rgba(255, 255, 255, 0.95);
+      font-size: 10px;
+      padding: 3px 7px;
+      border-radius: 7px;
+      background: rgba(14, 20, 30, 0.46);
+      backdrop-filter: blur(var(--label-blur, 30px)) saturate(140%);
+      -webkit-backdrop-filter: blur(var(--label-blur, 30px)) saturate(140%);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: rgba(255, 255, 255, 0.92);
       opacity: var(--label-opacity, 1);
-      box-shadow: 
-        0 4px 16px rgba(0, 0, 0, 0.2), 
-        0 1px 0 rgba(255, 255, 255, 0.4) inset,
-        0 -1px 0 rgba(255, 255, 255, 0.05) inset;
+      box-shadow: 0 4px 14px rgba(0, 0, 0, 0.35);
       white-space: nowrap;
       margin-left: 6px;
       position: relative;
@@ -407,27 +406,27 @@ html,body {
   left: 0;
   top: 80%;
   transform: translateY(-50%);
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  color: rgba(255, 255, 255, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.42);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: rgba(255, 255, 255, 0.92);
+  border: 1px solid var(--glass-border);
   border-left: none;
   padding: 20px 10px;
   cursor: pointer;
   z-index: 99998;
   border-radius: 0 10px 10px 0;
   font-size: 18px;
-  box-shadow: 4px 0 24px rgba(0, 0, 0, 0.18), 0 1px 0 rgba(255,255,255,0.7) inset;
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.35);
   writing-mode: vertical-rl;
   text-orientation: mixed;
   transition: all 0.2s ease;
 }
 
 #metarToggle:hover {
-  background: rgba(255, 255, 255, 0.35);
-  border-color: rgba(255, 255, 255, 0.75);
-  box-shadow: 4px 0 32px rgba(0, 0, 0, 0.22), 0 1px 0 rgba(255,255,255,0.85) inset;
+  background: var(--glass-bg-hover);
+  border-color: var(--glass-border-hover);
+  box-shadow: 4px 0 26px rgba(0, 0, 0, 0.4);
 }
 
 /* METAR Widget 側邊欄樣式 */
@@ -593,37 +592,33 @@ input:checked + .slider:before {
   }
 }
 
-/* 漢堡選單按鈕 — Light Liquid Glass */
+/* 漢堡選單按鈕 */
 #menuToggle {
   transition: all 0.2s ease !important;
   touch-action: manipulation;
+  border-radius: 8px;
 }
 
 @media (hover: hover) {
   #menuToggle:hover {
-    background: rgba(255, 255, 255, 0.75) !important;
-    border-color: rgba(255, 255, 255, 0.9) !important;
-    box-shadow: 0 6px 28px rgba(0, 0, 0, 0.25), 0 1px 0 rgba(255,255,255,1) inset !important;
+    background: rgba(255, 255, 255, 0.08) !important;
     transform: scale(1.05);
   }
 }
 
-/* ＋ － tileBtn wxBtn — iOS 26 Liquid Glass */
+/* ＋ － tileBtn wxBtn — 深色霧面玻璃 */
 .map-control-btn {
   width: 44px;
   height: 44px;
   border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: rgba(255, 255, 255, 0.92);
   font-size: 22px;
   cursor: pointer;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 -1px 0 rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -633,21 +628,11 @@ input:checked + .slider:before {
   touch-action: manipulation;
 }
 
-.map-control-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 8%; right: 8%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
-}
-
 @media (hover: hover) {
   .map-control-btn:hover {
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.75);
-    box-shadow:
-      0 6px 32px rgba(0, 0, 0, 0.22),
-      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.4);
     transform: translateY(-1px);
   }
 }
@@ -670,20 +655,17 @@ input:checked + .slider:before {
 }
 .leaflet-tooltip.atc-target-label::before { display: none !important; }
 
-/* ATC 模式按鈕 — iOS 26 Liquid Glass */
+/* ATC 模式按鈕 — 深色霧面玻璃 */
 .atc-mode-btn {
   width: 44px; height: 44px; border-radius: 14px;
-  border: 1px solid rgba(255, 255, 255, 0.42);
-  background: rgba(255, 255, 255, 0.18);
-  backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-  color: rgba(255, 255, 255, 0.95);
+  border: 1px solid var(--glass-border);
+  background: var(--glass-bg);
+  backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+  color: rgba(255, 255, 255, 0.92);
   font-size: 18px;
   cursor: pointer;
-  box-shadow:
-    0 4px 24px rgba(0, 0, 0, 0.18),
-    0 1px 0 rgba(255, 255, 255, 0.7) inset,
-    0 -1px 0 rgba(255, 255, 255, 0.1) inset;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
   display: flex; align-items: center; justify-content: center;
   transition: all 0.2s ease;
   position: relative;
@@ -691,21 +673,11 @@ input:checked + .slider:before {
   touch-action: manipulation;
 }
 
-.atc-mode-btn::before {
-  content: '';
-  position: absolute;
-  top: 0; left: 8%; right: 8%;
-  height: 1px;
-  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
-}
-
 @media (hover: hover) {
   .atc-mode-btn:hover {
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.75);
-    box-shadow:
-      0 6px 32px rgba(0, 0, 0, 0.22),
-      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.4);
     transform: translateY(-1px);
   }
 }
@@ -1087,44 +1059,30 @@ input:checked + .slider:before {
     to   { transform: translateY(0);    opacity: 1;   }
   }
 }
- /* ── What's New Button — matches .atc-mode-btn Liquid Glass ── */
+ /* ── What's New Button — 深色霧面玻璃 ── */
   #whatsNewBtn {
     position: relative; /* for badge positioning */
     width: 44px;
     height: 44px;
     border-radius: 14px;
-    border: 1px solid rgba(255, 255, 255, 0.42);
-    background: rgba(255, 255, 255, 0.18);
-    backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-    -webkit-backdrop-filter: blur(22px) saturate(175%) brightness(1.08);
-    color: rgba(255, 255, 255, 0.95);
+    border: 1px solid var(--glass-border);
+    background: var(--glass-bg);
+    backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(var(--glass-saturate));
+    color: rgba(255, 255, 255, 0.92);
     font-size: 18px;
     cursor: pointer;
-    box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.18),
-      0 1px 0 rgba(255, 255, 255, 0.7) inset,
-      0 -1px 0 rgba(255, 255, 255, 0.1) inset;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.35);
     display: flex;
     align-items: center;
     justify-content: center;
     transition: all 0.2s ease;
     overflow: visible; /* allow badge to overflow */
   }
-  /* Top gloss line — same as atc-mode-btn::before */
-  #whatsNewBtn::before {
-    content: '';
-    position: absolute;
-    top: 0; left: 8%; right: 8%;
-    height: 1px;
-    background: linear-gradient(90deg, transparent, rgba(255,255,255,0.85), transparent);
-    border-radius: 14px 14px 0 0;
-  }
   #whatsNewBtn:hover {
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.75);
-    box-shadow:
-      0 6px 32px rgba(0, 0, 0, 0.22),
-      0 1px 0 rgba(255, 255, 255, 0.85) inset;
+    background: var(--glass-bg-hover);
+    border-color: var(--glass-border-hover);
+    box-shadow: 0 6px 26px rgba(0, 0, 0, 0.4);
     transform: translateY(-1px);
   }
   #whatsNewBtn.active {
