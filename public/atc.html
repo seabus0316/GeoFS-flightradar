@@ -450,10 +450,156 @@
     const alt = Math.round(Number(altFt) || 0);
     return `FL${Math.round(alt / 100)}`;
   }
-  // 機身標籤專用：把機型全名縮短成類似 ICAO 機型簡稱 (e.g. "A380-800" → "A388")
+  // 機型全名 → 簡稱對照表（依 planes.json 飛機清單建立，精準對應每一種機型）
+  const AIRCRAFT_TYPE_SHORT_MAP = {
+    'Antonov An-225 Mriya': 'AN225',
+    'ATR 72-600 (HOP!)': 'AT76',
+    'ATR 72-600 (Silver)': 'AT76',
+    'ATR 72-600 (UTair)': 'AT76',
+    'Aviat A-1B Husky': 'HUSKY',
+    'BAe 146-300/Avro RJ100': 'RJ1H',
+    'Bell UH-1H Iroquois': 'UH1H',
+    'Beta Alia Prototype (N250UT)': 'ALIA',
+    'Boeing 737 Max 8 (SpiceJet)': 'B38M',
+    'Boeing 737 Max 8 (TUI)': 'B38M',
+    'Boeing 737-200': 'B732',
+    'Boeing 737-700': 'B737',
+    'Boeing 737-800': 'B738',
+    'Boeing 737-800 (Spice9)': 'B738',
+    'Boeing 747-100 SCA': 'B741',
+    'Boeing 747-400': 'B744',
+    'Boeing 747-400 LCF': 'B74D',
+    'Boeing 747-8 Freighter': 'B748',
+    'Boeing 747-8i': 'B748',
+    'Boeing 747SP': 'B74S',
+    'Boeing 757-200': 'B752',
+    'Boeing 757-300': 'B753',
+    'Boeing 757-300 (wl)': 'B753',
+    'Boeing 767-300ER': 'B763',
+    'Boeing 767-400': 'B764',
+    'Boeing 777 Freighter': 'B77L',
+    'Boeing 777-300ER': 'B77W',
+    'Boeing 77x': 'B778',
+    'Boeing 787-10 Dreamliner (British Airways)': 'B78X',
+    'Boeing 787-10 Dreamliner (Etihad)': 'B78X',
+    'Boeing 787-8': 'B788',
+    'Boeing 787-9 Dreamliner': 'B789',
+    'Boeing 787-9 (Spice9)': 'B789',
+    'Boeing P8I Neptune': 'P8I',
+    'Bombardier CRJ-200': 'CRJ2',
+    'Bombardier CRJ-700': 'CRJ7',
+    'Bombardier Dash 8 Q400': 'DH8D',
+    'Bombardier Learjet 45 XR': 'LJ45',
+    'Britten-Norman BN-2 Islander (Loganair)': 'BN2P',
+    'Britten-Norman BN-2 Islander (St. Barth Commuter)': 'BN2P',
+    'Cameron R-650 Roziere Balloon': 'BALN',
+    'Caproni Stipa': 'STIP',
+    'Chance Vought F4U-1D Corsair': 'F4U',
+    'Chengdu J-20': 'J20',
+    'Cirrus SR22 GTS Turbo': 'SR22',
+    'Cirrus Vision Jet/SF50 G2': 'SF50',
+    'Comac C919-100': 'C919',
+    'CRJ-900': 'CRJ9',
+    'CubCrafters CC19 XCub': 'XCUB',
+    'Dassault Mirage 2000-5': 'M2K',
+    'Dassault Mirage F1': 'MIR1',
+    'Dornier 228-200': 'D228',
+    'Dornier do228-100 (Coast Guard)': 'D228',
+    'Embraer E175': 'E175',
+    'Embraer E190': 'E190',
+    'Embraer E195-E2': 'E295',
+    'Embraer EMB120 Brasilia': 'E120',
+    'Embraer ERJ-170': 'E170',
+    'Embraer ERJ-195AR (Breeze)': 'E195',
+    'Embraer ERJ145LR': 'E145',
+    'F-14B Tomcat': 'F14',
+    'F-15C Eagle': 'F15',
+    'F-22 Raptor': 'F22',
+    'F-35B Lightning II': 'F35',
+    'Falcon 9': 'F9',
+    'Goodyear Blimp': 'BLMP',
+    'Grumman E-2C Hawkeye': 'E2',
+    'Grumman JF2-5 Duck': 'JF2',
+    'Lockheed L-1011-1': 'L101',
+    'McDonnell Douglas MD-11': 'MD11',
+    'McDonnell Douglas DC-10-40': 'DC10',
+    'Lockheed Martin P-791 (LMH-1)': 'P791',
+    'Lockheed SR-71A Blackbird': 'SR71',
+    'MQ9B Reaper': 'MQ9B',
+    'Northrop Grumman B-2 Spirit': 'B2',
+    'Northrop YF-23': 'YF23',
+    'Pilatus PC12': 'PC12',
+    'Pilatus PC24': 'PC24',
+    'Piper PA-28 Floatplane': 'PA28',
+    'Piper Cub': 'CUB',
+    'Robinson R-44': 'R44',
+    'Robinson R22': 'R22',
+    'SAAB 340': 'SF34',
+    'Scaled 339 "SpaceShipTwo"': 'SS2',
+    'Boeing F/A-18F Super Hornet': 'F18',
+    'Scaled 348 "WhiteKnightTwo"': 'WK2',
+    'Sikorsky S-97 Raider': 'S97',
+    'Sonex-B Kit (Jabiru 3300)': 'SNX',
+    'de Havilland Canada DHC-2 Beaver': 'DHC2',
+    'Space Shuttle Atlantis (OV-104)': 'STS',
+    'Spirit of St Louis': 'SPST',
+    'Supermarine Spitfire Mk XIV': 'SPIT',
+    'UTVA75': 'UTVA',
+    'Vans RV6': 'RV6',
+    'Windward Performance Perlan II': 'PRLN',
+    'Zenith Stol CH701': 'CH701',
+    'Airbus A320': 'A320',
+    'Airbus A321': 'A321',
+    'Airbus A330': 'A330',
+    'Airbus A300-600': 'A306',
+    'Airbus A33X': 'A339',
+    'Airbus A330-900neo (Virgin Atlantic)': 'A339',
+    'Airbus A340': 'A340',
+    'Airbus A340-300': 'A343',
+    'Airbus A340-600': 'A346',
+    'Airbus A350': 'A350',
+    'Airbus A350-1000 XWB (NS-Studios)': 'A35K',
+    'Airbus A350-900 (GX Development)': 'A359',
+    'Airbus A380': 'A388',
+    'Cessna 172': 'C172',
+    'Alphajet PAF': 'ALJT',
+    'Embraer Phenom 100': 'E50P',
+    'de Havilland DHC6 Twin Otter': 'DHC6',
+    'F-16 Fighting Falcon': 'F16',
+    'Pitts Special S1': 'PTS1',
+    'Eurocopter EC135': 'EC35',
+    'Alisport Silent 2 Electro': 'SIL2',
+    'Pilatus PC-7 Mk-I': 'PC7',
+    'Colomban MC-15 Cri-cri': 'CRCR',
+    'Lockheed P-38 Lightning F-5B': 'P38',
+    'Douglas DC-3': 'DC3',
+    'Sukhoi Su-35': 'SU35',
+    'Concorde': 'CONC',
+    'Zlin Z-50': 'Z50',
+    'Cessna 152': 'C152',
+    'Tupolev Tu-204-100Spice_9 & AF267': 'TU204',
+    'Piper PA-28-161 Warrior II Aerobility': 'PA28',
+    'Bombardier Challenger 650': 'CL60',
+    'Airbus A220-300': 'BCS3',
+    'AgustaWestland AW609': 'AW609',
+  };
+  // 機身標籤專用：把機型全名縮短成簡稱 (e.g. "Airbus A380" → "A388")
+  // 1) 先查對照表（完全比對，其次不分大小寫比對）
+  // 2) 查不到時，用 ICAO 命名慣例的規則猜測（涵蓋常見機型變體）
+  // 3) 都不行時，用通用縮寫規則兜底
   function shortenAircraftType(type) {
     const raw = String(type || '').trim();
     if (!raw) return '??';
+
+    // 1) 對照表：完全比對
+    if (AIRCRAFT_TYPE_SHORT_MAP[raw]) return AIRCRAFT_TYPE_SHORT_MAP[raw];
+    // 1b) 對照表：不分大小寫比對（避免資料來源大小寫略有出入而查不到）
+    const rawLower = raw.toLowerCase();
+    for (const key in AIRCRAFT_TYPE_SHORT_MAP) {
+      if (key.toLowerCase() === rawLower) return AIRCRAFT_TYPE_SHORT_MAP[key];
+    }
+
+    // 2) 規則猜測（未收錄在對照表中的機型才會走到這裡）
     const s = raw.toUpperCase();
     let m;
 
@@ -499,12 +645,14 @@
     if (m = s.match(/\bCRJ[\s-]?(700|900|1000)\b/)) return m[1] === '1000' ? 'CRJX' : `CRJ${m[1][0]}`;
     if (m = s.match(/\bATR[\s-]?(72|42)\b/)) return `AT${m[1]}`;
 
-    // ── 通用 fallback：去除空白/破折號，取「字母前綴＋數字」，最多 6 字 ──
+    // 3) 通用 fallback：優先抓「字母＋數字」型態的機型碼片段（略過品牌全名前綴），
+    //    找不到就退回去除空白/符號後的前 6 碼
     const compact = s.replace(/[^A-Z0-9]/g, '');
-    const generic = compact.match(/^([A-Z]{1,3})(\d{2,4})/);
-    if (generic) return `${generic[1]}${generic[2]}`.slice(0, 6);
+    const codeLike = s.match(/\b([A-Z]{1,4}\d{2,4}[A-Z]?)\b/);
+    if (codeLike) return codeLike[1].replace(/[\s-]/g, '').slice(0, 6);
     return compact.slice(0, 6) || raw;
   }
+
   function getFollowAircraftEnabled() {
     return !!_dsLoad().followAircraft;
   }
