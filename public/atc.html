@@ -119,20 +119,6 @@
               style="width:100%;accent-color:#00cfff;cursor:pointer;height:4px;" oninput="applySettings()">
           </div>
 
-          <!-- Aircraft Panel Blur -->
-          <div class="settings-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
-              <span style="font-size:12px;color:#cdd;">
-                <i data-lucide="blend" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-                Aircraft Panel Blur
-              </span>
-              <span id="panelBlurVal"
-                style="font-size:12px;color:#a78bfa;font-weight:700;min-width:38px;text-align:right;">0px</span>
-            </div>
-            <input type="range" id="panelBlurSlider" min="0" max="20" value="0" step="1"
-              style="width:100%;accent-color:#a78bfa;cursor:pointer;height:4px;" oninput="applySettings()">
-          </div>
-
           <!-- Button Glass -->
           <div class="settings-section settings-divider">
             <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
@@ -145,19 +131,6 @@
             </div>
             <input type="range" id="buttonOpacitySlider" min="15" max="100" value="100" step="5"
               style="width:100%;accent-color:#f59e0b;cursor:pointer;height:4px;" oninput="applySettings()">
-          </div>
-
-          <div class="settings-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
-              <span style="font-size:12px;color:#cdd;">
-                <i data-lucide="sparkles" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-                Button Blur
-              </span>
-              <span id="buttonBlurVal"
-                style="font-size:12px;color:#fb7185;font-weight:700;min-width:38px;text-align:right;">22px</span>
-            </div>
-            <input type="range" id="buttonBlurSlider" min="0" max="30" value="22" step="1"
-              style="width:100%;accent-color:#fb7185;cursor:pointer;height:4px;" oninput="applySettings()">
           </div>
 
           <!-- Aircraft Label Opacity -->
@@ -174,19 +147,6 @@
               style="width:100%;accent-color:#38bdf8;cursor:pointer;height:4px;" oninput="applySettings()">
           </div>
 
-          <!-- Aircraft Label Blur -->
-          <div class="settings-section">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:7px;">
-              <span style="font-size:12px;color:#cdd;">
-                <i data-lucide="droplet" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
-                Label Blur
-              </span>
-              <span id="labelBlurVal"
-                style="font-size:12px;color:#f472b6;font-weight:700;min-width:38px;text-align:right;">16px</span>
-            </div>
-            <input type="range" id="labelBlurSlider" min="0" max="30" value="16" step="1"
-              style="width:100%;accent-color:#f472b6;cursor:pointer;height:4px;" oninput="applySettings()">
-          </div>
         </div>
       </div>
 
@@ -384,10 +344,10 @@
     panelOpacity: 100,
     panelBlur: 0,
     buttonOpacity: 100,
-    buttonBlur: 22,
+    buttonBlur: 30,
     trailOpacity: 100,
     labelOpacity: 100,
-    labelBlur: 16,
+    labelBlur: 26,
     followAircraft: false,
     followUpdateAmount: 3,
     showLabels: true,
@@ -411,8 +371,8 @@
   function _applyButtonGlass(el, opacity, blur) {
     if (!el) return;
     el.style.opacity = opacity / 100;
-    el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(175%) brightness(1.08)` : '';
-    el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(175%) brightness(1.08)` : '';
+    el.style.backdropFilter = blur > 0 ? `blur(${blur}px) saturate(140%)` : '';
+    el.style.webkitBackdropFilter = blur > 0 ? `blur(${blur}px) saturate(140%)` : '';
   }
   function _syncDisplayPanels(opacity, blur) {
     ['wxPanel', 'tilePanel', 'aircraftPanel'].forEach(id => {
@@ -484,6 +444,66 @@
   function getAltitudeAxisLabel() {
     const unit = getAltitudeUnit();
     return unit === 'fl' ? 'Altitude (FL)' : unit === 'feet' ? 'Altitude (ft)' : 'Altitude (Auto)';
+  }
+  // 機身標籤專用：高度一律以 FL 顯示（不受 Units 設定影響），讓標籤更精簡
+  function formatAltitudeFL(altFt) {
+    const alt = Math.round(Number(altFt) || 0);
+    return `FL${Math.round(alt / 100)}`;
+  }
+  // 機身標籤專用：把機型全名縮短成類似 ICAO 機型簡稱 (e.g. "A380-800" → "A388")
+  function shortenAircraftType(type) {
+    const raw = String(type || '').trim();
+    if (!raw) return '??';
+    const s = raw.toUpperCase();
+    let m;
+
+    // ── Boeing 737 ──
+    if (m = s.match(/737[\s-]?MAX[\s-]?(\d+)/)) return m[1] === '10' ? 'B3XM' : `B3${m[1]}M`;
+    if (m = s.match(/\b737[\s-]?(\d)\d\d\b/)) return `B73${m[1]}`;
+    // ── Boeing 747 ──
+    if (/\b747[\s-]?8\b/.test(s)) return 'B748';
+    if (/\b747[\s-]?SP\b/.test(s)) return 'B74S';
+    if (m = s.match(/\b747[\s-]?(\d)\d\d\b/)) return `B74${m[1]}`;
+    // ── Boeing 757 / 767 ──
+    if (m = s.match(/\b757[\s-]?(\d)\d\d\b/)) return `B75${m[1]}`;
+    if (m = s.match(/\b767[\s-]?(\d)\d\d\b/)) return `B76${m[1]}`;
+    // ── Boeing 777 ──
+    if (/\b777[\s-]?300[\s-]?ER\b/.test(s)) return 'B77W';
+    if (/\b777[\s-]?200[\s-]?ER\b/.test(s)) return 'B77L';
+    if (/\b777[\s-]?9\b/.test(s)) return 'B779';
+    if (/\b777[\s-]?8\b/.test(s)) return 'B778';
+    if (m = s.match(/\b777[\s-]?(\d)\d\d\b/)) return `B77${m[1]}`;
+    // ── Boeing 787 ──
+    if (/\b787[\s-]?10\b/.test(s)) return 'B78X';
+    if (m = s.match(/\b787[\s-]?(\d)\b/)) return `B78${m[1]}`;
+    // ── Airbus 廣體（家族+三位數變體 → A+家族第2碼+變體首碼）──
+    if (m = s.match(/\bA[\s-]?330[\s-]?(\d)\d\d\b/)) return `A33${m[1]}`;
+    if (m = s.match(/\bA[\s-]?340[\s-]?(\d)\d\d\b/)) return `A34${m[1]}`;
+    if (/\bA[\s-]?350[\s-]?1000\b/.test(s)) return 'A35K';
+    if (m = s.match(/\bA[\s-]?350[\s-]?(\d)\d\d\b/)) return `A35${m[1]}`;
+    if (m = s.match(/\bA[\s-]?380[\s-]?(\d)\d\d\b/)) return `A38${m[1]}`;
+    if (/\bA[\s-]?380\b/.test(s)) return 'A388';
+    // ── Airbus 窄體 neo/xlr ──
+    if (/\bA[\s-]?319[\s-]?NEO\b/.test(s)) return 'A19N';
+    if (/\bA[\s-]?320[\s-]?NEO\b/.test(s)) return 'A20N';
+    if (/\bA[\s-]?321[\s-]?(NEO|XLR)\b/.test(s)) return 'A21N';
+    if (m = s.match(/\bA[\s-]?31[89]\b/)) return m[0].replace(/[\s-]/g, '');
+    if (m = s.match(/\bA[\s-]?32[01]\b/)) return m[0].replace(/[\s-]/g, '');
+    // ── Airbus A220 ──
+    if (/\bA[\s-]?220[\s-]?100\b/.test(s) || /\bCS100\b/.test(s)) return 'BCS1';
+    if (/\bA[\s-]?220[\s-]?300\b/.test(s) || /\bCS300\b/.test(s)) return 'BCS3';
+    // ── 常見其他機型 ──
+    if (/\bMD[\s-]?11\b/.test(s)) return 'MD11';
+    if (/\bMD[\s-]?8[0-9]\b/.test(s)) return s.replace(/[\s-]/g, '').match(/MD8\d/)?.[0] || 'MD80';
+    if (/\bDC[\s-]?10\b/.test(s)) return 'DC10';
+    if (m = s.match(/\bCRJ[\s-]?(700|900|1000)\b/)) return m[1] === '1000' ? 'CRJX' : `CRJ${m[1][0]}`;
+    if (m = s.match(/\bATR[\s-]?(72|42)\b/)) return `AT${m[1]}`;
+
+    // ── 通用 fallback：去除空白/破折號，取「字母前綴＋數字」，最多 6 字 ──
+    const compact = s.replace(/[^A-Z0-9]/g, '');
+    const generic = compact.match(/^([A-Z]{1,3})(\d{2,4})/);
+    if (generic) return `${generic[1]}${generic[2]}`.slice(0, 6);
+    return compact.slice(0, 6) || raw;
   }
   function getFollowAircraftEnabled() {
     return !!_dsLoad().followAircraft;
@@ -2357,13 +2377,13 @@
     <div style="display:flex;align-items:flex-start;width:max-content;height:max-content;">
       <img src="${getIconUrl(data.type)}" width="${imgW}" height="${imgH}" style="flex-shrink:0;transform:rotate(${data.heading || 0}deg);transform-origin:center;display:block;filter:${isFocused ? 'brightness(0) saturate(100%) invert(18%) sepia(99%) saturate(3000%) hue-rotate(350deg) brightness(110%)' : 'brightness(0) saturate(100%) invert(83%) sepia(95%) saturate(700%) hue-rotate(2deg) brightness(105%)'};" onerror="this.src='/icons/c0.svg'"/>
       <div class="${labelClass} aircraft-tag" style="--alt-color: ${color};align-self:center;">
-        <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
-        <div style="font-size:11px;">
-          ${escapeHtml(data.type || '??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
+        <strong style="font-size:10px;">${escapeHtml(data.callsign || 'UNK')}</strong>
+        <div style="font-size:10px;">
+          ${escapeHtml(shortenAircraftType(data.type))} · <span style="color:${color};font-weight:bold;">${formatAltitudeFL(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
-        <div style="font-size:11px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        <div style="font-size:10px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${divertText}
-        ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+        ${squawkText ? `<div style="font-size:10px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
       </div>
     </div>`,
         className: 'leaflet-aircraft-icon', iconSize: null, iconAnchor: [imgW / 2, imgW / 2]
@@ -3540,13 +3560,13 @@
           label.className = isEmergency ? 'label emergency' : 'label';
           label.style.borderLeft = `3px solid ${color}`;
           label.innerHTML = `
-        <strong>${escapeHtml(data.callsign || 'UNK')}</strong>
-        <div style="font-size:11px;">
-          ${escapeHtml(data.type || '??')} · <span style="color:${color};font-weight:bold;">${formatAltitude(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
+        <strong style="font-size:10px;">${escapeHtml(data.callsign || 'UNK')}</strong>
+        <div style="font-size:10px;">
+          ${escapeHtml(shortenAircraftType(data.type))} · <span style="color:${color};font-weight:bold;">${formatAltitudeFL(data.alt || 0)}</span> · ${formatSpeedWithUnit(data.speed, data)}
         </div>
-        <div style="font-size:11px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
+        <div style="font-size:10px;">${escapeHtml(data.flightNo || '')} ${escapeHtml(depShort)}→${escapeHtml(arrShort)}</div>
         ${divertText}
-        ${squawkText ? `<div style="font-size:11px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
+        ${squawkText ? `<div style="font-size:10px;font-weight:bold;color:#ffff00;">${squawkText}</div>` : ''}
       `;
         }
       }
