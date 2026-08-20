@@ -696,7 +696,7 @@ input:checked + .slider:before {
   position: fixed;
   top: 130px;
   left: 76px;
-  width: 320px;
+  width: 270px;
   max-height: calc(100vh - 90px);
   background: rgba(13, 20, 32, 0.92);
   backdrop-filter: blur(24px) saturate(180%);
@@ -793,6 +793,8 @@ input:checked + .slider:before {
 }
 .fl-logo img { width: 30px; height: 30px; object-fit: contain; }
 .fl-logo-fb { font-size: 18px; line-height: 1; }
+.fl-logo-svg { display: flex; align-items: center; justify-content: center; }
+.fl-item .fl-logo:has(.fl-logo-svg) { background: transparent; border-color: transparent; }
 
 /* Info block */
 .fl-info { flex: 1; min-width: 0; }
