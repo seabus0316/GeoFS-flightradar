@@ -3495,12 +3495,26 @@
     "country": "South Africa",
     "logo": "https://i.ibb.co/hR53f8Dt/Untitled-18-August-2026-at-11-07-35-1.png"
   },
-    "EXY": {
+    "MGY": {
     "name": "South African Express",
     "icao": "MGY",
     "iata": "MGY",
     "country": "Madascar",
     "logo": "https://i.ibb.co/RG3L2FpS/image.png"
+  },
+    "TWA": {
+    "name": "Trans World Airlines",
+    "icao": "TWA",
+    "iata": "TW",
+    "country": "USA",
+    "logo": "https://i.ibb.co/4nJhqBmM/image.png"
+  },
+    "MDG": {
+    "name": "Trans World Airlines",
+    "icao": "MDG",
+    "iata": "MD",
+    "country": "Madascar",
+    "logo": "https://i.ibb.co/ks8Pnq9k/image.png"
   }
 
 }
