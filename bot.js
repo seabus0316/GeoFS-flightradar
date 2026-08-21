@@ -385,13 +385,13 @@ client.on('messageCreate', async message => {
       name: `airline-export-${batch.exportedAt.replace(/[:.]/g, '-')}.json`,
     });
 
-    return message.reply({
+    await message.reply({
       content: `Exported ${batch.count} new airline submission${batch.count === 1 ? '' : 's'}.`,
       files: [attachment],
     });
   } catch (err) {
     console.error('?export error', err);
-    return message.reply('Failed to export airline submissions.');
+    return message.reply(`Failed to export airline submissions. Error: ${err.message}`);
   }
 });
 
