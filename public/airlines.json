@@ -3431,5 +3431,76 @@
     "iata": "QI",
     "country": "Nigeria",
     "logo": "https://images.kiwi.com/airlines/64/QI.png"
+  },
+   "BLA": {
+    "name": "Bengal Airways",
+    "icao": "BLA",
+    "iata": "BL",
+    "country": "India",
+    "logo": "https://raw.githubusercontent.com/abhishnayak594/Bengal-Airways-A-GeoFS-Virtual-Airline/refs/heads/main/logo.png"
+  },
+    "PA": {
+    "name": "Pacific Airlines",
+    "icao": "PA",
+    "iata": "PAC",
+    "country": "Canada",
+    "logo": "https://static.wikia.nocookie.net/geofsaviation/images/0/03/Pacific_Airline_Logo.png/revision/latest?cb=20221121124116"
+  },
+    "SN": {
+    "name": "Sunrise",
+    "icao": "SN",
+    "iata": "SUN",
+    "country": "Australia",
+    "logo": "https://static.wikia.nocookie.net/geofsaviation/images/d/d2/Sunrise_logo.png/revision/latest/scale-to-width-down/1000?cb=20250817234333"
+  },
+    "URO": {
+    "name": "European Cargo",
+    "icao": "URO",
+    "iata": "SE",
+    "country": "United Kingdom",
+    "logo": "https://media.licdn.com/dms/image/v2/C4E0BAQHYH7ZzwNQH0Q/company-logo_200_200/company-logo_200_200/0/1641368830532/european_cargo_logo?e=2147483647&v=beta&t=yqoFOWXZz1FfwOoq8pLH9K6-xsx12su9dKSiCdW1b2M"
+  },
+    "JMA": {
+    "name": "Jambojet",
+    "icao": "JMA",
+    "iata": "JM",
+    "country": "Kenya",
+    "logo": "https://images.kiwi.com/airlines/64/JM.png"
+  },
+    "FFV": {
+    "name": "Fly540",
+    "icao": "FFV",
+    "iata": "FFV",
+    "country": "Kenya",
+    "logo": "https://images.kiwi.com/airlines/64/5H.png"
+  },
+    "EXZ": {
+    "name": "Eastafrican",
+    "icao": "EXZ",
+    "iata": "B5",
+    "country": "Kenya",
+    "logo": "https://i.ibb.co/Y4Ts1MGC/Untitled-17-August-2026-at-08-06-16.png"
+  },
+    "MNO": {
+    "name": "Mango Airlines",
+    "icao": "MNO",
+    "iata": "JE",
+    "country": "South Africa",
+    "logo": "https://i.ibb.co/212XSPTq/Untitled-18-August-2026-at-11-07-35.png"
+  },
+    "CAW": {
+    "name": "Kulula.com",
+    "icao": "CAW",
+    "iata": "MN",
+    "country": "South Africa",
+    "logo": "https://i.ibb.co/hR53f8Dt/Untitled-18-August-2026-at-11-07-35-1.png"
+  },
+    "EXY": {
+    "name": "South African Express",
+    "icao": "MGY",
+    "iata": "MGY",
+    "country": "Madascar",
+    "logo": "https://i.ibb.co/RG3L2FpS/image.png"
   }
+
 }
