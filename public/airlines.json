@@ -3498,7 +3498,7 @@
     "MGY": {
     "name": "South African Express",
     "icao": "MGY",
-    "iata": "MGY",
+    "iata": "EXY",
     "country": "Madascar",
     "logo": "https://i.ibb.co/RG3L2FpS/image.png"
   },
@@ -3510,7 +3510,7 @@
     "logo": "https://i.ibb.co/4nJhqBmM/image.png"
   },
     "MDG": {
-    "name": "Trans World Airlines",
+    "name": "Air Madascar",
     "icao": "MDG",
     "iata": "MD",
     "country": "Madascar",
