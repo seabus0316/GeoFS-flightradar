@@ -102,6 +102,20 @@ function clampNumber(value, min, max) {
   return Math.max(min, Math.min(max, value));
 }
 
+// 產生飛機追蹤用的 aircraftId：
+// 1. 優先使用客戶端提供的 id
+// 2. 其次用 callsign（+ playerId）組成
+// 3. 沒有 callsign 時，若已知起點/終點/時間，仍視為有效飛行紀錄，改用 playerId/userId 組成 fallback id
+// 三者皆無則視為無效資料，回傳 null（不記錄）
+function resolveAircraftId(p) {
+  if (p.id) return p.id;
+  if (p.callsign) return p.callsign + ':' + (p.playerId || 'p');
+  if (p.departure && p.arrival && p.takeoffTime) {
+    return 'NOCALL:' + (p.playerId || p.userId || 'p');
+  }
+  return null;
+}
+
 function normalizeFlightLookup(value) {
   return String(value || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 }
@@ -728,7 +742,7 @@ async function upsertFlightHistoryFromSession(session, user = null) {
   if (!history.departure && !history.arrival) {
     return null;
   }
-  
+
   if (!history.sessionId) {
     return FlightHistory.create(history);
   }
@@ -1434,7 +1448,7 @@ async function logAdminAction(req, { action, targetType, targetId, before = null
 }
 
 async function handlePlayerPositionUpdate(p, context = {}) {
-  const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
+  const id = resolveAircraftId(p);
   if (!id) return null;
   clearPendingFlightFinalization(id);
   if (context.client) context.client.aircraftId = id;
@@ -1590,7 +1604,7 @@ io.on('connection', async (socket) => {
   });
 
   socket.on('position_update', async (p) => {
-    const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
+    const id = resolveAircraftId(p);
     if (!id) return;
     clearPendingFlightFinalization(id);
     if (socket.role === 'player') socket.aircraftId = id;
@@ -1773,7 +1787,7 @@ wss.on('connection', (ws) => {
 
       if (msg.type === 'position_update' && msg.payload) {
         const p = msg.payload;
-        const id = p.id || (p.callsign ? p.callsign + ':' + (p.playerId || 'p') : null);
+        const id = resolveAircraftId(p);
         if (!id) return;
         clearPendingFlightFinalization(id);
         if (ws.role === 'player') ws.aircraftId = id;
