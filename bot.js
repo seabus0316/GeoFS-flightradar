@@ -25,15 +25,15 @@ const {
 } = require('./airline-submission-log');
 
 // ============ 環境變數 ============
-const BOT_TOKEN          = process.env.DISCORD_BOT_TOKEN    || '';
-const CLIENT_ID          = process.env.DISCORD_CLIENT_ID    || '';
-const MONGODB_URI        = process.env.MONGODB_URI          || 'mongodb://localhost:27017/geofs_flightradar';
-const RADAR_URL          = process.env.RADAR_URL            || 'https://geofs-flightradar.duckdns.org';
+const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN || '';
+const CLIENT_ID = process.env.DISCORD_CLIENT_ID || '';
+const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/geofs_flightradar';
+const RADAR_URL = process.env.RADAR_URL || 'https://geofs-flightradar.duckdns.org';
 const AIRLINE_EXPORT_USER_ID = '1268961758102556757';
 const REMINDER_CHANNEL_ID = process.env.REMINDER_CHANNEL_ID || ''; // 固定提醒頻道
 
-if (!BOT_TOKEN)  { console.error('❌ DISCORD_BOT_TOKEN not set'); process.exit(1); }
-if (!CLIENT_ID)  { console.error('❌ DISCORD_CLIENT_ID not set');  process.exit(1); }
+if (!BOT_TOKEN) { console.error('❌ DISCORD_BOT_TOKEN not set'); process.exit(1); }
+if (!CLIENT_ID) { console.error('❌ DISCORD_CLIENT_ID not set'); process.exit(1); }
 if (!REMINDER_CHANNEL_ID) console.warn('⚠️  REMINDER_CHANNEL_ID not set — reminders will be sent as DM fallback');
 
 // ============ MongoDB Schemas（與 server.js 共用同一個 DB）============
@@ -53,83 +53,83 @@ mongoose.connection.on('error', (err) => {
 });
 
 const User = mongoose.model('User', new mongoose.Schema({
-  discordId:       String,
-  username:        String,
-  displayName:     String,
-  photos:          [String],
-  geofsUserId:     String,
-  isSuperAdmin:    Boolean,
+  discordId: String,
+  username: String,
+  displayName: String,
+  photos: [String],
+  geofsUserId: String,
+  isSuperAdmin: Boolean,
   managedAirlines: [String],
 }, { versionKey: false, strict: false }));
 
 // ── 用戶是否開啟倒數第二航點提醒
 const ReminderPreference = mongoose.model('ReminderPreference', new mongoose.Schema({
   discordId: { type: String, unique: true, index: true },
-  enabled:   { type: Boolean, default: true },
+  enabled: { type: Boolean, default: true },
   updatedAt: { type: Date, default: Date.now },
 }, { versionKey: false }));
 
 // ── 待發送通知（由 server.js 寫入，bot 輪詢發送）
 const PendingNotification = mongoose.model('PendingNotification', new mongoose.Schema({
-  discordId:           String,
-  callsign:            String,
-  arrival:             String,
+  discordId: String,
+  callsign: String,
+  arrival: String,
   penultimateWaypoint: String,
-  sent:                { type: Boolean, default: false, index: true },
-  createdAt:           { type: Date, default: Date.now },
+  sent: { type: Boolean, default: false, index: true },
+  createdAt: { type: Date, default: Date.now },
 }, { versionKey: false }));
 
 // ── 照片審核通知
 const PhotoNotification = mongoose.model('PhotoNotification', new mongoose.Schema({
-  discordId:    String,
-  photoId:      String,
-  type:         String, // 'approved' | 'rejected'
-  caption:      String,
-  thumbUrl:     String,
+  discordId: String,
+  photoId: String,
+  type: String, // 'approved' | 'rejected'
+  caption: String,
+  thumbUrl: String,
   rejectReason: String,
-  sent:         { type: Boolean, default: false, index: true },
-  createdAt:    { type: Date, default: Date.now },
+  sent: { type: Boolean, default: false, index: true },
+  createdAt: { type: Date, default: Date.now },
 }, { versionKey: false }));
 
 const FlightSession = mongoose.model('FlightSession', new mongoose.Schema({
-  aircraftId:  String,
-  discordId:   String,
+  aircraftId: String,
+  discordId: String,
   geofsUserId: String,
-  callsign:    String,
-  type:        String,
-  departure:   String,
-  arrival:     String,
-  startTime:   Number,
-  endTime:     Number,
-  duration:    Number,
-  maxAlt:      Number,
-  maxSpeed:    Number,
-  distanceNm:  Number,
-  status:      String,
+  callsign: String,
+  type: String,
+  departure: String,
+  arrival: String,
+  startTime: Number,
+  endTime: Number,
+  duration: Number,
+  maxAlt: Number,
+  maxSpeed: Number,
+  distanceNm: Number,
+  status: String,
 }, { versionKey: false, strict: false }));
 
 // ============ 工具函數 ============
 const FlightHistory = mongoose.model('FlightHistory', new mongoose.Schema({
-  sessionId:   mongoose.Schema.Types.ObjectId,
-  aircraftId:  String,
-  discordId:   String,
+  sessionId: mongoose.Schema.Types.ObjectId,
+  aircraftId: String,
+  discordId: String,
   geofsUserId: String,
-  username:    String,
+  username: String,
   displayName: String,
-  callsign:    String,
-  flightNo:    String,
-  type:        String,
-  departure:   String,
-  arrival:     String,
-  startTime:   Number,
-  endTime:     Number,
+  callsign: String,
+  flightNo: String,
+  type: String,
+  departure: String,
+  arrival: String,
+  startTime: Number,
+  endTime: Number,
   takeoffTime: Number,
   landingTime: Number,
-  duration:    Number,
-  maxAlt:      Number,
-  maxSpeed:    Number,
-  distanceNm:  Number,
-  status:      String,
+  duration: Number,
+  maxAlt: Number,
+  maxSpeed: Number,
+  distanceNm: Number,
+  status: String,
 }, { versionKey: false, strict: false }), 'flightHistory');
 
 function fmtDuration(secs) {
@@ -187,9 +187,9 @@ async function buildFlightsPage({ targetUser, ownerId, page }) {
   if (!flights.length) return null;
 
   const lines = flights.map((f) => {
-    const dep  = f.departure  || 'N/A';
-    const arr  = f.arrival    || 'N/A';
-    const dur  = fmtDuration(f.duration);
+    const dep = f.departure || 'N/A';
+    const arr = f.arrival || 'N/A';
+    const dur = fmtDuration(f.duration);
     const dist = f.distanceNm ? `${f.distanceNm} nm` : '—';
     const status = f.status === 'aborted' ? '⚠️' : '✅';
     return `${status} **${f.callsign || 'N/A'}** \`${dep} → ${arr}\`\n📅 ${fmtDateShort(f.startTime)} · ${dur} · ${dist}`;
@@ -303,10 +303,10 @@ const activities = [
   { name: 'SeaBus\'s unfunny jokes :(', type: ActivityType.Listening },
   { name: 'Geo-FS', type: ActivityType.Playing },
   { name: '67🫲🧒🫱', type: ActivityType.Playing },
-  { name: 'Bruh does JTHWEB really think this dumb geofs flightradar 26 could become better than mine?'},
-  { name: 'Facts about SeaBus: He\'s a poor 16-yeard-old Asian student lives in Taiwan. '},
-  { name: 'Facts about SeaBus: He\'s a right fielder in his baseball team, his number is 69'},
-  { name: 'Daaaaaaaaaa Yankees lose ~ ~ ~'},
+  { name: 'Bruh does JTHWEB really think this dumb geofs flightradar 26 could become better than mine?' },
+  { name: 'Facts about SeaBus: He\'s a poor 16-yeard-old Asian student lives in Taiwan. ' },
+  { name: 'Facts about SeaBus: He\'s a right fielder in his baseball team, his number is 69' },
+  { name: 'Daaaaaaaaaa Yankees lose ~ ~ ~' },
 ];
 
 function setRandomActivity() {
@@ -550,11 +550,11 @@ client.on('interactionCreate', async interaction => {
         { discordId: interaction.user.id },
         {
           $set: {
-            discordId:   interaction.user.id,
-            username:    interaction.user.username,
+            discordId: interaction.user.id,
+            username: interaction.user.username,
             displayName: interaction.user.displayName || interaction.user.username,
             geofsUserId: geofsId,
-            linkedAt:    new Date()
+            linkedAt: new Date()
           }
         },
         { upsert: true }
@@ -594,29 +594,43 @@ client.on('interactionCreate', async interaction => {
 
       const stats = await FlightHistory.aggregate([
         { $match: { discordId: targetUser.id } },
-        { $group: {
-          _id: null,
-          totalFlights:    { $sum: 1 },
-          totalDistanceNm: { $sum: '$distanceNm' },
-          totalDuration:   { $sum: '$duration' },
-          maxAlt:          { $max: { $cond: [
-            { $and: [
-              { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
-              { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
-            ] },
-            '$maxAlt',
-            0
-          ] } },
-          maxSpeed:        { $max: { $cond: [
-            { $and: [
-              { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
-              { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
-            ] },
-            '$maxSpeed',
-            0
-          ] } },
-          completed:       { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }
-        }}
+        {
+          $group: {
+            _id: null,
+            totalFlights: { $sum: 1 },
+            totalDistanceNm: { $sum: '$distanceNm' },
+            totalDuration: { $sum: '$duration' },
+            maxAlt: {
+              $max: {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ['$maxAlt', RECORD_ALTITUDE_MIN_FT] },
+                      { $lte: ['$maxAlt', RECORD_ALTITUDE_MAX_FT] }
+                    ]
+                  },
+                  '$maxAlt',
+                  0
+                ]
+              }
+            },
+            maxSpeed: {
+              $max: {
+                $cond: [
+                  {
+                    $and: [
+                      { $gte: ['$maxSpeed', RECORD_SPEED_MIN_KTS] },
+                      { $lte: ['$maxSpeed', RECORD_SPEED_MAX_KTS] }
+                    ]
+                  },
+                  '$maxSpeed',
+                  0
+                ]
+              }
+            },
+            completed: { $sum: { $cond: [{ $eq: ['$status', 'completed'] }, 1, 0] } }
+          }
+        }
       ]);
 
       const s = stats[0] || { totalFlights: 0, totalDistanceNm: 0, totalDuration: 0 };
@@ -628,12 +642,12 @@ client.on('interactionCreate', async interaction => {
         .setTitle(`📊 Flight Stats — ${targetUser.displayName || targetUser.username}`)
         .setThumbnail(targetUser.displayAvatarURL())
         .addFields(
-          { name: '✈ Total Flights',   value: `${s.totalFlights || 0}`,                         inline: true },
-          { name: '✅ Completed',       value: `${s.completed || 0}`,                             inline: true },
-          { name: '📏 Total Distance',  value: `${(s.totalDistanceNm || 0).toLocaleString()} nm`, inline: true },
-          { name: '⏱ Total Airtime',   value: `${totalH}h ${totalM}m`,                           inline: true },
-          { name: '🔝 Record Altitude', value: s.maxAlt   ? `${s.maxAlt.toLocaleString()} ft`   : '—', inline: true },
-          { name: '💨 Record Speed',    value: s.maxSpeed ? `${s.maxSpeed} kts`                 : '—', inline: true },
+          { name: '✈ Total Flights', value: `${s.totalFlights || 0}`, inline: true },
+          { name: '✅ Completed', value: `${s.completed || 0}`, inline: true },
+          { name: '📏 Total Distance', value: `${(s.totalDistanceNm || 0).toLocaleString()} nm`, inline: true },
+          { name: '⏱ Total Airtime', value: `${totalH}h ${totalM}m`, inline: true },
+          { name: '🔝 Record Altitude', value: s.maxAlt ? `${s.maxAlt.toLocaleString()} ft` : '—', inline: true },
+          { name: '💨 Record Speed', value: s.maxSpeed ? `${s.maxSpeed} kts` : '—', inline: true },
         )
         .setFooter({ text: `GeoFS ID: ${dbUser.geofsUserId} · GeoFS Radar`, iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
 
@@ -645,11 +659,11 @@ client.on('interactionCreate', async interaction => {
   }
 
   // ── /flights ───────────────────────────────────────────────
-// ── /flights ───────────────────────────────────────────────
+  // ── /flights ───────────────────────────────────────────────
   else if (commandName === 'flights') {
     await interaction.deferReply();
     const targetUser = interaction.options.getUser('user') || interaction.user;
-    const page       = (interaction.options.getInteger('page') || 1) - 1;
+    const page = (interaction.options.getInteger('page') || 1) - 1;
 
     try {
       if (!isMongoReady()) {
@@ -699,9 +713,10 @@ client.on('interactionCreate', async interaction => {
 
       const dbUser = await User.findOne({ discordId: targetUser.id }).lean();
       if (!dbUser || !dbUser.geofsUserId) {
-        return interaction.editReply({ content: targetUser.id === interaction.user.id
-          ? '❌ You need to link your GeoFS ID first with `/link` before sharing your profile.'
-          : `❌ ${targetUser.username} has not linked a GeoFS ID yet, so their profile cannot be shared.`
+        return interaction.editReply({
+          content: targetUser.id === interaction.user.id
+            ? '❌ You need to link your GeoFS ID first with `/link` before sharing your profile.'
+            : `❌ ${targetUser.username} has not linked a GeoFS ID yet, so their profile cannot be shared.`
         });
       }
 
@@ -785,7 +800,7 @@ async function processPendingNotifications() {
     const pending = await PendingNotification.find({ sent: false }).lean();
     for (const notif of pending) {
       try {
-        const wpLabel  = notif.penultimateWaypoint || 'penultimate waypoint';
+        const wpLabel = notif.penultimateWaypoint || 'penultimate waypoint';
         const arrLabel = notif.arrival || 'destination';
         const text = `🛬 **${notif.callsign}** — Arriving the last waypoint **${wpLabel}**, arrival airport is **${arrLabel}**, please prepare for landing`;
 

@@ -105,12 +105,13 @@ function clampNumber(value, min, max) {
 // 產生飛機追蹤用的 aircraftId：
 // 1. 優先使用客戶端提供的 id
 // 2. 其次用 callsign（+ playerId）組成
-// 3. 沒有 callsign 時，若已知起點/終點/時間，仍視為有效飛行紀錄，改用 playerId/userId 組成 fallback id
+// 3. 沒有 callsign 時，若已知起點/終點，仍視為有效飛行紀錄，改用 playerId/userId 組成 fallback id
+//    （時間不用另外判斷：每筆 position_update 本來就會帶伺服器端 ts，不會缺）
 // 三者皆無則視為無效資料，回傳 null（不記錄）
 function resolveAircraftId(p) {
   if (p.id) return p.id;
   if (p.callsign) return p.callsign + ':' + (p.playerId || 'p');
-  if (p.departure && p.arrival && p.takeoffTime) {
+  if (p.departure && p.arrival) {
     return 'NOCALL:' + (p.playerId || p.userId || 'p');
   }
   return null;
@@ -742,7 +743,7 @@ async function upsertFlightHistoryFromSession(session, user = null) {
   if (!history.departure && !history.arrival) {
     return null;
   }
-
+  
   if (!history.sessionId) {
     return FlightHistory.create(history);
   }
