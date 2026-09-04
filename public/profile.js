@@ -996,9 +996,15 @@ function applyCustomProfileSettings() {
         worldCopyJump: true,
         zoomControl: false
       }).setView([20, 0], 2);
-      state.tileLayer = L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-        attribution: '© CartoDB'
-      }).addTo(state.map);
+const CARTO_API_KEY = 'cb1_2wz3_1_4744b07f84da5e0b912d77d7';
+
+state.tileLayer = L.tileLayer(
+  `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(CARTO_API_KEY)}`,
+  {
+    attribution: '&copy; CartoDB',
+    maxZoom: 20
+  }
+).addTo(state.map);
     }
 
     state.airportMarkers.forEach(marker => state.map.removeLayer(marker));
