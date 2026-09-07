@@ -999,7 +999,7 @@ function applyCustomProfileSettings() {
 const CARTO_API_KEY = 'cb1_2wz3_1_4744b07f84da5e0b912d77d7';
 
 state.tileLayer = L.tileLayer(
-  `https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?api_key=${encodeURIComponent(CARTO_API_KEY)}`,
+  `https://{s}.basemaps.cartocdn.com/rastertiles/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_API_KEY)}`,
   {
     attribution: '&copy; CartoDB',
     maxZoom: 20
