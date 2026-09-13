@@ -209,7 +209,14 @@ async function checkWaypointReminder(payload) {
   console.log(`[Reminder] Queued for ${user.discordId} (${callsign}) approaching ${wpLabel}`);
 }
 // ============ Middleware ============
-app.use(compression());
+app.use(compression({
+  filter: (req, res) => {
+    if (req.path && req.path.match(/\.(png|jpg|jpeg|gif|webp)$/i)) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 app.use(cookieParser());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
