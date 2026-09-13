@@ -750,7 +750,7 @@ async function upsertFlightHistoryFromSession(session, user = null) {
   if (!history.departure && !history.arrival) {
     return null;
   }
-  
+
   if (!history.sessionId) {
     return FlightHistory.create(history);
   }
@@ -2081,7 +2081,10 @@ app.post('/api/user/link', authMiddleware, async (req, res) => {
     res.json({ ok: true });
   } catch { res.status(500).json({ error: 'server error' }); }
 });
-
+//得到用戶數量端點以打臉雷達東西
+app.get('/api/count', (req, res) => {
+  res.json({ count: aircrafts.size });
+});
 // 取得個人飛行紀錄（需登入）
 app.get('/api/my-flights', authMiddleware, async (req, res) => {
   try {
