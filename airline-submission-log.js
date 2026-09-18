@@ -55,12 +55,8 @@ function appendAirlineSubmission({ payload, submitter = null }) {
 
 function getPendingAirlineSubmissions(limit = 50) {
   const entries = readLog();
-  const exportedKeys = new Set(
-    entries
-      .filter(entry => entry.exportedAt)
-      .map(entry => normalizeKey(entry.key || getPayloadKey(entry.payload)))
-      .filter(Boolean)
-  );
+  // 注意：不再使用 exportedKeys，以免讓曾被 export 過的 ICAO 的新提交永遠進不了 pending 清單
+  // seenKeys 確保每個 ICAO 只取最新一筆未 exported/未 skipped 的提交
   const seenKeys = new Set();
   const selected = [];
 
@@ -69,7 +65,7 @@ function getPendingAirlineSubmissions(limit = 50) {
     if (entry.exportedAt || entry.skippedAt) continue;
 
     const key = normalizeKey(entry.key || getPayloadKey(entry.payload));
-    if (!key || exportedKeys.has(key) || seenKeys.has(key)) continue;
+    if (!key || seenKeys.has(key)) continue;
 
     selected.unshift(entry);
     seenKeys.add(key);
