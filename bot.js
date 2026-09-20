@@ -521,7 +521,7 @@ client.on('interactionCreate', async interaction => {
         );
       }
 
-      embed.setFooter({ text: 'GeoFS Radar', iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
+      embed.setFooter({ text: 'Geo Tracker', iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
       await interaction.editReply({ embeds: [embed] });
     } catch (err) {
       console.error('/whois error', err);
@@ -564,7 +564,7 @@ client.on('interactionCreate', async interaction => {
         .setColor(0x00ff85)
         .setTitle('✅ GeoFS ID Linked')
         .setDescription(`Successfully linked GeoFS ID \`${geofsId}\` to your Discord account.\nYour flights will now be tracked under your profile.`)
-        .setFooter({ text: 'GeoFS Radar', iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
+        .setFooter({ text: 'Geo Tracker', iconURL: 'https://i.ibb.co/d0WNtb9v/geofs-taiwan.png' });
 
       interaction.editReply({ embeds: [embed] });
     } catch (err) {
@@ -649,7 +649,7 @@ client.on('interactionCreate', async interaction => {
           { name: '🔝 Record Altitude', value: s.maxAlt ? `${s.maxAlt.toLocaleString()} ft` : '—', inline: true },
           { name: '💨 Record Speed', value: s.maxSpeed ? `${s.maxSpeed} kts` : '—', inline: true },
         )
-        .setFooter({ text: `GeoFS ID: ${dbUser.geofsUserId} · GeoFS Radar`, iconURL: 'https://i.ibb.co/fzm8m0LS/geofs-flightradar.webp' });
+        .setFooter({ text: `GeoFS ID: ${dbUser.geofsUserId} · Geo Tracker`, iconURL: 'https://i.ibb.co/d0WNtb9v/geofs-taiwan.png' });
 
       interaction.editReply({ embeds: [embed] });
     } catch (err) {
