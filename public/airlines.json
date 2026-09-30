@@ -3529,6 +3529,134 @@
     "iata": "SL",
     "country": "Thailand",
     "logo": "https://images.kiwi.com/airlines/64/SL.png"
+  },
+  "BRX": {
+    "name": "Braathens Regional Airways",
+    "icao": "BRX",
+    "iata": "TF",
+    "country": "Sweden",
+    "logo": "https://images.kiwi.com/airlines/64/TF.png"
+  },
+  "AEE": {
+    "name": "Aegean Airlines",
+    "icao": "AEE",
+    "iata": "A3",
+    "country": "Greeece",
+    "logo": "https://www.google.com/imgres?q=aegean%20airlines%20logo&imgurl=https%3A%2F%2Fassets.stickpng.com%2Fimages%2F668e4ee9847a2841c9ada7ea.png&imgrefurl=https%3A%2F%2Fwww.stickpng.com%2Fimg%2Ficons-logos-emojis%2Finternational-airlines%2Faegean-airlines-icon-logo&docid=X5b-t3IgD13dXM&tbnid=JcaPWeHbGoxQyM&vet=12ahUKEwjr08fd6LmUAxV_mokEHXLWM-kQnPAOegQIFxAB..i&w=1184&h=1424&hcb=2&ved=2ahUKEwjr08fd6LmUAxV_mokEHXLWM-kQnPAOegQIFxAB"
+  },
+  "KZU": {
+    "name": "ULS Airlines cargo",
+    "icao": "KZU",
+    "iata": "GO",
+    "country": "Turkey",
+    "logo": "https://images.kiwi.com/airlines/64/GO.png"
+  },
+
+  "CCM": {
+    "name": "Air Corsica",
+    "icao": "CCM",
+    "iata": "XC",
+    "country": "France",
+    "logo": "https://images.kiwi.com/airlines/64/XK.png"
+  },
+
+  "AIZ": {
+    "name": "Arkia",
+    "icao": "AIZ",
+    "iata": "IZ",
+    "country": "Israel",
+    "logo": "https://images.kiwi.com/airlines/64/IZ.png"
+  },
+  "FLI": {
+    "name": "Atlantic Airways",
+    "icao": "FLI",
+    "iata": "RC",
+    "country": "Faroe Islands",
+    "logo": "https://images.kiwi.com/airlines/64/RC.png"
+  },
+
+  "APF": {
+    "name": "Amapola Flyg",
+    "icao": "APF",
+    "iata": "HP",
+    "country": "Sweden",
+    "logo": "https://i.ibb.co/chPznP7C/image.jpg"
+  },
+  "TP1": {
+    "name": "Trans Pacific Airways",
+    "icao": "TP1",
+    "iata": "T1",
+    "country": "New Zealand",
+    "logo": "https://images.kiwi.com/airlines/64/T1.png"
+  },
+  "DKH": {
+    "name": "Juneyao Air",
+    "icao": "DKH",
+    "iata": "HO",
+    "country": "China",
+    "logo": "https://images.kiwi.com/airlines/64/HO.png"
+  },
+  "CYP": {
+    "name": "Cyprus Airways",
+    "icao": "CYP",
+    "iata": "CY",
+    "country": "Cyprus",
+    "logo": "https://images.kiwi.com/airlines/64/CY.png"
+  },
+  "SUD": {
+    "name": "Sudan Airways",
+    "icao": "SUD",
+    "iata": "SD",
+    "country": "Sudan",
+    "logo": "https://i.ibb.co/hF1f8sXC/Untitled-23-September-2026-at-17-56-24-1.png"
+  },
+  "TRQ": {
+    "name": "Tarco Air",
+    "icao": "TRQ",
+    "iata": "3T",
+    "country": "Sudan",
+    "logo": "https://i.ibb.co/84YSPk9w/Untitled-23-September-2026-at-17-56-24.png"
+  },
+  "ABN": {
+    "name": "Air Albania",
+    "icao": "ABN",
+    "iata": "ZB",
+    "country": "Albania",
+    "logo": "https://images.kiwi.com/airlines/64/ZB.png"
+  },
+  "BMA": {
+    "name": "BermudAir",
+    "icao": "BMA",
+    "iata": "2T",
+    "country": "Bermuda",
+    "logo": "https://images.kiwi.com/airlines/64/2T.png"
+  },
+  "CSA": {
+    "name": "Czech Airlines",
+    "icao": "CSA",
+    "iata": "OK",
+    "country": "Czech Republic",
+    "logo": "https://images.kiwi.com/airlines/64/OK.png"
+  },
+  "ACY": {
+    "name": "Fly Arna",
+    "icao": "ACY",
+    "iata": "G6",
+    "country": "Armenia",
+    "logo": "https://images.kiwi.com/airlines/64/G6.png"
+  },
+  "RNS": {
+    "name": "Orion Airlines",
+    "icao": "RNS",
+    "iata": "OA",
+    "country": "RSA",
+    "logo": "https://images.kiwi.com/airlines/64/OA.png"
+  },
+  "NXS": {
+    "name": "Nexus Airlines",
+    "icao": "NXS",
+    "iata": "NA",
+    "country": "South Africa"
   }
 
 }
