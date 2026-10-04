@@ -3657,6 +3657,20 @@
     "icao": "NXS",
     "iata": "NA",
     "country": "South Africa"
+  },
+  "NOAH": {
+    "name": "Sharkie",
+    "icao": "NOAH",
+    "iata": "C6",
+    "country": "china",
+    "logo": "https://commons.wikimedia.org/wiki/Special:Redirect/file/Shark%20Logo.png"
+  },
+  "CCL": {
+    "name": "凌霄国际航空",
+    "icao": "CCL",
+    "iata": "CLX",
+    "country": "China",
+    "logo": "https://s3.bmp.ovh/2026/10/03/Hwa6Y48U.png"
   }
 
 }
