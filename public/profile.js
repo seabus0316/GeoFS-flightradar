@@ -177,6 +177,19 @@ const ProfileApp = (() => {
     return apiGet(`/api/flights/user/${encodeURIComponent(discordId)}?limit=${limit}`);
   }
 
+  async function loadVisitedAirports(discordId, geofsUserId) {
+    try {
+      const url = discordId
+        ? `/api/flights/airports/user/${encodeURIComponent(discordId)}`
+        : `/api/flights/airports/geofs/${encodeURIComponent(geofsUserId)}`;
+      const payload = await apiGet(url);
+      return Array.isArray(payload?.airports) ? payload.airports : null;
+    } catch (err) {
+      console.warn('Visited airports failed to load:', err);
+      return null;
+    }
+  }
+
   async function loadMedals(discordId) {
     if (!discordId) return [];
     try {
@@ -990,7 +1003,7 @@ function applyCustomProfileSettings() {
     return null;
   }
 
-  function updateMap(flights, airportDb) {
+  function updateMap(flights, airportDb, visitedCodes) {
     if (!state.map) {
       state.map = L.map(DOM.mapContainer, {
         worldCopyJump: true,
@@ -1010,20 +1023,19 @@ state.tileLayer = L.tileLayer(
     state.airportMarkers.forEach(marker => state.map.removeLayer(marker));
     state.airportMarkers = [];
 
-    const visited = new Map();
-    flights.forEach(flight => {
-      normalizeAirportLookupCodes(flight.departure).forEach(code => {
-        if (code) visited.set(code, code);
-      });
-      normalizeAirportLookupCodes(flight.arrival).forEach(code => {
-        if (code) visited.set(code, code);
-      });
-    });
+    // 優先使用伺服器回傳的「全部歷史」機場；失敗時才退回用已載入的航班
+    const sourceCodes = Array.isArray(visitedCodes)
+      ? visitedCodes
+      : flights.flatMap(f => [f.departure, f.arrival]);
+    const visited = new Set();
+    sourceCodes.forEach(c => { if (c) visited.add(c); });
 
     const airportMeta = [];
+    const seenAirports = new Set();
     visited.forEach(code => {
       const apt = resolveAirport(code, airportDb);
-      if (apt && Number.isFinite(apt.lat) && Number.isFinite(apt.lon)) {
+      if (apt && Number.isFinite(apt.lat) && Number.isFinite(apt.lon) && !seenAirports.has(apt.icao)) {
+        seenAirports.add(apt.icao);
         airportMeta.push(apt);
       }
     });
@@ -1141,8 +1153,11 @@ state.tileLayer = L.tileLayer(
 
       showContent();
       configureLeafletIcons();
-      const airportDb = await loadAirportsDatabase();
-      updateMap(state.flights, airportDb);
+      const [airportDb, visitedCodes] = await Promise.all([
+        loadAirportsDatabase(),
+        loadVisitedAirports(state.discordId, geofsUserId)
+      ]);
+      updateMap(state.flights, airportDb, visitedCodes);
       // Leaflet needs the container to be visible before it can measure dimensions
       if (state.map) state.map.invalidateSize();
 

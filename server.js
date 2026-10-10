@@ -2237,6 +2237,27 @@ app.get('/api/flights/geofs/:geofsUserId', async (req, res) => {
   } catch { res.status(500).json({ error: 'server error' }); }
 });
 
+// 特定用戶所有造訪過的機場代碼（全部歷史，不受 limit 影響）
+async function sendVisitedAirports(filter, res) {
+  try {
+    const [deps, arrs] = await Promise.all([
+      FlightHistory.distinct('departure', filter),
+      FlightHistory.distinct('arrival', filter)
+    ]);
+    const INVALID = new Set(['', 'N/A', 'UNK', 'UNKNOWN', '?', '-', 'NONE', 'NULL']);
+    const codes = new Set();
+    for (const c of [...deps, ...arrs]) {
+      const n = String(c || '').trim().toUpperCase();
+      if (n.length >= 3 && !INVALID.has(n)) codes.add(n);
+    }
+    res.json({ airports: [...codes] });
+  } catch { res.status(500).json({ error: 'server error' }); }
+}
+app.get('/api/flights/airports/user/:discordId', (req, res) =>
+  sendVisitedAirports({ discordId: req.params.discordId }, res));
+app.get('/api/flights/airports/geofs/:geofsUserId', (req, res) =>
+  sendVisitedAirports({ geofsUserId: req.params.geofsUserId }, res));
+
 // 單次飛行詳情（長期資料只保存摘要；舊 session ID 仍可查短期詳細資料）
 app.get('/api/flights/:sessionId', async (req, res) => {
   try {
