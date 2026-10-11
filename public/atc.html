@@ -3493,14 +3493,26 @@
       const prevStatus = prev?.flightStatus?.status || null;
 
       // 計算垂直速度 (vspeed) - 單位: ft/min
-      let vspeed = 0;
-      if (prev && prev.alt !== undefined && prev.ts && data.ts) {
-        const timeDiff = (data.ts - prev.ts) / 60000; // 轉換為分鐘
-        if (timeDiff > 0.03 && timeDiff < 2) {
-          vspeed = (data.alt - prev.alt) / timeDiff;
+      // 封包約每秒一筆，只跟「上一筆」比會因時間差太短而永遠算成 0。
+      // 改成跟基準點（至少 3 秒前）比，期間沿用上次的值。
+      let vspeed = Number.isFinite(prev?.vspeed) ? prev.vspeed : null;
+      let vsRef = prev?._vsRef || null;
+      if (data.ts && Number.isFinite(data.alt)) {
+        if (!vsRef) {
+          vsRef = { alt: data.alt, ts: data.ts };
+        } else {
+          const timeDiff = (data.ts - vsRef.ts) / 60000; // 轉換為分鐘
+          if (timeDiff < 0 || timeDiff > 2) {
+            vspeed = null; // 資料斷太久或時間倒退（replay），重設基準
+            vsRef = { alt: data.alt, ts: data.ts };
+          } else if (timeDiff >= 0.05) {
+            vspeed = (data.alt - vsRef.alt) / timeDiff;
+            vsRef = { alt: data.alt, ts: data.ts };
+          }
         }
       }
       data.vspeed = vspeed;
+      data._vsRef = vsRef;
 
       // 判斷飛行階段
       const isOnGround = altAGL < 150 && speed < 50;
@@ -4374,11 +4386,11 @@
         </div>` : ''}
 
       <!-- Vertical speed if available -->
-      ${data.vspeed ? `
+      ${Number.isFinite(data.vspeed) ? `
         <div style="margin-bottom:16px;">
           <div style="font-size:10px;color:#999;text-transform:uppercase;font-weight:600;margin-bottom:4px;">Vertical speed</div>
           <div style="font-size:15px;font-weight:600;color:${data.vspeed > 200 ? '#22c55e' : data.vspeed < -200 ? '#ef4444' : '#111'};">
-            ${data.vspeed > 0 ? '↑' : '↓'} ${Math.abs(Math.round(data.vspeed))} ft/min
+            ${data.vspeed > 0 ? '↑' : data.vspeed < 0 ? '↓' : '→'} ${Math.abs(Math.round(data.vspeed))} ft/min
           </div>
         </div>` : ''}
 
