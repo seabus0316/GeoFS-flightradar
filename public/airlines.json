@@ -3671,6 +3671,12 @@
     "iata": "CLX",
     "country": "China",
     "logo": "https://s3.bmp.ovh/2026/10/03/Hwa6Y48U.png"
+  },
+    "RUS": {
+    "name": "Rush Air",
+    "icao": "RUS",
+    "iata": "RX",
+    "country": "Taiwan",
+    "logo": "https://i.ibb.co/xStxnJxQ/987.jpg"
   }
-
 }
