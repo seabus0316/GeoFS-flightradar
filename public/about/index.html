@@ -12,24 +12,24 @@
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
-      --amber:      #e8900a;
-      --amber-dim:  rgba(232,144,10,0.11);
-      --amber-line: rgba(232,144,10,0.22);
-      --amber-text: #f0aa40;
-      --warn:       #d94f20;
-      --warn-dim:   rgba(217,79,32,0.1);
-      --warn-line:  rgba(217,79,32,0.25);
-      --bg:         #080705;
-      --bg-card:    #0f0d0a;
-      --bg-card-h:  #141108;
-      --border:     rgba(255,220,160,0.07);
-      --border-h:   rgba(255,220,160,0.13);
-      --text:       #d8c9a8;
-      --text-dim:   #7a6c52;
-      --text-faint: rgba(216,201,168,0.3);
-      --code-bg:    rgba(232,144,10,0.08);
-      --code-bdr:   rgba(232,144,10,0.18);
-      --code-text:  #c8a060;
+      --amber:      #00cfff;
+      --amber-dim:  rgba(0,207,255,0.10);
+      --amber-line: rgba(0,207,255,0.24);
+      --amber-text: #4fd8ff;
+      --warn:       #ff7043;
+      --warn-dim:   rgba(255,112,67,0.10);
+      --warn-line:  rgba(255,112,67,0.28);
+      --bg:         #07101b;
+      --bg-card:    #0d1622;
+      --bg-card-h:  #142132;
+      --border:     rgba(255,255,255,0.08);
+      --border-h:   rgba(255,255,255,0.15);
+      --text:       #e0e6ed;
+      --text-dim:   #8a9db0;
+      --text-faint: rgba(224,230,237,0.32);
+      --code-bg:    rgba(0,207,255,0.08);
+      --code-bdr:   rgba(0,207,255,0.2);
+      --code-text:  #8fe3ff;
     }
 
     html { scroll-behavior: smooth; }
@@ -47,14 +47,14 @@
       position: fixed; inset: 0;
       background: repeating-linear-gradient(
         -45deg, transparent, transparent 28px,
-        rgba(255,220,140,0.012) 28px, rgba(255,220,140,0.012) 29px
+        rgba(255,255,255,0.012) 28px, rgba(255,255,255,0.012) 29px
       );
       pointer-events: none; z-index: 0;
     }
     body::after {
       content: '';
       position: fixed; inset: 0;
-      background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(232,144,10,0.045) 0%, transparent 68%);
+      background: radial-gradient(ellipse 80% 55% at 50% 0%, rgba(0,207,255,0.05) 0%, transparent 68%);
       pointer-events: none; z-index: 0;
     }
 
@@ -63,7 +63,7 @@
       position: sticky; top: 0; z-index: 100;
       display: flex; align-items: center; justify-content: space-between;
       padding: 0 32px; height: 52px;
-      background: rgba(8,7,5,0.94);
+      background: rgba(7,16,27,0.94);
       border-bottom: 1px solid var(--border);
     }
     nav.topnav::after {
@@ -173,8 +173,8 @@
       margin-bottom: 5px; overflow: hidden;
       transition: border-left-color 0.18s ease, background 0.18s ease;
     }
-    .faq-item:hover { border-left-color: rgba(232,144,10,0.3); background: var(--bg-card-h); }
-    .faq-item.open { border-left-color: var(--amber); background: #110f09; border-right-color: var(--border-h); }
+    .faq-item:hover { border-left-color: rgba(0,207,255,0.3); background: var(--bg-card-h); }
+    .faq-item.open { border-left-color: var(--amber); background: #101c2b; border-right-color: var(--border-h); }
 
     .faq-q {
       width: 100%; background: none; border: none;
@@ -189,7 +189,7 @@
 
     .q-icon {
       flex-shrink: 0; width: 26px; height: 26px; border-radius: 3px;
-      background: rgba(255,220,160,0.04); border: 1px solid var(--border);
+      background: rgba(255,255,255,0.04); border: 1px solid var(--border);
       display: flex; align-items: center; justify-content: center;
       color: var(--text-dim); transition: all 0.18s ease;
     }
@@ -203,7 +203,7 @@
 
     .faq-body {
       display: none; padding: 0 16px 17px;
-      font-size: 13px; color: rgba(216,201,168,0.6); line-height: 1.75;
+      font-size: 13px; color: rgba(224,230,237,0.64); line-height: 1.75;
     }
     .faq-item.open .faq-body { display: block; }
     .faq-body p { margin-bottom: 10px; }
@@ -212,7 +212,7 @@
     .faq-body ul, .faq-body ol { list-style: none; padding: 0; margin-bottom: 10px; }
     .faq-body ul li, .faq-body ol li { display: flex; gap: 8px; margin-bottom: 5px; align-items: flex-start; }
     .faq-body ul li::before { content: '—'; color: var(--text-dim); flex-shrink: 0; line-height: 1.75; }
-    .faq-body a { color: var(--amber-text); text-decoration: none; border-bottom: 1px solid rgba(240,170,64,0.25); transition: border-color 0.12s; }
+    .faq-body a { color: var(--amber-text); text-decoration: none; border-bottom: 1px solid rgba(79,216,255,0.28); transition: border-color 0.12s; }
     .faq-body a:hover { border-color: var(--amber-text); }
     .faq-body code {
       font-family: 'JetBrains Mono', monospace; font-size: 11.5px;
@@ -225,7 +225,7 @@
     .steps li::before {
       content: counter(s); flex-shrink: 0;
       width: 20px; height: 20px; border-radius: 2px;
-      background: rgba(232,144,10,0.1); border: 1px solid rgba(232,144,10,0.22);
+      background: rgba(0,207,255,0.1); border: 1px solid rgba(0,207,255,0.24);
       color: var(--amber); font-family: 'JetBrains Mono', monospace;
       font-size: 10px; font-weight: 600;
       display: flex; align-items: center; justify-content: center; margin-top: 3px;
@@ -236,8 +236,8 @@
       border-radius: 3px; font-size: 12.5px; margin-top: 11px; line-height: 1.6;
     }
     .callout svg { flex-shrink: 0; margin-top: 1px; }
-    .callout.tip { background: var(--amber-dim); border: 1px solid var(--amber-line); color: rgba(240,170,64,0.9); }
-    .callout.warn { background: var(--warn-dim); border: 1px solid var(--warn-line); color: rgba(255,120,80,0.88); }
+    .callout.tip { background: var(--amber-dim); border: 1px solid var(--amber-line); color: rgba(143,227,255,0.92); }
+    .callout.warn { background: var(--warn-dim); border: 1px solid var(--warn-line); color: rgba(255,150,115,0.92); }
 
     .cmd-table { width: 100%; border-collapse: collapse; font-size: 12.5px; }
     .cmd-table thead th {
@@ -250,7 +250,7 @@
     .cmd-table tbody tr:last-child { border-bottom: none; }
     .cmd-table td { padding: 8px 0; vertical-align: top; }
     .cmd-table td:first-child { padding-right: 24px; white-space: nowrap; }
-    .cmd-table td:last-child { color: rgba(216,201,168,0.48); }
+    .cmd-table td:last-child { color: rgba(224,230,237,0.5); }
 
     /* ── Footer ── */
     footer {

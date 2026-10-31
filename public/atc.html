@@ -26,7 +26,7 @@
 
   <!-- 天氣按鈕 -->
   <div style="position:relative;">
-    <button id="wxBtn" onclick="togglePanel('wxPanel',this)" class="map-control-btn">☁</button>
+    <button id="wxBtn" onclick="togglePanel('wxPanel',this)" class="map-control-btn"><i data-lucide="cloud"></i></button>
     <div id="wxPanel" class="rail-dropdown"
       style="display:none;background:rgba(10,15,25,0.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);border:1px solid rgba(255,255,255,0.1);border-radius:12px;padding:10px 8px;min-width:190px;box-shadow:0 4px 24px rgba(0,0,0,0.45);">
       <div
@@ -67,8 +67,7 @@
   <button id="globeBtn" class="atc-mode-btn" onclick="toggleGlobeMode()" title="3D Globe Mode">
     <i data-lucide="globe"></i>
   </button>
-  <button id="globeResetBtn" class="atc-mode-btn" onclick="resetGlobeMapView()" title="Reset map view"
-    style="display:none;">
+  <button id="resetViewBtn" class="atc-mode-btn" onclick="resetMapView()" title="Reset view">
     <svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true">
       <path d="M4 12a8 8 0 0 1 13.66-5.66" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"
         stroke-linejoin="round" />
@@ -96,7 +95,7 @@
 
       <div style="font-size:11px;color:#aaa;text-transform:uppercase;letter-spacing:0.8px;
                 padding:2px 8px 10px;border-bottom:1px solid rgba(255,255,255,0.1);margin-bottom:6px;">
-        ⚙ Display Settings
+        <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;margin-right:5px;" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Display Settings
       </div>
 
       <div class="settings-category">
@@ -274,6 +273,24 @@
             <input type="range" id="followUpdateSlider" min="1" max="10" value="3" step="1"
               style="width:100%;accent-color:#7dd3fc;cursor:pointer;height:4px;" oninput="applySettings()">
           </div>
+
+          <!-- Zoom in on focus -->
+          <div style="padding:12px 10px 8px;display:flex;justify-content:space-between;align-items:center;
+                border-top:1px solid rgba(255,255,255,0.07);margin-top:6px;">
+            <span style="font-size:12px;color:#cdd;">
+              <i data-lucide="zoom-in" style="width:12px;height:12px;vertical-align:middle;margin-right:4px;"></i>
+              Zoom In on Focus
+            </span>
+            <label style="position:relative;display:inline-block;width:36px;height:20px;flex-shrink:0;">
+              <input type="checkbox" id="zoomOnFocusToggle" style="opacity:0;width:0;height:0;"
+                onchange="applySettings()">
+              <span id="zoomOnFocusTrack" style="position:absolute;inset:0;border-radius:20px;
+              background:#555;cursor:pointer;transition:background .2s;">
+                <span id="zoomOnFocusThumb" style="position:absolute;left:2px;top:2px;width:16px;height:16px;
+                border-radius:50%;background:#fff;transition:transform .2s;transform:translateX(0);"></span>
+              </span>
+            </label>
+          </div>
         </div>
       </div>
 
@@ -292,6 +309,15 @@
 
 <script>
   let currentBase;
+
+  // ── SVG icon helper (replaces emoji) ──
+  const _SVG_PATHS = {"plane": "<path d=\"M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.2.2c-.3.4-.2 1 .2 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.9.5 1.3.2l.2-.1c.4-.2.6-.6.5-1.1z\"/>", "camera": "<path d=\"M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z\"/><circle cx=\"12\" cy=\"13\" r=\"3\"/>", "image": "<rect x=\"3\" y=\"3\" width=\"18\" height=\"18\" rx=\"2\"/><circle cx=\"9\" cy=\"9\" r=\"2\"/><path d=\"m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21\"/>", "clipboard": "<rect x=\"8\" y=\"2\" width=\"8\" height=\"4\" rx=\"1\"/><path d=\"M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2\"/><path d=\"M12 11h4M12 16h4M8 11h.01M8 16h.01\"/>", "cloud": "<path d=\"M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z\"/>", "settings": "<path d=\"M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>", "alert": "<path d=\"m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3\"/><path d=\"M12 9v4M12 17h.01\"/>", "loader": "<path d=\"M21 12a9 9 0 1 1-6.22-8.56\"/>", "target": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><circle cx=\"12\" cy=\"12\" r=\"6\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/>", "pin": "<path d=\"M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z\"/><circle cx=\"12\" cy=\"10\" r=\"3\"/>", "calendar": "<rect x=\"3\" y=\"4\" width=\"18\" height=\"18\" rx=\"2\"/><path d=\"M16 2v4M8 2v4M3 10h18\"/>", "globe": "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M2 12h20\"/><path d=\"M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z\"/>", "search": "<circle cx=\"11\" cy=\"11\" r=\"8\"/><path d=\"m21 21-4.3-4.3\"/>", "chevron": "<path d=\"m6 9 6 6 6-6\"/>", "play": "<polygon points=\"6 3 20 12 6 21 6 3\"/>", "upload": "<path d=\"M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4\"/><path d=\"m17 8-5-5-5 5\"/><path d=\"M12 3v12\"/>", "github": "<path d=\"M15 22v-4a4.8 4.8 0 0 0-1-3.5c3 0 6-2 6-5.5.08-1.25-.27-2.48-1-3.5.28-1.15.28-2.35 0-3.5 0 0-1 0-3 1.5-2.64-.5-5.36-.5-8 0C6 2 5 2 5 2c-.3 1.15-.3 2.35 0 3.5A5.4 5.4 0 0 0 4 9c0 3.5 3 5.5 6 5.5-.39.49-.68 1.05-.85 1.65S8.93 17.38 9 18v4\"/><path d=\"M9 18c-4.51 2-5-2-7-2\"/>", "radio": "<path d=\"M4.9 19.1C1 15.2 1 8.8 4.9 4.9\"/><path d=\"M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5\"/><circle cx=\"12\" cy=\"12\" r=\"2\"/><path d=\"M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5\"/><path d=\"M19.1 4.9C23 8.8 23 15.1 19.1 19\"/>", "sliders": "<path d=\"M20 7h-9\"/><path d=\"M14 17H5\"/><circle cx=\"17\" cy=\"17\" r=\"3\"/><circle cx=\"7\" cy=\"7\" r=\"3\"/>", "log-out": "<path d=\"M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4\"/><path d=\"m16 17 5-5-5-5\"/><path d=\"M21 12H9\"/>"};
+  function svgIcon(name, size = 16, style = '') {
+    return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;${style}" aria-hidden="true">${_SVG_PATHS[name] || ''}</svg>`;
+  }
+
+  // 沒有 jet photos 時 aircraft panel 顯示的預設圖片 —— 換成你自己的圖片路徑
+  const AIRCRAFT_PLACEHOLDER_IMG = '/aircraft-placeholder.jpg';
 
   function togglePanel(id, btn) {
     const panel = document.getElementById(id);
@@ -349,6 +375,7 @@
     labelOpacity: 100,
     labelBlur: 26,
     followAircraft: false,
+    zoomOnFocus: false,
     followUpdateAmount: 3,
     showLabels: true,
     showFlightPlan: true,
@@ -653,6 +680,15 @@
     return compact.slice(0, 6) || raw;
   }
 
+  function getZoomOnFocusEnabled() {
+    return !!_dsLoad().zoomOnFocus;
+  }
+  // focus 飛機時使用的 zoom：開關關閉就維持目前 zoom，只平移
+  function _focusZoom() {
+    const z = map.getZoom();
+    return getZoomOnFocusEnabled() ? Math.max(z, 9) : z;
+  }
+
   function getFollowAircraftEnabled() {
     return !!_dsLoad().followAircraft;
   }
@@ -691,6 +727,7 @@
     const lo = Number(document.getElementById('labelOpacitySlider')?.value ?? current.labelOpacity);
     const lbVal = Number(document.getElementById('labelBlurSlider')?.value ?? current.labelBlur);
     const fa = document.getElementById('followAircraftToggle')?.checked ?? current.followAircraft;
+    const zf = document.getElementById('zoomOnFocusToggle')?.checked ?? current.zoomOnFocus;
     const fua = Number(document.getElementById('followUpdateSlider')?.value ?? current.followUpdateAmount);
     const lbl = document.getElementById('labelsToggle')?.checked ?? current.showLabels;
     const fp = document.getElementById('flightPlanToggle')?.checked ?? current.showFlightPlan;
@@ -726,6 +763,10 @@
     if (followTrack) followTrack.style.background = fa ? '#00cfff' : '#555';
     if (followThumb) followThumb.style.transform = fa ? 'translateX(16px)' : 'translateX(0)';
     if (followSection) followSection.style.display = fa ? 'block' : 'none';
+    const zoomTrack = document.getElementById('zoomOnFocusTrack');
+    const zoomThumb = document.getElementById('zoomOnFocusThumb');
+    if (zoomTrack) zoomTrack.style.background = zf ? '#00cfff' : '#555';
+    if (zoomThumb) zoomThumb.style.transform = zf ? 'translateX(16px)' : 'translateX(0)';
 
     _syncDisplayPanels(po, pb);
     _syncDisplayButtons(bo, bb);
@@ -769,6 +810,7 @@
       labelOpacity: lo,
       labelBlur: lbVal,
       followAircraft: fa,
+      zoomOnFocus: zf,
       followUpdateAmount: fua,
       showLabels: lbl,
       showFlightPlan: fp
@@ -789,9 +831,11 @@
     const los = document.getElementById('labelOpacitySlider');
     const lbs = document.getElementById('labelBlurSlider');
     const fat = document.getElementById('followAircraftToggle');
+    const zft = document.getElementById('zoomOnFocusToggle');
     const fus = document.getElementById('followUpdateSlider');
     const lb = document.getElementById('labelsToggle');
     const fpt = document.getElementById('flightPlanToggle');
+    if (zft) zft.checked = DS_DEFAULTS.zoomOnFocus;
     if (sl) sl.value = DS_DEFAULTS.panelOpacity;
     if (bl) bl.value = DS_DEFAULTS.panelBlur;
     if (bol) bol.value = DS_DEFAULTS.buttonOpacity;
@@ -818,9 +862,11 @@
     const los = document.getElementById('labelOpacitySlider');
     const lbs = document.getElementById('labelBlurSlider');
     const fat = document.getElementById('followAircraftToggle');
+    const zft = document.getElementById('zoomOnFocusToggle');
     const fus = document.getElementById('followUpdateSlider');
     const lb = document.getElementById('labelsToggle');
     const fpt = document.getElementById('flightPlanToggle');
+    if (zft) zft.checked = s.zoomOnFocus;
     if (sl) sl.value = s.panelOpacity;
     if (bl) bl.value = s.panelBlur;
     if (bol) bol.value = s.buttonOpacity;
@@ -916,6 +962,12 @@
     resetGlobeCameraHome(0.9);
   }
 
+  // Reset view：2D 回到初始地圖視角，3D globe 回到 home 視角
+  function resetMapView() {
+    if (typeof globeMode !== 'undefined' && globeMode) { resetGlobeMapView(); return; }
+    map.flyTo([20, 0], 2, { duration: 0.9 });
+  }
+
   let _ignoreOutsidePanelCloseUntil = 0;
   let _outsidePanelPointerDown = null;
   let _aircraftPanelPointerActive = false;
@@ -1005,7 +1057,6 @@
     </div>
     <div class="site-header-brand">
       <span class="site-header-title">Geo Tracker</span>
-      <span class="site-header-subtitle">All rights reserved</span>
     </div>
 
     <!-- Account Display (Hidden by default) -->
@@ -1243,27 +1294,50 @@
 
 
 
-  <!-- 新增：側邊選單 -->
-  <div id="sideMenu" style="position: fixed; top: 0; left: -300px; width: 280px; height: 100vh; 
-     background: rgba(26, 26, 26, 0.98); z-index: 99999; transition: left 0.3s ease; 
-     box-shadow: 2px 0 12px rgba(0,0,0,0.5); overflow-y: auto; padding: 20px;">
+  <!-- 新增：側邊選單（黑白 / GitHub dark 風格） -->
+  <style id="sideMenuMonoStyle">
+    #sideMenu { background:#0d1117 !important; border-right:1px solid #30363d; box-shadow:2px 0 12px rgba(0,0,0,.5) !important; color:#e6edf3; }
+    #sideMenu .sm-title { display:flex; align-items:center; gap:10px; margin:0 0 16px; padding-bottom:12px; font-size:18px; font-weight:700; color:#e6edf3; border-bottom:1px solid #30363d; }
+    #sideMenu .sm-card { background:#161b22; border:1px solid #30363d; border-radius:8px; padding:14px; margin-bottom:16px; }
+    #sideMenu .sm-muted { color:#8b949e; }
+    #sideMenu .sm-item { display:flex; align-items:center; gap:12px; width:100%; padding:11px 12px; margin-top:10px; color:#e6edf3; text-decoration:none; font-size:14px; font-family:inherit; background:#161b22; border:1px solid #30363d; border-radius:8px; cursor:pointer; transition:background .15s, border-color .15s; box-sizing:border-box; text-align:left; }
+    #sideMenu .sm-item:hover { background:#21262d !important; border-color:#8b949e; }
+    #sideMenu .sm-item svg { width:18px; height:18px; flex-shrink:0; color:#8b949e; }
+    #sideMenu .sm-item.sm-plain { margin-top:0; }
+    #sideMenu .sm-sub { padding:8px 10px; margin-top:8px; font-size:13px; }
+    #sideMenu details > summary { list-style:none; }
+    #sideMenu details > summary::-webkit-details-marker { display:none; }
+    #sideMenu details > summary .sm-chev { margin-left:auto; transition:transform .2s; }
+    #sideMenu details[open] > summary .sm-chev { transform:rotate(180deg); }
+    #sideMenu .sm-btn { background:#e6edf3; color:#0d1117; border:1px solid #e6edf3; border-radius:6px; padding:7px 12px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; display:flex; align-items:center; justify-content:center; gap:10px; text-decoration:none; }
+    #sideMenu .sm-btn:hover { background:#fff; }
+    #sideMenu .sm-btn-ghost { background:transparent; color:#e6edf3; border:1px solid #30363d; text-align:center; text-decoration:none; font-size:13px; padding:7px; border-radius:6px; display:block; }
+    #sideMenu .sm-btn-ghost:hover { background:#21262d; border-color:#8b949e; }
+    #sideMenu .sm-input { flex:1; min-width:0; background:#0d1117; border:1px solid #30363d; border-radius:6px; padding:7px 10px; color:#e6edf3; font-size:13px; outline:none; }
+    #sideMenu .sm-input:focus { border-color:#8b949e; }
+    #sideMenu .sm-gray { filter:grayscale(1) brightness(2); }
+    #sideMenu .sm-btn .sm-gray { filter:grayscale(1) brightness(0); }
+    #sideMenu .switch .slider { background:#30363d !important; }
+    #sideMenu .switch input:checked + .slider { background:#e6edf3 !important; }
+    #sideMenu .switch .slider:before { background:#8b949e !important; }
+    #sideMenu .switch input:checked + .slider:before { background:#0d1117 !important; }
+    /* METAR（原本是右側 sidebar，現在放在選單裡） */
+    #sideMenu #metarWidget { position:static !important; transform:none !important; left:auto !important; right:auto !important; top:auto !important; bottom:auto !important; width:auto !important; max-width:none !important; height:auto !important; max-height:none !important; opacity:1 !important; visibility:visible !important; display:block !important; background:#161b22 !important; border:1px solid #30363d !important; border-radius:8px !important; box-shadow:none !important; backdrop-filter:none !important; margin:8px 0 0 !important; padding:12px !important; color:#e6edf3 !important; pointer-events:auto !important; }
+    #sideMenu #metarWidget img, #sideMenu #metarWidget svg image { filter:grayscale(1); }
+  </style>
+  <div id="sideMenu" style="position: fixed; top: 0; left: -300px; width: 280px; height: 100vh;
+     z-index: 99999; transition: left 0.3s ease; overflow-y: auto; padding: 20px; box-sizing: border-box;">
 
-    <h3 style="color: #ffd500; margin-top: 0; font-size: 20px; border-bottom: 2px solid #444; padding-bottom: 12px;">
-      ⚙️ Settings
-    </h3>
+    <h3 class="sm-title"><svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>Settings</h3>
 
     <!-- Discord 登入區塊 -->
-    <div id="discordUserBlock"
-      style="margin-bottom: 20px; padding: 14px; background: rgba(88,101,242,0.12); border: 1px solid rgba(88,101,242,0.3); border-radius: 10px;">
+    <div id="discordUserBlock" class="sm-card">
       <!-- 未登入狀態 -->
       <div id="discordLoginView">
-        <div style="color: #aaa; font-size: 13px; margin-bottom: 10px;">Login to track your flights &amp; link your
+        <div class="sm-muted" style="font-size: 13px; margin-bottom: 10px;">Login to track your flights &amp; link your
           callsign.</div>
-        <a href="/auth/discord" style="display: flex; align-items: center; justify-content: center; gap: 10px;
-         background: #5865F2; color: #fff; text-decoration: none; border-radius: 8px;
-         padding: 10px 14px; font-size: 14px; font-weight: 600; transition: background 0.2s;">
-          <img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg"
-            style="width: 20px; height: 20px;" alt="Discord">
+        <a href="/auth/discord" class="sm-btn" style="padding:10px 14px; font-size:14px;">
+          <img class="sm-gray" src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg" style="width:20px;height:20px;" alt="Discord">
           Login with Discord
         </a>
       </div>
@@ -1271,44 +1345,35 @@
       <div id="discordProfileView" style="display: none;">
         <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 16px; padding: 0 4px;">
           <img id="discordAvatar" src="" alt="avatar"
-            style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #5865F2; object-fit: cover;">
+            style="width: 42px; height: 42px; border-radius: 50%; border: 2px solid #30363d; object-fit: cover;">
           <div>
-            <div id="discordDisplayName" style="color: #fff; font-weight: 700; font-size: 15px;"></div>
-            <div id="discordUsername" style="color: #aaa; font-size: 12px;"></div>
+            <div id="discordDisplayName" style="color: #e6edf3; font-weight: 700; font-size: 15px;"></div>
+            <div id="discordUsername" class="sm-muted" style="font-size: 12px;"></div>
           </div>
         </div>
 
-        <div class="menu-item" onclick="window.location.href='/profile.html?edit=true'"
-          style="display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom: 14px; cursor:pointer; color:#e0e6ed; border-radius: 6px; transition: background 0.2s;"
-          onmouseover="this.style.background='rgba(255,255,255,0.05)'" onmouseout="this.style.background='transparent'">
-          <i data-lucide="settings" style="width:16px; height:16px; color:#00cfff;"></i>
-          <span style="font-size:14px; font-family:'Plus Jakarta Sans', sans-serif;">Profile Settings</span>
+        <div class="sm-item" onclick="window.location.href='/profile.html?edit=true'" style="margin-top:0; margin-bottom: 14px;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M20 7h-9"/><path d="M14 17H5"/><circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/></svg>
+          <span style="font-size:14px;">Profile Settings</span>
         </div>
 
         <div id="discordLinkRow" style="margin-bottom: 14px;">
-          <div id="discordLinked" style="display:none; color: #4ade80; font-size: 12px; margin-bottom: 6px;"></div>
+          <div id="discordLinked" class="sm-muted" style="display:none; font-size: 12px; margin-bottom: 6px;"></div>
           <div id="discordLinkForm" style="display:flex; gap:6px;">
-            <input id="discordGeofsInput" type="text" placeholder="Your GeoFS User ID" style="flex:1; background: rgba(255,255,255,0.07); border: 1px solid rgba(255,255,255,0.15);
-                  border-radius: 6px; padding: 7px 10px; color: #fff; font-size: 13px; outline: none;" />
-            <button onclick="linkGeofsId()" style="background: #5865F2; color: #fff; border: none; border-radius: 6px;
-                   padding: 7px 12px; font-size: 13px; cursor: pointer; font-weight: 600;">Link</button>
+            <input id="discordGeofsInput" class="sm-input" type="text" placeholder="Your GeoFS User ID" />
+            <button onclick="linkGeofsId()" class="sm-btn">Link</button>
           </div>
         </div>
 
-        <a href="/auth/logout" style="display: block; text-align: center; color: #f87171; font-size: 13px;
-          text-decoration: none; padding: 7px; border-radius: 6px;
-          border: 1px solid rgba(248,113,113,0.3); transition: background 0.2s;"
-          onmouseover="this.style.background='rgba(248,113,113,0.1)'" onmouseout="this.style.background='transparent'">
-          Logout
-        </a>
+        <a href="/auth/logout" class="sm-btn-ghost">Logout</a>
       </div>
     </div>
 
     <!-- Photo Map 開關 -->
-    <div style="margin: 20px 0; padding: 15px; background: rgba(255,255,255,0.05); border-radius: 8px;">
+    <div class="sm-card" style="padding:15px;">
       <div style="display: flex; justify-content: space-between; align-items: center;">
-        <label style="color: #fff; font-size: 14px; cursor: pointer;" for="photoMapSwitch">
-          📷 Photo Map
+        <label style="color: #e6edf3; font-size: 14px; cursor: pointer; display:flex; align-items:center; gap:10px;" for="photoMapSwitch">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;color:#8b949e;" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>Photo Map
         </label>
         <label class="switch">
           <input type="checkbox" id="photoMapSwitch">
@@ -1317,75 +1382,66 @@
       </div>
     </div>
 
+    <!-- METAR（從右側 sidebar 移到這裡） -->
+    <details id="metarMenu">
+      <summary class="sm-item" style="margin-top:0;">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M17.5 19H9a7 7 0 1 1 6.71-9h1.79a4.5 4.5 0 1 1 0 9Z"/></svg>
+        <span>METAR <span id="metarMenuIcao" class="sm-muted"></span></span>
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sm-chev" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+      </summary>
+      <div id="metarWidget"></div>
+    </details>
+
     <!-- 連結區域 -->
-    <div style="margin-top: 30px;">
-      <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; 
-       padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; margin-bottom: 12px; 
-       transition: background 0.3s;">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="white">
+    <div style="margin-top: 20px;">
+      <a href="https://github.com/seabus0316/GeoFS-flightradar/tree/main" target="_blank" class="sm-item sm-plain">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="currentColor">
           <path
             d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z" />
         </svg>
-        <span style="font-size: 14px;">Visit GitHub</span>
+        <span>Visit GitHub</span>
       </a>
 
-      <a href="https://discord.gg/YKfdMHPC2Y" target="_blank" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; 
-       padding: 12px; background: rgba(88, 101, 242, 0.2); border-radius: 8px; 
-       transition: background 0.3s;">
-        <img src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg"
+      <a href="https://discord.gg/YKfdMHPC2Y" target="_blank" class="sm-item">
+        <img class="sm-gray" src="https://cdn.prod.website-files.com/6257adef93867e50d84d30e2/66e3d7f4ef6498ac018f2c55_Symbol.svg"
           alt="Discord" style="width: 24px; height: 24px;">
-        <span style="font-size: 14px;">Join Discord</span>
+        <span>Join Discord</span>
       </a>
 
-      <a href="airline.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
-       padding: 12px; background: rgba(240, 165, 0, 0.15); border-radius: 8px; margin-top: 12px;
-       border: 1px solid rgba(240, 165, 0, 0.35); transition: background 0.3s;">
-        <span style="font-size: 22px;">✈</span>
-        <span style="font-size: 14px;">Apply for Your Airline</span>
+      <a href="airline.html" class="sm-item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.2.2c-.3.4-.2 1 .2 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.9.5 1.3.2l.2-.1c.4-.2.6-.6.5-1.1z"/></svg>
+        <span>Apply for Your Airline</span>
       </a>
 
-      <a href="/atc" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
-       padding: 12px; background: rgba(53, 245, 155, 0.12); border-radius: 8px; margin-top: 12px;
-       border: 1px solid rgba(53, 245, 155, 0.32); transition: background 0.3s;">
-        <i data-lucide="radio" style="width: 22px; height: 22px;"></i>
-        <span style="font-size: 14px;">ATC Panel</span>
+      <a href="/atc" class="sm-item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M4.9 19.1C1 15.2 1 8.8 4.9 4.9"/><path d="M7.8 16.2c-2.3-2.3-2.3-6.1 0-8.5"/><circle cx="12" cy="12" r="2"/><path d="M16.2 7.8c2.3 2.3 2.3 6.1 0 8.5"/><path d="M19.1 4.9C23 8.8 23 15.1 19.1 19"/></svg>
+        <span>ATC Panel</span>
       </a>
 
       <!-- Jet Photos 摺疊選單 -->
-      <details style="margin-top: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; padding: 12px;">
-        <summary
-          style="color: #fff; cursor: pointer; font-size: 14px; outline: none; list-style: none; display: flex; align-items: center; justify-content: space-between;">
-          <div style="display: flex; align-items: center; gap: 12px;">
-            <span style="font-size: 20px;">📷</span>
-            <span>Jet Photos</span>
-          </div>
-          <span style="font-size: 12px; color: rgba(255,255,255,0.5);">▼</span>
+      <details style="margin-top: 10px;">
+        <summary class="sm-item" style="margin-top:0;">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M14.5 4h-5L7 7H4a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2h-3l-2.5-3z"/><circle cx="12" cy="13" r="3"/></svg>
+          <span>Jet Photos</span>
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="sm-chev" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
         </summary>
-        <div style="padding-top: 12px; display: flex; flex-direction: column; gap: 8px;">
-          <a href="/upload.html"
-            style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
-            <span style="font-size: 16px;">📸</span>
-            <span style="font-size: 13px;">Upload Jet Photos</span>
-          </a>
-          <a href="/gallery.html"
-            style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none; padding: 8px; background: rgba(255,255,255,0.05); border-radius: 8px; transition: background 0.3s;">
-            <span style="font-size: 16px;">🖼️</span>
-            <span style="font-size: 13px;">Visit Our Gallery</span>
-          </a>
-        </div>
+        <a href="/upload.html" class="sm-item sm-sub">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m17 8-5-5-5 5"/><path d="M12 3v12"/></svg>
+          <span>Upload Jet Photos</span>
+        </a>
+        <a href="/gallery.html" class="sm-item sm-sub">
+          <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.1-3.1a2 2 0 0 0-2.8 0L6 21"/></svg>
+          <span>Visit Our Gallery</span>
+        </a>
       </details>
 
-      <a href="/history.html" style="display: flex; align-items: center; gap: 12px; color: #fff; text-decoration: none;
-       padding: 12px; background: rgba(0,255,133,0.08); border-radius: 8px; margin-top: 12px;
-       border: 1px solid rgba(0,255,133,0.2); transition: background 0.3s;">
-        <span style="font-size: 22px;">📋</span>
-        <span style="font-size: 14px;">Search History</span>
+      <a href="/history.html" class="sm-item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><rect x="8" y="2" width="8" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M12 11h4M12 16h4M8 11h.01M8 16h.01"/></svg>
+        <span>Search History</span>
       </a>
-      <button id="openReplayBtn" type="button" style="display:flex; width:100%; align-items:center; gap:12px; color:transparent; font-size:0;
-       padding:12px; background:rgba(59,130,246,0.14); border-radius:8px; margin-top:12px;
-       border:1px solid rgba(59,130,246,0.3); transition:background 0.3s; cursor:pointer;">
-        <span style="font-size:22px;">▶</span>
-        <span style="font-size:14px; font-weight:700; color:#fff;">Replay</span>
+      <button id="openReplayBtn" type="button" class="sm-item">
+        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><polygon points="6 3 20 12 6 21 6 3"/></svg>
+        <span style="font-weight:600;">Replay</span>
       </button>
     </div>
   </div>
@@ -1471,7 +1527,7 @@
      FR24-Style Flight List Panel
 ═══════════════════════════════════════════════ -->
 
-  <div id="flightListOpenBtn" onclick="openFlightPanel()" title="Show flight list">✈</div>
+  <div id="flightListOpenBtn" onclick="openFlightPanel()" title="Show flight list"><svg xmlns="http://www.w3.org/2000/svg" width="1.1em" height="1.1em" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.2.2c-.3.4-.2 1 .2 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.9.5 1.3.2l.2-.1c.4-.2.6-.6.5-1.1z"/></svg></div>
 
   <div id="flightListPanel">
     <div id="flpHeader">
@@ -1531,7 +1587,7 @@
       _histPage = page;
       const body = document.getElementById("flpBody");
       if (!body) return;
-      body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon" style="font-size:24px">⏳</div>Loading...</div>`;
+      body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon" style="font-size:24px">${svgIcon('loader',24)}</div>Loading...</div>`;
 
       try {
         // 如果已登入，預設顯示自己的紀錄
@@ -1544,7 +1600,7 @@
         _histTotal = data.total || 0;
         renderHistoryTab(data.flights || [], page, _histTotal);
       } catch (e) {
-        body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">⚠️</div>Failed to load</div>`;
+        body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">${svgIcon('alert',24)}</div>Failed to load</div>`;
       }
     }
 
@@ -1553,7 +1609,7 @@
       const pages = Math.ceil(total / _HIST_LIMIT);
 
       if (!flights.length) {
-        body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">📋</div>No history yet</div>`;
+        body.innerHTML = `<div class="fl-empty"><div class="fl-empty-icon">${svgIcon('clipboard',24)}</div>No history yet</div>`;
         return;
       }
 
@@ -1565,8 +1621,8 @@
         const arr = (f.arrival || "—").substring(0, 4);
         const logoUrl = (typeof getAirlineLogo === "function") ? getAirlineLogo(f.callsign, f.flightNo) : null;
         const logoHtml = logoUrl
-          ? `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="fl-logo-fb" style="display:none">📋</span>`
-          : `<span class="fl-logo-fb">📋</span>`;
+          ? `<img src="${logoUrl}" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';" /><span class="fl-logo-fb" style="display:none">${svgIcon('clipboard',16)}</span>`
+          : `<span class="fl-logo-fb">${svgIcon('clipboard',16)}</span>`;
         const statusColor = f.status === "aborted" ? "#f87171" : "#00ff85";
         return `
       <div class="fl-item" style="cursor:default; opacity:${f.status === 'aborted' ? '0.65' : '1'}">
@@ -1668,7 +1724,7 @@
       // 空狀態
       if (items.length === 0) {
         body.innerHTML = `<div class="fl-empty">
-      <div class="fl-empty-icon">✈️</div>
+      <div class="fl-empty-icon">${svgIcon('plane',24)}</div>
       ${flCurrentTab === "live" ? "No live flights right now" : "No recent flights"}
     </div>`;
         return;
@@ -1759,7 +1815,7 @@
               showGlobeTrackAndRoute(id, obj.data, { flyCamera: true });
             }
           } else {
-            map.flyTo(obj.marker.getLatLng(), Math.max(map.getZoom(), 9), { duration: 1 });
+            map.flyTo(obj.marker.getLatLng(), _focusZoom(), { duration: 1 });
           }
         }
       }
@@ -1790,7 +1846,8 @@
   <!-- Search Box -->
   <div id="searchBox" style="position: fixed; top: 76px; left: 72px; z-index: 9999; width: 260px;">
     <div style="position: relative;">
-      <input type="text" id="searchInput" placeholder="🔍 Search flight or airport..." style="width: 100%; padding: 12px 45px 12px 16px; font-size: 14px; border: none; border-radius: 8px; 
+      <span style="position:absolute;left:14px;top:50%;transform:translateY(-50%);color:#999;display:flex;pointer-events:none;"><svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="flex-shrink:0;vertical-align:-0.15em;" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.3-4.3"/></svg></span>
+      <input type="text" id="searchInput" placeholder="Search flight or airport..." style="width: 100%; padding: 12px 45px 12px 40px; font-size: 14px; border: none; border-radius: 8px; 
                   background: rgba(255, 255, 255, 0.95); box-shadow: 0 2px 12px rgba(0,0,0,0.2); 
                   outline: none; font-family: 'Inter', sans-serif;">
       <button id="clearSearch"
@@ -2406,7 +2463,7 @@
       <img src="${p.thumb}" alt="${p.caption || ''}" loading="lazy" onclick="window.open('${p.thumb}', '_blank')">
       <div class="caption">
         <strong>${p.caption || 'Untitled'}</strong><br>
-        <small>📸 ${p.photographer || 'Anonymous'}</small>
+        <small>${svgIcon('camera',12)} ${p.photographer || 'Anonymous'}</small>
       </div>
 `;
           panel.appendChild(item);
@@ -3175,7 +3232,7 @@
       if (!marker) return;
       if (enable) {
         const d = obj.data;
-        const squawk = d.squawk === '7700' ? `⚠ SQK 7700` : '';
+        const squawk = d.squawk === '7700' ? `${svgIcon('alert',11)} SQK 7700` : '';
         const labelHtml = `
       <span style="font-weight:700;font-size:11px;">${d.callsign || 'UNK'}</span><br>
       <span style="font-size:10px;">${d.type || '??'} · ${formatAltitude(d.alt || 0)} · ${formatSpeedWithUnit(d.speed, d)}</span>
@@ -3583,7 +3640,7 @@
             if (prev && prev.marker) prev.marker.setIcon(makeDivIcon(prev.data, false));
           }
           marker.setIcon(makeDivIcon(currentData, true));
-          map.flyTo([currentData.lat, currentData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
+          map.flyTo([currentData.lat, currentData.lon], _focusZoom(), { duration: 0.55 });
           showAircraftTrack(id);
           showAircraftPanel(currentData, id);
           if (globeMode && typeof showGlobeTrackAndRoute === 'function') {
@@ -3776,7 +3833,7 @@
           nextWaypointMarker = L.marker([Number(nextWp.lat), Number(nextWp.lon)], {
             icon: nextWpIcon, pane: 'waypointPane', zIndexOffset: 1000
           }).addTo(map);
-          nextWaypointMarker.bindTooltip(`🎯 NEXT: ${data.nextWaypoint}`, {
+          nextWaypointMarker.bindTooltip(`${svgIcon('target',12)} NEXT: ${data.nextWaypoint}`, {
             permanent: true, direction: 'top', className: 'waypoint-tooltip', offset: [0, -16]
           });
         }
@@ -3917,7 +3974,7 @@
         "Brazil": "🇧🇷", "Argentina": "🇦🇷", "Mexico": "🇲🇽", "Panama": "🇵🇦",
         "Pakistan": "🇵🇰", "Libya": "🇱🇾", "India": "🇮🇳", "Indonesia": "🇮🇩",
       };
-      return map[country] || "🌐";
+      return map[country] || svgIcon('globe', 14);
     }
     async function showAircraftPanel(data, id) {
       const oldPanel = document.getElementById('aircraftPanel');
@@ -4160,12 +4217,11 @@
       </div>
     `;
       } else {
-        // 預設飛機圖（如果沒有用戶照片）
+        // 預設圖片（如果沒有用戶照片）
         photosHtml = `
       <div class="panel-photo-hero" style="position:relative;width:100%;aspect-ratio:16/9;background:#000;">
-        <div style="width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:#666;font-size:48px;">
-          ✈️
-        </div>
+        <img src="${AIRCRAFT_PLACEHOLDER_IMG}" alt="" style="width:100%;height:100%;object-fit:cover;display:block;"
+             onerror="this.style.display='none'">
       </div>
     `;
       }
@@ -4190,8 +4246,8 @@
         ${airlineLogoUrl
           ? `<img src="${airlineLogoUrl}" style="width:38px;height:38px;object-fit:contain;"
                   onerror="this.style.display='none';this.nextSibling.style.display='block';">
-             <span style="display:none;font-size:22px;">✈️</span>`
-          : `<span style="font-size:22px;">✈️</span>`}
+             <span style="display:none;color:#4a6070;">${svgIcon('plane',22)}</span>`
+          : `<span style="color:#4a6070;display:flex;">${svgIcon('plane',22)}</span>`}
       </div>
 
       <!-- Title block -->
@@ -4207,7 +4263,7 @@
               font-size:11px;font-weight:700;padding:2px 7px;border-radius:5px;
               border:1px solid rgba(59,130,246,0.3);">${escapeHtml(data.type)}</span>` : ''}
           ${isEmergency ? `<span style="background:#d32f2f;color:#fff;
-              font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;">⚠ 7700</span>` : ''}
+              font-size:10px;font-weight:800;padding:2px 7px;border-radius:5px;">${svgIcon('alert',11)} 7700</span>` : ''}
         </div>
         <div style="font-size:12px;color:#8a9db0;margin-top:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap;">
           ${airlineFlag ? `<span style="font-size:14px;">${airlineFlag}</span>` : ''}
@@ -4234,7 +4290,7 @@
 
   ${isEmergency ? `<div style="background:#d32f2f;color:#fff;padding:10px 16px;
       text-align:center;font-weight:700;font-size:13px;letter-spacing:0.3px;">
-      ⚠️ EMERGENCY — SQUAWK 7700</div>` : ''}
+      ${svgIcon('alert',15)} EMERGENCY — SQUAWK 7700</div>` : ''}
 
   <!-- ② Hero Photo -->
   ${photosHtml}
@@ -4341,7 +4397,7 @@
              padding:12px 16px;display:flex;align-items:center;justify-content:space-between;
              cursor:pointer;color:#3b82f6;font-size:13px;font-weight:600;">
       <span style="display:flex;align-items:center;gap:6px;">
-        <span>✈</span> More ${escapeHtml(data.flightNo || data.callsign || '')} information
+        ${svgIcon('plane',14)} More ${escapeHtml(data.flightNo || data.callsign || '')} information
       </span>
       <span id="expandIcon" style="font-size:12px;color:#aaa;">▼</span>
     </button>
@@ -4861,7 +4917,7 @@
       if (map && map.doubleClickZoom) map.doubleClickZoom.disable();
       if (map && map.keyboard) map.keyboard.disable();
       content.innerHTML = `<div style="padding:60px 0;text-align:center;color:#4a6070;font-size:14px;">
-        <div style="font-size:28px;margin-bottom:12px;">✈</div>Loading profile…</div>`;
+        <div style="margin-bottom:12px;display:flex;justify-content:center;">${svgIcon('plane',28)}</div>Loading profile…</div>`;
 
       // Fetch user
       const user = await fetchUserByGeofsId(userId);
@@ -4914,7 +4970,7 @@
       // Achievements — only "Logged First Flight" for now
       const achievements = [];
       if (flights.length > 0) {
-        achievements.push({ icon: '🛫', name: 'Logged First Flight', desc: 'Completed first tracked flight', earned: true });
+        achievements.push({ icon: svgIcon('plane', 20, 'color:#f5d77e;'), name: 'Logged First Flight', desc: 'Completed first tracked flight', earned: true });
       }
 
       // Banner + visited airports
@@ -4937,7 +4993,7 @@
       content.innerHTML = `
         <!-- ① Banner -->
         <div style="height:110px;background:${escapeHtml(banner)};border-radius:20px 20px 0 0;position:relative;flex-shrink:0;">
-          ${isOwnProfile ? `<button title="Profile Settings" style="all:unset;position:absolute;bottom:10px;right:12px;cursor:pointer;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ccc;font-size:14px;">⚙</button>` : ''}
+          ${isOwnProfile ? `<button title="Profile Settings" style="all:unset;position:absolute;bottom:10px;right:12px;cursor:pointer;background:rgba(0,0,0,0.35);backdrop-filter:blur(6px);width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#ccc;">${svgIcon('settings',15)}</button>` : ''}
         </div>
 
         <!-- ② Avatar + Identity -->
@@ -5053,7 +5109,7 @@
     let photoMarkers = [];
 
     const planeIcon = L.divIcon({
-      html: '<div style="font-size: 24px;">✈️</div>',
+      html: '<div style="color:#fff;filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));">' + svgIcon('plane', 24) + '</div>',
       className: 'plane-marker',
       iconSize: [30, 30],
       iconAnchor: [15, 15]
@@ -5083,8 +5139,8 @@
         <div class="photo-popup">
           <img src="${photo.thumb}" alt="${escapeHtml(photo.caption)}" onclick="window.open('${photo.file}', '_blank')">
           <h3>${escapeHtml(photo.caption)}</h3>
-          <div class="info">📷 ${escapeHtml(photo.photographer)}</div>
-          <div class="info">📅 ${new Date(photo.createdAt).toLocaleDateString('en-US')}</div>
+          <div class="info">${svgIcon('camera',13)} ${escapeHtml(photo.photographer)}</div>
+          <div class="info">${svgIcon('calendar',13)} ${new Date(photo.createdAt).toLocaleDateString('en-US')}</div>
           ${photo.tags && photo.tags.length > 0 ? `
             <div class="tags">
               ${photo.tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
@@ -5164,7 +5220,7 @@
                 focusedAircraftId = aircraftId;
                 const currentObj = aircrafts.get(aircraftId);
                 const currentData = currentObj?.data || dummyData;
-                map.flyTo([currentData.lat, currentData.lon], Math.max(map.getZoom(), 9), { duration: 0.55 });
+                map.flyTo([currentData.lat, currentData.lon], _focusZoom(), { duration: 0.55 });
                 showAircraftTrack(aircraftId);
                 showAircraftPanel(currentData, aircraftId);
               });
@@ -5545,25 +5601,12 @@
       clearMetarClockIntervals();
 
       let widget = document.getElementById('metarWidget');
-      let toggleBtn = document.getElementById('metarToggle');
-
-      // 創建 Toggle Button
-      if (!toggleBtn) {
-        toggleBtn = document.createElement('button');
-        toggleBtn.id = 'metarToggle';
-        toggleBtn.innerHTML = '🌤️ METAR';
-        toggleBtn.onclick = function () {
-          widget.classList.toggle('open');
-        };
-        document.body.appendChild(toggleBtn);
-      }
 
       // 創建 Widget
       if (!widget) {
         widget = document.createElement('div');
         widget.id = 'metarWidget';
-        widget.className = 'metar-widget';
-        document.body.appendChild(widget);
+        (document.getElementById('metarMenu') || document.body).appendChild(widget);
       }
 
       const title = document.createElement("div");
@@ -5740,7 +5783,7 @@
           svg.setAttribute("width", "18");
           svg.setAttribute("height", "18");
           svg.style.cssText = "background:white;border-radius:50%;margin-right:8px;";
-          svg.innerHTML = `<polygon points="9,2 7,9 9,7.5 11,9" fill="red"/>`;
+          svg.innerHTML = `<polygon points="9,2 7,9 9,7.5 11,9" fill="#111"/>`;
           svg.style.transform = `rotate(${dir}deg)`;
           const t = document.createElement("span");
           t.style.fontSize = "12px";
@@ -5769,6 +5812,9 @@
       widget.appendChild(searchDiv);
       widget.appendChild(clockContainer);
       widget.appendChild(iconRow);
+
+      const metarMenuIcao = document.getElementById('metarMenuIcao');
+      if (metarMenuIcao) metarMenuIcao.textContent = icao;
     }
     // 初始化 METAR
     fetchMETAR("RCTP").then(metar => {
@@ -5936,7 +5982,7 @@
         <div class="search-result-item" onclick="selectFlight('${result.id}')" 
              style="padding: 12px 16px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 24px;">✈️</div>
+            <div style="color:#333;display:flex;">${svgIcon('plane',24)}</div>
             <div style="flex: 1;">
               <div style="font-weight: 600; font-size: 15px; color: #000;">
                 ${escapeHtml(data.callsign || 'UNKNOWN')}
@@ -5961,7 +6007,7 @@
         <div class="search-result-item" onclick="selectAirport(${apt.latitude_deg}, ${apt.longitude_deg}, '${escapeHtml(apt.ident)}', '${escapeHtml(apt.name).replace(/'/g, "\\'")}')"
              style="padding: 12px 16px; border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s;">
           <div style="display: flex; align-items: center; gap: 12px;">
-            <div style="font-size: 24px;">🛫</div>
+            <div style="color:#333;display:flex;">${svgIcon('plane',24)}</div>
             <div style="flex: 1;">
               <div style="font-weight: 600; font-size: 15px; color: #000;">
                 ${escapeHtml(apt.ident)}
@@ -6035,7 +6081,7 @@
       // 顯示機場 Marker 並加上 permanent tooltip
       const airportMarker = L.marker([lat, lon], {
         icon: L.divIcon({
-          html: '<div style="font-size: 32px;">🛫</div>',
+          html: '<div style="color:#fff;filter:drop-shadow(0 1px 3px rgba(0,0,0,.8));">' + svgIcon('plane', 32) + '</div>',
           className: 'airport-marker',
           iconSize: [40, 40],
           iconAnchor: [20, 20]
@@ -6069,14 +6115,14 @@
         // 確保 METAR widget 是打開的
         const widget = document.getElementById('metarWidget');
         if (widget) {
-          widget.classList.add('open');
+          document.getElementById('metarMenu')?.setAttribute('open', '');
         }
       } else {
         // 即使沒有 METAR 數據，也打開 widget 顯示搜尋框
         showMetarWidget(null, icao);
         const widget = document.getElementById('metarWidget');
         if (widget) {
-          widget.classList.add('open');
+          document.getElementById('metarMenu')?.setAttribute('open', '');
         }
 
         // 顯示提示訊息
@@ -6095,7 +6141,7 @@
           ${escapeHtml(name)}
         </div>
         <div style="font-size: 11px; color: #999; margin-top: 8px; padding-top: 8px; border-top: 1px solid #eee;">
-          📍 ${lat.toFixed(4)}°, ${lon.toFixed(4)}°
+          ${svgIcon('pin',12)} ${lat.toFixed(4)}°, ${lon.toFixed(4)}°
         </div>
       </div>
     `)
@@ -6164,7 +6210,7 @@
         window._myDiscordId = u.user.discordId;
         window._myGeofsUserId = u.user.geofsUserId || null;
         if (u.user.geofsUserId) {
-          linkedBadge.textContent = '\u2705 GeoFS ID: ' + u.user.geofsUserId;
+          linkedBadge.textContent = 'GeoFS ID: ' + u.user.geofsUserId;
           linkedBadge.style.display = 'block';
           linkForm.style.display = 'none';
         } else {
@@ -6208,7 +6254,7 @@
           body: JSON.stringify({ geofsUserId: id })
         }).then(r => r.json()).then(data => {
           if (data.ok) {
-            linkedBadge.textContent = '\u2705 GeoFS ID: ' + id;
+            linkedBadge.textContent = 'GeoFS ID: ' + id;
             linkedBadge.style.display = 'block';
             linkForm.style.display = 'none';
             window._myGeofsUserId = id;
@@ -6294,14 +6340,12 @@
     async function toggleGlobeMode() {
       globeMode = !globeMode;
       const globeBtn = document.getElementById('globeBtn');
-      const globeResetBtn = document.getElementById('globeResetBtn');
       const mapDiv = document.getElementById('map');
       const globeDiv = document.getElementById('globe');
 
       if (globeMode) {
         globeBtn.classList.add('active');
         globeBtn.style.color = '#ffd500';
-        if (globeResetBtn) globeResetBtn.style.display = 'flex';
         mapDiv.style.opacity = '0';
         setTimeout(() => { if (globeMode) mapDiv.style.display = 'none'; }, 300);
         globeDiv.style.display = 'block';
@@ -6392,7 +6436,6 @@
           globeMode = false;
           globeBtn.classList.remove('active');
           globeBtn.style.color = '';
-          if (globeResetBtn) globeResetBtn.style.display = 'none';
           globeDiv.style.display = 'none';
           mapDiv.style.display = 'block';
           mapDiv.style.opacity = '1';
@@ -6400,7 +6443,6 @@
       } else {
         globeBtn.classList.remove('active');
         globeBtn.style.color = '';
-        if (globeResetBtn) globeResetBtn.style.display = 'none';
         globeDiv.style.display = 'none';
         mapDiv.style.display = 'block';
         mapDiv.style.opacity = '1';
@@ -6658,7 +6700,7 @@
                 outlineWidth: 1
               },
               label: {
-                text: isNext ? '🎯 ' + label : label,
+                text: isNext ? 'NEXT: ' + label : label,
                 font: isNext ? 'bold 11pt monospace' : '10pt monospace',
                 fillColor: Cesium.Color.WHITE,
                 outlineColor: Cesium.Color.BLACK,
@@ -6767,7 +6809,7 @@
           offset: new Cesium.HeadingPitchRange(
             0,
             Cesium.Math.toRadians(-90),
-            4500000
+            (getZoomOnFocusEnabled() ? 4500000 : Math.max(cesiumViewer.camera.positionCartographic.height || 4500000, 1500))
           )
         }).catch(() => { }); // silence if interrupted
       }
