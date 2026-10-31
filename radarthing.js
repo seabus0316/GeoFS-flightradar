@@ -1,4 +1,4 @@
-(function () {
+nction () {
   "use strict";
 
   const ENDPOINT =
