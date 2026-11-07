@@ -2058,7 +2058,7 @@
     "icao": "DAO",
     "iata": "D3",
     "country": "Somalia",
-    "logo": "https://img.sanishtech.com/u/97d610ad1c070bdaa5eb04f3d2338fd1.png"
+    "logo": "https://i.ibb.co/Y7mG56FL/Untitled-06-November-2026-at-19-31-27.png"
   },
   "FIE": {
     "name": "FlyOne Armenia",
@@ -3678,5 +3678,26 @@
     "iata": "RX",
     "country": "Taiwan",
     "logo": "https://i.ibb.co/xStxnJxQ/987.jpg"
+  },
+  "FKH": {
+    "name": "Fly Khiva",
+    "icao": "FKH",
+    "iata": "2U",
+    "country": "Uzbekistan",
+    "logo": "https://images.kiwi.com/airlines/64/2U.png"
+  },
+  "USA": {
+    "name": "Silkavia",
+    "icao": "USA",
+    "iata": "US",
+    "country": "Uzbekistan",
+    "logo": "https://i.ibb.co/XxKFnQXf/unnamed.png"
+  },
+  "XCP": {
+    "name": "XC Airlines",
+    "icao": "XCP",
+    "iata": "XP",
+    "country": "United States",
+    "logo": "https://cdn.corenexis.com/f/7rmRGt5q.png"
   }
 }
