@@ -1482,7 +1482,11 @@ async function handlePlayerPositionUpdate(p, context = {}) {
   };
 
   aircrafts.set(id, { payload, lastSeen: Date.now() });
-  await saveFlightPoint({
+  scheduleAdaptiveAircraftUpdate(
+    payload,
+    context.includeTrackPoint ? { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } : null
+  );
+  saveFlightPoint({
     aircraftId: id,
     callsign: payload.callsign,
     type: payload.type,
@@ -1500,16 +1504,8 @@ async function handlePlayerPositionUpdate(p, context = {}) {
     heading: payload.heading,
     ts: payload.ts
   });
-  try {
-    await checkWaypointReminder(payload);
-  } catch (err) {
-    console.error(`[Reminder] ${context.source || 'player'} check failed:`, err);
-  }
-  scheduleAdaptiveAircraftUpdate(
-    payload,
-    context.includeTrackPoint ? { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts } : null
-  );
-  await sendSquawkAlert(payload);
+  checkWaypointReminder(payload).catch(err => console.error(`[Reminder] ${context.source || 'player'} check failed:`, err));
+  sendSquawkAlert(payload).catch(err => console.error('sendSquawkAlert error', err));
   return payload;
 }
 
@@ -1646,7 +1642,8 @@ io.on('connection', async (socket) => {
     };
 
     aircrafts.set(id, { payload, lastSeen: Date.now() });
-    await saveFlightPoint({
+    scheduleAdaptiveAircraftUpdate(payload);
+    saveFlightPoint({
       aircraftId: id,
       callsign: payload.callsign,
       type: payload.type,
@@ -1664,13 +1661,8 @@ io.on('connection', async (socket) => {
       heading: payload.heading,
       ts: payload.ts
     });
-    try {
-      await checkWaypointReminder(payload);
-    } catch (err) {
-      console.error('[Reminder] Socket.IO check failed:', err);
-    }
-    scheduleAdaptiveAircraftUpdate(payload);
-    await sendSquawkAlert(payload);
+    checkWaypointReminder(payload).catch(err => console.error('[Reminder] Socket.IO check failed:', err));
+    sendSquawkAlert(payload).catch(err => console.error('sendSquawkAlert error', err));
   });
 
   socket.on('flight_pause', (p) => {
@@ -1830,7 +1822,8 @@ wss.on('connection', (ws) => {
         };
 
         aircrafts.set(id, { payload, lastSeen: Date.now() });
-        await saveFlightPoint({
+        scheduleAdaptiveAircraftUpdate(payload, { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts });
+        saveFlightPoint({
           aircraftId: id,
           callsign: payload.callsign,
           type: payload.type,
@@ -1848,13 +1841,8 @@ wss.on('connection', (ws) => {
           heading: payload.heading,
           ts: payload.ts
         });
-        try {
-          await checkWaypointReminder(payload);
-        } catch (err) {
-          console.error('[Reminder] WebSocket check failed:', err);
-        }
-        scheduleAdaptiveAircraftUpdate(payload, { lat: payload.lat, lon: payload.lon, alt: payload.alt, timestamp: payload.ts });
-        await sendSquawkAlert(payload);
+        checkWaypointReminder(payload).catch(err => console.error('[Reminder] WebSocket check failed:', err));
+        sendSquawkAlert(payload).catch(err => console.error('sendSquawkAlert error', err));
         return;
       }
 
