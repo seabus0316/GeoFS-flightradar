@@ -2305,6 +2305,32 @@
       if (alt < 40000) return "#800080";
       return "#ff0000";
     }
+    // 連續高度色階（以各色階中心為錨點，錨點之間線性插值）
+    const ALT_COLOR_STOPS = [
+      [0, [255, 255, 255]],
+      [1800, [255, 255, 0]],
+      [5750, [0, 255, 0]],
+      [14100, [0, 191, 255]],
+      [25000, [0, 0, 255]],
+      [35000, [128, 0, 128]],
+      [45000, [255, 0, 0]]
+    ];
+    function getAltitudeRGB(altFt) {
+      const a = Math.max(0, altFt || 0);
+      const S = ALT_COLOR_STOPS;
+      if (a <= S[0][0]) return S[0][1];
+      for (let i = 1; i < S.length; i++) {
+        if (a <= S[i][0]) {
+          const t = (a - S[i - 1][0]) / (S[i][0] - S[i - 1][0]);
+          const c0 = S[i - 1][1], c1 = S[i][1];
+          return [c0[0] + (c1[0] - c0[0]) * t, c0[1] + (c1[1] - c0[1]) * t, c0[2] + (c1[2] - c0[2]) * t];
+        }
+      }
+      return S[S.length - 1][1];
+    }
+    function rgbToCss(c) {
+      return `rgb(${Math.round(c[0])},${Math.round(c[1])},${Math.round(c[2])})`;
+    }
     function calculateDistance(lat1, lon1, lat2, lon2) {
       const R = 6371;
       const dLat = (lat2 - lat1) * Math.PI / 180;
@@ -2548,7 +2574,28 @@
     map.createPane('waypointPane');
     map.getPane('waypointPane').style.zIndex = 550;
     // Canvas renderer
-    const canvasRenderer = L.canvas();
+    // 支援 options.gradient = {from:'rgb(..)', to:'rgb(..)'} 的 Canvas renderer（沿線段方向線性漸層）
+    const GradientCanvas = L.Canvas.extend({
+      _fillStroke: function (ctx, layer) {
+        const g = layer.options.gradient;
+        const ring = g && ((layer._rings && layer._rings[0]) || (layer._parts && layer._parts[0]));
+        if (ring && ring.length >= 2) {
+          const a = ring[0], b = ring[ring.length - 1];
+          if (Math.abs(a.x - b.x) + Math.abs(a.y - b.y) > 0.01) {
+            const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+            grad.addColorStop(0, g.from);
+            grad.addColorStop(1, g.to);
+            const orig = layer.options.color;
+            layer.options.color = grad;
+            try { L.Canvas.prototype._fillStroke.call(this, ctx, layer); }
+            finally { layer.options.color = orig; }
+            return;
+          }
+        }
+        L.Canvas.prototype._fillStroke.call(this, ctx, layer);
+      }
+    });
+    const canvasRenderer = new GradientCanvas();
 
     const aircrafts = new Map();
     const IDLE_HIDE_MS = 60 * 1000; // 同一位置閒置超過此時間就先從雷達隱藏
@@ -3496,6 +3543,9 @@
         const prev = obj.displayPath[i - 1];
         const curr = obj.displayPath[i];
         const alt = curr[2] || 0;
+        const cFrom = rgbToCss(getAltitudeRGB(prev[2]));
+        const cTo = rgbToCss(getAltitudeRGB(alt));
+        const grad = cFrom === cTo ? null : { from: cFrom, to: cTo };
 
         const distKm = calculateDistance(prev[0], prev[1], curr[0], curr[1]);
 
@@ -3512,20 +3562,21 @@
           const edge1 = movingEast ? 180 : -180;
           const edge2 = movingEast ? -180 : 180;
 
+          const cMid = rgbToCss(getAltitudeRGB(((prev[2] || 0) + alt) / 2));
           const seg1 = L.polyline([[prev[0], prev[1]], [curr[0], edge1]], {
-            renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+            renderer: canvasRenderer, color: cFrom, gradient: cFrom === cMid ? null : { from: cFrom, to: cMid }, weight: 2, opacity: savedOpacity
           }).addTo(map);
           obj.segments.push(seg1);
 
           const seg2 = L.polyline([[prev[0], edge2], [curr[0], curr[1]]], {
-            renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+            renderer: canvasRenderer, color: cMid, gradient: cMid === cTo ? null : { from: cMid, to: cTo }, weight: 2, opacity: savedOpacity
           }).addTo(map);
           obj.segments.push(seg2);
 
         } else {
           // 3. Normal segment
           const seg = L.polyline([[prev[0], prev[1]], [curr[0], curr[1]]], {
-            renderer: canvasRenderer, color: getAltitudeColor(alt), weight: 2, opacity: savedOpacity
+            renderer: canvasRenderer, color: cFrom, gradient: grad, weight: 2, opacity: savedOpacity
           }).addTo(map);
           if (seg.bindTooltip) {
             seg.bindTooltip(`${Math.round(alt)} ft`, { sticky: true, direction: 'right', offset: [10, 0] });
